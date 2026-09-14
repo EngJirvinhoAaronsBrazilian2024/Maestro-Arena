@@ -1,0 +1,6 @@
+{
+  "name": "Maestro Arena",
+  "description": "A production-quality sports application with live scores, news, and match centers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

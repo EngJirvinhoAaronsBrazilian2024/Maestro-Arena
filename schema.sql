@@ -1,0 +1,131 @@
+-- Create users table
+CREATE TABLE users (
+  id UUID PRIMARY KEY REFERENCES auth.users(id),
+  email TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user',
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT
+);
+
+-- Enable RLS on users
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view all users" ON users FOR SELECT USING (true);
+CREATE POLICY "Users can insert their own profile" ON users FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can update their own profile" ON users FOR UPDATE USING (auth.uid() = id);
+
+-- Create bookmarks table
+CREATE TABLE bookmarks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  article_id UUID NOT NULL,
+  created_at BIGINT NOT NULL
+);
+
+-- Enable RLS on bookmarks
+ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage their own bookmarks" ON bookmarks FOR ALL USING (auth.uid() = user_id);
+
+-- Create articles table
+CREATE TABLE articles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  image_url TEXT,
+  author_id UUID NOT NULL REFERENCES users(id),
+  status TEXT NOT NULL DEFAULT 'draft',
+  category TEXT NOT NULL,
+  published_at BIGINT
+);
+
+-- Enable RLS on articles
+ALTER TABLE articles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view articles" ON articles FOR SELECT USING (true);
+CREATE POLICY "Editors can manage articles" ON articles FOR ALL USING (
+  EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role IN ('editor', 'admin'))
+);
+
+-- Create sports, competitions, seasons, teams, players, matches
+CREATE TABLE sports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  icon TEXT,
+  created_at BIGINT NOT NULL
+);
+CREATE TABLE competitions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sport_id UUID NOT NULL REFERENCES sports(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  logo TEXT,
+  created_at BIGINT NOT NULL
+);
+CREATE TABLE teams (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sport_id UUID NOT NULL REFERENCES sports(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  logo TEXT,
+  created_at BIGINT NOT NULL
+);
+CREATE TABLE matches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  competition_id UUID NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
+  home_team_id UUID NOT NULL REFERENCES teams(id),
+  away_team_id UUID NOT NULL REFERENCES teams(id),
+  start_time BIGINT NOT NULL,
+  status TEXT NOT NULL,
+  home_score INT,
+  away_score INT
+);
+
+ALTER TABLE sports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE competitions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public read sports" ON sports FOR SELECT USING (true);
+CREATE POLICY "Public read competitions" ON competitions FOR SELECT USING (true);
+CREATE POLICY "Public read teams" ON teams FOR SELECT USING (true);
+CREATE POLICY "Public read matches" ON matches FOR SELECT USING (true);
+
+-- Create quiz tables
+CREATE TABLE quiz_questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  question TEXT NOT NULL,
+  options JSONB NOT NULL,
+  correct_answer TEXT NOT NULL,
+  category TEXT NOT NULL,
+  difficulty TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'PUBLISHED',
+  created_at BIGINT NOT NULL,
+  generation_id UUID
+);
+
+CREATE TABLE quiz_results (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  score INT NOT NULL,
+  total INT NOT NULL,
+  category TEXT NOT NULL,
+  difficulty TEXT NOT NULL,
+  completed_at BIGINT NOT NULL
+);
+
+CREATE TABLE quiz_stats (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  total_score INT NOT NULL DEFAULT 0,
+  quizzes_taken INT NOT NULL DEFAULT 0,
+  correct_answers INT NOT NULL DEFAULT 0,
+  last_played_at BIGINT NOT NULL
+);
+
+ALTER TABLE quiz_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quiz_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quiz_stats ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public read quiz_questions" ON quiz_questions FOR SELECT USING (true);
+CREATE POLICY "Users insert quiz_results" ON quiz_results FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users read quiz_results" ON quiz_results FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users read quiz_stats" ON quiz_stats FOR SELECT USING (true);
+CREATE POLICY "Users update quiz_stats" ON quiz_stats FOR ALL USING (auth.uid() = user_id);
+

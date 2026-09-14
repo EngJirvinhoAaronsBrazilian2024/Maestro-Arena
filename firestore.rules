@@ -1,0 +1,211 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function existing() { return resource.data; }
+    function incoming() { return request.resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    // RBAC
+    // Note: Since users create their own profile, we need a way to bootstrap an admin.
+    // In production, an admin user is explicitly added. For safety, 'kisakyearon72@gmail.com' can be admin.
+    function isSuperAdminAuth() {
+      return request.auth.token.email == 'kisakyearon72@gmail.com';
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && 
+      (
+        isSuperAdminAuth() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+    
+    function isEditor() {
+      return isSignedIn() && 
+      (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'editor')
+      );
+    }
+
+    // Validation
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'role', 'createdAt']) &&
+             data.email is string && data.email.size() <= 100 &&
+             data.role is string && (data.role == 'user' || data.role == 'editor' || data.role == 'moderator' || data.role == 'admin') &&
+             data.createdAt is number;
+    }
+
+    function isValidSport(data) {
+      return data.keys().hasAll(['name', 'slug']) &&
+             data.name is string && data.name.size() <= 50 &&
+             data.slug is string && data.slug.size() <= 50;
+    }
+
+    function isValidCompetition(data) {
+      return data.keys().hasAll(['name', 'sportId']) &&
+             data.name is string && data.name.size() <= 100 &&
+             data.sportId is string && data.sportId.size() <= 128;
+    }
+
+    function isValidSeason(data) {
+      return data.keys().hasAll(['competitionId', 'year']) &&
+             data.competitionId is string && data.competitionId.size() <= 128 &&
+             data.year is string && data.year.size() <= 20;
+    }
+
+    function isValidTeam(data) {
+      return data.keys().hasAll(['name', 'sportId']) &&
+             data.name is string && data.name.size() <= 100 &&
+             data.sportId is string && data.sportId.size() <= 128;
+    }
+
+    function isValidPlayer(data) {
+      return data.keys().hasAll(['firstName', 'lastName']) &&
+             data.firstName is string && data.firstName.size() <= 50 &&
+             data.lastName is string && data.lastName.size() <= 50;
+    }
+
+    function isValidMatch(data) {
+      return data.keys().hasAll(['competitionId', 'homeTeamId', 'awayTeamId', 'startTime', 'status']) &&
+             data.competitionId is string && data.competitionId.size() <= 128 &&
+             data.homeTeamId is string && data.homeTeamId.size() <= 128 &&
+             data.awayTeamId is string && data.awayTeamId.size() <= 128 &&
+             data.startTime is number &&
+             data.status is string && (data.status == 'scheduled' || data.status == 'live' || data.status == 'finished' || data.status == 'postponed');
+    }
+
+    function isValidArticle(data) {
+      return data.keys().hasAll(['title', 'content', 'authorId', 'status', 'publishedAt']) &&
+             data.title is string && data.content is string &&
+             data.status is string && (data.status == 'draft' || data.status == 'published') &&
+             data.publishedAt is number;
+    }
+
+    // Collections
+    
+    // QUIZ GENERATIONS (History)
+    match /quizGenerations/{generationId} {
+      allow read, write: if isAdmin();
+    }
+
+    // QUIZ QUESTIONS
+    match /quizQuestions/{questionId} {
+      // Users can only read PUBLISHED questions. Admins can read all.
+      allow read: if (resource == null) || (resource.data.status == 'PUBLISHED') || isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // QUIZ RESULTS
+    match /quizResults/{resultId} {
+      allow read: if true;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+    }
+
+    // QUIZ STATS
+    match /quizStats/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // H2H MATCHES
+    match /h2h_matches/{matchId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+    }
+
+    
+    // USERS
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn(); // We might want to restrict this later, but safe for now for minimal functionality
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && 
+                    incoming().email == request.auth.token.email &&
+                    // Forbid self-assigning high roles unless super admin
+                    (isSuperAdminAuth() || incoming().role == 'user');
+      
+      allow update: if isSignedIn() && isValidId(userId) && isValidUser(incoming()) && (
+        isAdmin() || 
+        (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt']) &&
+         incoming().role == existing().role)
+      );
+      allow delete: if isAdmin() && isValidId(userId);
+
+      // BOOKMARKS subcollection
+      match /bookmarks/{bookmarkId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // ARTICLES
+    match /articles/{articleId} {
+      allow read: if true; // Publicly accessible news
+      allow create: if isEditor() && isValidArticle(incoming());
+      allow update: if isEditor() && isValidArticle(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // SPORTS
+    match /sports/{sportId} {
+      allow read: if isValidId(sportId);
+      allow create: if isAdmin() && isValidId(sportId) && isValidSport(incoming());
+      allow update: if isAdmin() && isValidId(sportId) && isValidSport(incoming());
+      allow delete: if isAdmin() && isValidId(sportId);
+    }
+
+    // COMPETITIONS
+    match /competitions/{competitionId} {
+      allow read: if isValidId(competitionId);
+      allow create: if isEditor() && isValidId(competitionId) && isValidCompetition(incoming());
+      allow update: if isEditor() && isValidId(competitionId) && isValidCompetition(incoming());
+      allow delete: if isAdmin() && isValidId(competitionId);
+    }
+
+    // SEASONS
+    match /seasons/{seasonId} {
+      allow read: if isValidId(seasonId);
+      allow create: if isEditor() && isValidId(seasonId) && isValidSeason(incoming());
+      allow update: if isEditor() && isValidId(seasonId) && isValidSeason(incoming());
+      allow delete: if isAdmin() && isValidId(seasonId);
+    }
+
+    // TEAMS
+    match /teams/{teamId} {
+      allow read: if isValidId(teamId);
+      allow create: if isEditor() && isValidId(teamId) && isValidTeam(incoming());
+      allow update: if isEditor() && isValidId(teamId) && isValidTeam(incoming());
+      allow delete: if isAdmin() && isValidId(teamId);
+    }
+
+    // PLAYERS
+    match /players/{playerId} {
+      allow read: if isValidId(playerId);
+      allow create: if isEditor() && isValidId(playerId) && isValidPlayer(incoming());
+      allow update: if isEditor() && isValidId(playerId) && isValidPlayer(incoming());
+      allow delete: if isAdmin() && isValidId(playerId);
+    }
+
+    // MATCHES
+    match /tips/{tipId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /matches/{matchId} {
+      allow read: if isValidId(matchId);
+      allow create: if isEditor() && isValidId(matchId) && isValidMatch(incoming());
+      allow update: if isEditor() && isValidId(matchId) && isValidMatch(incoming());
+      allow delete: if isAdmin() && isValidId(matchId);
+    }
+  }
+}

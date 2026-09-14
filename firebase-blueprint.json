@@ -1,0 +1,400 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and role information",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "user",
+            "editor",
+            "moderator",
+            "admin"
+          ]
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "email",
+        "role",
+        "createdAt"
+      ]
+    },
+    "Sport": {
+      "title": "Sport",
+      "description": "Sport category",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "slug": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "slug"
+      ]
+    },
+    "Competition": {
+      "title": "Competition",
+      "description": "League or tournament",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "sportId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "country": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "sportId"
+      ]
+    },
+    "Season": {
+      "title": "Season",
+      "description": "Specific season for a competition",
+      "type": "object",
+      "properties": {
+        "competitionId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "year": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "startDate": {
+          "type": "number"
+        },
+        "endDate": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "competitionId",
+        "year"
+      ]
+    },
+    "Team": {
+      "title": "Team",
+      "description": "Sports team",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "shortName": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "sportId": {
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "name",
+        "sportId"
+      ]
+    },
+    "Player": {
+      "title": "Player",
+      "description": "Individual player",
+      "type": "object",
+      "properties": {
+        "firstName": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "lastName": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "currentTeamId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "position": {
+          "type": "string",
+          "maxLength": 50
+        }
+      },
+      "required": [
+        "firstName",
+        "lastName"
+      ]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "Fixture or live game",
+      "type": "object",
+      "properties": {
+        "competitionId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "seasonId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "homeTeamId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "awayTeamId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "startTime": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "scheduled",
+            "live",
+            "finished",
+            "postponed"
+          ]
+        },
+        "homeScore": {
+          "type": "number"
+        },
+        "awayScore": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "competitionId",
+        "homeTeamId",
+        "awayTeamId",
+        "startTime",
+        "status"
+      ]
+    },
+    "Article": {
+      "title": "Article",
+      "description": "News article",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": "string"
+        },
+        "authorId": {
+          "type": "string"
+        },
+        "authorName": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "published"
+          ]
+        },
+        "publishedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "title",
+        "content",
+        "authorId",
+        "status",
+        "publishedAt"
+      ]
+    },
+    "Bookmark": {
+      "title": "Bookmark",
+      "description": "User saved article",
+      "type": "object",
+      "properties": {
+        "articleId": {
+          "type": "string"
+        },
+        "savedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "articleId",
+        "savedAt"
+      ]
+    },
+    "Tip": {
+      "title": "Tip",
+      "description": "Football prediction tip",
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "single",
+            "maestro2+",
+            "odd4+"
+          ]
+        },
+        "matchId": {
+          "type": "string"
+        },
+        "homeTeam": {
+          "type": "string"
+        },
+        "awayTeam": {
+          "type": "string"
+        },
+        "homeLogo": {
+          "type": "string"
+        },
+        "awayLogo": {
+          "type": "string"
+        },
+        "competition": {
+          "type": "string"
+        },
+        "prediction": {
+          "type": "string"
+        },
+        "market": {
+          "type": "string"
+        },
+        "odds": {
+          "type": "number"
+        },
+        "analysis": {
+          "type": "string"
+        },
+        "kickoff": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "won",
+            "lost",
+            "void",
+            "postponed"
+          ]
+        },
+        "publishDate": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "category",
+        "homeTeam",
+        "awayTeam",
+        "prediction",
+        "publishDate",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores user profiles and their RBAC roles"
+    },
+    "sports": {
+      "schema": {
+        "$ref": "#/entities/Sport"
+      },
+      "description": "Stores supported sports"
+    },
+    "competitions": {
+      "schema": {
+        "$ref": "#/entities/Competition"
+      },
+      "description": "Stores leagues and tournaments"
+    },
+    "seasons": {
+      "schema": {
+        "$ref": "#/entities/Season"
+      },
+      "description": "Stores seasons per competition"
+    },
+    "teams": {
+      "schema": {
+        "$ref": "#/entities/Team"
+      },
+      "description": "Stores sports teams"
+    },
+    "players": {
+      "schema": {
+        "$ref": "#/entities/Player"
+      },
+      "description": "Stores players"
+    },
+    "matches": {
+      "schema": {
+        "$ref": "#/entities/Match"
+      },
+      "description": "Stores fixtures and results"
+    },
+    "articles": {
+      "schema": {
+        "$ref": "#/entities/Article"
+      },
+      "description": "Stores news articles"
+    },
+    "tips": {
+      "schema": {
+        "$ref": "#/entities/Tip"
+      },
+      "description": "Stores daily football predictions"
+    }
+  }
+}
