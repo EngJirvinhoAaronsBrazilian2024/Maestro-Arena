@@ -1,19 +1,64 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Monitor, Bell, Shield } from 'lucide-react';
+import { Monitor, Bell, Shield, MessageSquare, Send } from 'lucide-react';
+import { insforge } from '../lib/insforge';
+import { toast } from 'sonner';
 
 export function Settings() {
     const { user } = useAuth();
+    const [feedback, setFeedback] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleFeedbackSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!user) return toast.error('Please login to send feedback');
+      setSubmitting(true);
+      try {
+        await insforge.database.from('feedback').insert([{ user_id: user.id, message: feedback }]);
+        toast.success('Feedback sent successfully! Thank you.');
+        setFeedback('');
+      } catch (err) {
+        toast.error('Failed to send feedback');
+      }
+      setSubmitting(false);
+    };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <div className="mx-auto max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Settings</h1>
+        <h1 className="text-3xl font-black tracking-tight text-slate-900">Settings</h1>
         <p className="text-sm text-slate-500 mt-1">
           Manage your app preferences and settings.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-purple-500" />
+            Send Feedback
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleFeedbackSubmit} className="space-y-4">
+            <p className="text-sm text-slate-500">Notice a bug or have a suggestion? Let our team know.</p>
+            <textarea 
+              required
+              value={feedback}
+              onChange={e => setFeedback(e.target.value)}
+              placeholder="What's on your mind?" 
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px]"
+            />
+            <button 
+              disabled={submitting}
+              className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-lg hover:bg-slate-800 transition font-bold disabled:opacity-50"
+            >
+              {submitting ? 'Sending...' : <><Send size={16} /> Submit Feedback</>}
+            </button>
+          </form>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

@@ -21,8 +21,11 @@ export async function getArticles(status: 'draft' | 'published' = 'published'): 
       category: a.category,
       publishedAt: a.published_at
     } as any)); // as any to avoid type complaints for now
-  } catch (error) {
-    console.error("Error fetching articles:", error);
+  } catch (error: any) {
+    const isNetworkError = error?.message?.includes('timed out') || error?.message?.includes('Failed to fetch') || error?.message?.includes('Network request failed');
+    if (!isNetworkError) {
+      console.error("Error fetching articles:", error);
+    }
     return [];
   }
 }
@@ -49,8 +52,11 @@ export async function getArticleById(id: string): Promise<Article | null> {
       } as any;
     }
     return null;
-  } catch (error) {
-    console.error("Error fetching article:", error);
+  } catch (error: any) {
+    const isNetworkError = error?.message?.includes('timed out') || error?.message?.includes('Failed to fetch') || error?.message?.includes('Network request failed');
+    if (!isNetworkError) {
+      console.error("Error fetching article:", error);
+    }
     return null;
   }
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Brain, FileText, LogOut, LayoutDashboard, ChevronLeft, Menu, X, ShieldCheck, Target } from 'lucide-react';
+import { Users, Brain, FileText, LogOut, LayoutDashboard, ChevronLeft, Menu, X, ShieldCheck, Target, Bell, Star, Award, HelpCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 
@@ -10,6 +10,10 @@ const adminNavItems = [
   { icon: FileText, label: 'News Manager', path: '/admin/news' },
   { icon: Brain, label: 'Quiz Manager', path: '/admin/quiz' },
   { icon: Target, label: 'Tips Manager', path: '/admin/tips' },
+  { icon: Bell, label: 'Notifications', path: '/admin/notifications' },
+  { icon: Star, label: 'Live Polls', path: '/admin/polls' },
+  { icon: Award, label: 'Seasons', path: '/admin/seasons' },
+  { icon: HelpCircle, label: 'Feedback', path: '/admin/feedback' },
 ];
 
 export function AdminLayout() {
@@ -32,7 +36,7 @@ export function AdminLayout() {
   if (loading || !userData) return null;
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans">
+    <div className="flex min-h-screen bg-gradient-to-br from-[#E6F0FA] via-[#D1E0F0] to-[#B8CCE4] font-sans">
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 z-50 w-full border-b border-slate-200 bg-white px-4 py-3 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-2 font-bold text-slate-900">

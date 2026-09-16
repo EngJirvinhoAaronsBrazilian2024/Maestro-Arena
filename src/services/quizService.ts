@@ -240,3 +240,33 @@ export async function getLeaderboard(limitCount: number = 10): Promise<QuizResul
     return [];
   }
 }
+
+export async function getAllQuizQuestions(): Promise<QuizQuestion[]> {
+  try {
+    const { data, error } = await insforge.database.from('quiz_questions').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(doc => ({ id: doc.id, ...doc } as QuizQuestion));
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+export async function createQuizQuestion(adminId: string, question: Omit<QuizQuestion, 'id'>): Promise<QuizQuestion> {
+  const newId = 'q_' + Date.now() + Math.random().toString(36).substring(2, 9);
+  const now = Date.now();
+  const newQuestion = { ...question, id: newId, status: 'PUBLISHED', created_at: now };
+  const { data, error } = await insforge.database.from('quiz_questions').insert([newQuestion]).select('*');
+  if (error) throw error;
+  return data[0] as QuizQuestion;
+}
+
+export async function updateQuizQuestion(adminId: string, id: string, updates: Partial<QuizQuestion>): Promise<void> {
+  const { error } = await insforge.database.from('quiz_questions').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteQuizQuestion(adminId: string, id: string): Promise<void> {
+  const { error } = await insforge.database.from('quiz_questions').delete().eq('id', id);
+  if (error) throw error;
+}

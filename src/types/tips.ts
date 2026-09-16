@@ -20,6 +20,7 @@ export interface Tip {
   odds?: number;
   analysis?: string;
   status: TipStatus;
+  bookingCode?: string;
   publishDate: number; // Start of day timestamp or specific time
   createdAt: number;
 }

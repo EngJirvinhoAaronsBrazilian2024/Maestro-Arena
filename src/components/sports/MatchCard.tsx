@@ -3,7 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Match } from '../../types/sports';
 import { cn, formatTimeEAT } from '../../lib/utils';
-import { Star } from 'lucide-react';
+import { Star, Bell } from 'lucide-react';
 import { useFavorites } from '../../hooks/useFavorites';
 
 interface MatchCardProps {
@@ -15,7 +15,7 @@ interface MatchCardProps {
 export function MatchCard({ match, className }: MatchCardProps) {
   const { toggleFavorite, isFavorite } = useFavorites();
 
-  const handleFavoriteClick = (e: React.MouseEvent, type: 'team' | 'competition', id: string | number, name: string, logo?: string) => {
+  const handleFavoriteClick = (e: React.MouseEvent, type: 'team' | 'competition' | 'match', id: string | number, name: string, logo?: string) => {
     e.preventDefault();
     e.stopPropagation();
     toggleFavorite({ id: `${type}_${id}`, type, name, logo });
@@ -24,6 +24,8 @@ export function MatchCard({ match, className }: MatchCardProps) {
   const compId = `competition_${match.competitionId}`;
   const homeId = `team_${match.homeTeam.id}`;
   const awayId = `team_${match.awayTeam.id}`;
+  const matchFavoriteId = `match_${match.id}`;
+
 
   return (
     <Link 
@@ -91,12 +93,24 @@ export function MatchCard({ match, className }: MatchCardProps) {
       {/* Footer Info */}
       <div className="mt-5 pt-3 border-t border-white/40 flex items-center justify-between text-xs font-medium text-slate-500">
          <span className="text-slate-600 truncate max-w-[140px]">{match.competitionName}</span>
-         <button 
-           onClick={(e) => handleFavoriteClick(e, 'competition', match.competitionId, match.competitionName)}
-           className="text-slate-400 hover:text-yellow-500 transition-colors bg-white/50 p-1.5 rounded-full"
-         >
-           <Star className={cn("h-3.5 w-3.5", isFavorite(compId) && "fill-yellow-500 text-yellow-500")} />
-         </button>
+         
+         <div className="flex items-center gap-2">
+           <button 
+             onClick={(e) => handleFavoriteClick(e, 'match', match.id, `${match.homeTeam.name} vs ${match.awayTeam.name}`)}
+             className="text-slate-400 hover:text-blue-500 transition-colors bg-white/50 p-1.5 rounded-full"
+             title="Follow Match"
+           >
+             <Bell className={cn("h-3.5 w-3.5", isFavorite(matchFavoriteId) && "fill-blue-500 text-blue-500")} />
+           </button>
+           
+           <button 
+             onClick={(e) => handleFavoriteClick(e, 'competition', match.competitionId, match.competitionName)}
+             className="text-slate-400 hover:text-yellow-500 transition-colors bg-white/50 p-1.5 rounded-full"
+             title="Favorite Competition"
+           >
+             <Star className={cn("h-3.5 w-3.5", isFavorite(compId) && "fill-yellow-500 text-yellow-500")} />
+           </button>
+         </div>
       </div>
     </Link>
   );

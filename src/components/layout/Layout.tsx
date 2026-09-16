@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { Toaster } from 'react-hot-toast';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
@@ -12,6 +13,7 @@ export function Layout() {
   
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-[#E6F0FA] via-[#D1E0F0] to-[#B8CCE4]">
+      <Toaster position="top-right" />
       <Header />
       <div className="flex flex-1 relative">
         <Sidebar />

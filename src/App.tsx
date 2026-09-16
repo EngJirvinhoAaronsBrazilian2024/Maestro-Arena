@@ -7,6 +7,8 @@ import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { ScrollToTop } from './components/ScrollToTop';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
+import { Toaster } from 'sonner';
 import { Layout } from './components/layout/Layout';
 import { AuthLayout } from './components/layout/AuthLayout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
@@ -34,6 +36,10 @@ const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard').then(m 
 const AdminQuizManagement = React.lazy(() => import('./pages/admin/AdminQuizManagement').then(m => ({ default: m.AdminQuizManagement })));
 const AdminTipsManagement = React.lazy(() => import("./pages/admin/AdminTipsManagement").then(m => ({ default: m.AdminTipsManagement })));
 const AdminNewsManagement = React.lazy(() => import('./pages/admin/AdminNewsManagement').then(m => ({ default: m.AdminNewsManagement })));
+const AdminNotifications = React.lazy(() => import('./pages/admin/AdminNotifications').then(m => ({ default: m.AdminNotifications })));
+const AdminPolls = React.lazy(() => import('./pages/admin/AdminPolls').then(m => ({ default: m.AdminPolls })));
+const AdminSeasons = React.lazy(() => import('./pages/admin/AdminSeasons').then(m => ({ default: m.AdminSeasons })));
+const AdminFeedback = React.lazy(() => import('./pages/admin/AdminFeedback').then(m => ({ default: m.AdminFeedback })));
 const PlaceholderPage = React.lazy(() => import('./pages/PlaceholderPage').then(m => ({ default: m.PlaceholderPage })));
 
 const LoadingScreen = () => (
@@ -54,6 +60,8 @@ export default function App() {
   return (
     
       <AuthProvider>
+      <NotificationProvider>
+        <Toaster position="top-right" richColors />
         <BrowserRouter>
           <ScrollToTop />
           <Suspense fallback={<LoadingScreen />}>
@@ -72,6 +80,10 @@ export default function App() {
                   <Route path="quiz" element={<AdminQuizManagement />} />
                   <Route path="news" element={<AdminNewsManagement />} />
                   <Route path="tips" element={<AdminTipsManagement />} />
+                  <Route path="notifications" element={<AdminNotifications />} />
+                  <Route path="polls" element={<AdminPolls />} />
+                  <Route path="seasons" element={<AdminSeasons />} />
+                  <Route path="feedback" element={<AdminFeedback />} />
                 </Route>
               </Route>
 
@@ -104,6 +116,7 @@ export default function App() {
             </Routes>
           </Suspense>
         </BrowserRouter>
+            </NotificationProvider>
       </AuthProvider>
     
   );

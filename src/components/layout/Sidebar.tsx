@@ -79,7 +79,7 @@ export function Sidebar() {
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                isActive
+                isActive || location.pathname.startsWith('/admin')
                   ? 'bg-red-50 text-red-700  '
                   : 'text-slate-600 hover:bg-slate-100'
               )

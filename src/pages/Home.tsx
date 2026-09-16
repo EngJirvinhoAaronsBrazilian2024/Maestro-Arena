@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Trophy, Clock, Star, AlertCircle, ArrowRight, X, Check, ChevronDown, ChevronUp, Search, Calendar, History } from 'lucide-react';
+import { Trophy, Clock, Star, AlertCircle, ArrowRight, X, Check, ChevronDown, ChevronUp, Search, Calendar, History, Activity } from 'lucide-react';
 import { MatchCard } from '../components/sports/MatchCard';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../hooks/useFavorites';
 import { useArticles } from '../services/news/hooks';
 import { useLiveMatches, useUpcomingMatches, useRecentMatches, useFavoriteFixtures } from '../services/sports/hooks';
+import { insforge } from '../lib/insforge';
+import { toast } from 'sonner';
 import heroImage from '../assets/images/football_stars_hero_2026_1788809874968.jpg';
 import madridTrioHero from '../assets/images/madrid_trio_hero_1789305202373.jpg';
 import premiumHeroAlt from '../assets/images/premium_hero_players_alt_1789403921046.jpg';
-import lightHeroClean from '../assets/images/light_hero_trio_1789407442014.jpg';
 import lightHeroClean from '../assets/images/light_hero_clean_1789408427982.jpg';
 import stadiumBg from '../assets/images/stadium_atmosphere_1789303106987.jpg';
 import premiumTexture from '../assets/images/premium_football_texture_1789303121778.jpg';
@@ -176,6 +177,51 @@ export function Home() {
   }, [searchQuery]);
 
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [polls, setPolls] = useState<any[]>([]);
+  const [votedPolls, setVotedPolls] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const loadPolls = async () => {
+      try {
+        const { data } = await insforge.database
+          .from('polls')
+          .select('*')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
+        if (data) setPolls(data);
+      } catch (e) {}
+    };
+    loadPolls();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const loadVotes = async () => {
+      try {
+        const { data } = await insforge.database
+          .from('poll_votes')
+          .select('poll_id, option_index')
+          .eq('user_id', user.id);
+        if (data) {
+          const votes: Record<string, number> = {};
+          data.forEach((v: any) => votes[v.poll_id] = v.option_index);
+          setVotedPolls(votes);
+        }
+      } catch (e) {}
+    };
+    loadVotes();
+  }, [user]);
+
+  const submitVote = async (pollId: string, optionIndex: number) => {
+    if (!user) return toast.error('Please login to vote');
+    try {
+      await insforge.database.from('poll_votes').insert([{ poll_id: pollId, user_id: user.id, option_index: optionIndex }]);
+      setVotedPolls(prev => ({ ...prev, [pollId]: optionIndex }));
+      toast.success('Vote cast successfully!');
+    } catch (e) {
+      toast.error('You already voted on this poll');
+    }
+  };
   
   const slides = [
     heroImage, imgCel1, imgTrophy1, imgCel2, imgTrophy2, imgCel3, imgTrophy3, imgCel4
@@ -246,68 +292,108 @@ export function Home() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
                   {/* Premium Hero Section */}
-      <div className="relative w-full overflow-hidden rounded-[24px] shadow-sm border border-slate-200 flex flex-col md:flex-row min-h-[460px] group mb-10 bg-white">
+      <div className="relative w-full overflow-hidden rounded-[24px] shadow-sm border border-slate-200 flex flex-col min-h-[650px] md:min-h-[550px] group mb-10 bg-white">
         
-        {/* Mobile Image (Visible only on small screens) */}
-        <div className="w-full h-[300px] sm:h-[350px] relative md:hidden shrink-0">
-           {/* Focus on the right side where the players are for mobile */}
-           <img src={lightHeroClean} alt="Football Stars" className="w-full h-full object-cover object-right" />
-           {/* Bottom gradient to blend into the text area smoothly */}
-           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white via-white/80 to-transparent"></div>
+        {/* Full Background Image (Desktop & Mobile) */}
+        <div className="absolute inset-0 z-0">
+           {/* object-[80%_top] on mobile ensures we see faces at the top. md:object-[right_top] on desktop */}
+           <img src={lightHeroClean} alt="Football Stars" className="w-full h-full object-cover object-[80%_top] md:object-[right_top]" />
+           
+           {/* Gradients tailored to keep the top half (faces/shirts) 100% clear */}
+           {/* Desktop: A smooth fade from bottom-left corner targeting only where the text sits */}
+           <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/70 to-transparent h-[60%] top-auto bottom-0 hidden md:block pointer-events-none"></div>
+           <div className="absolute inset-y-0 left-0 w-[50%] bg-gradient-to-r from-white/95 via-white/40 to-transparent hidden md:block pointer-events-none"></div>
+           
+           {/* Mobile: Gradient strictly at the bottom (shorts level) where the text will be placed */}
+           <div className="absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-white/95 via-white/80 to-transparent md:hidden pointer-events-none"></div>
         </div>
 
-        {/* Desktop Background Image (Hidden on small screens) */}
-        <div className="absolute inset-0 z-0 hidden md:block">
-           <img src={lightHeroClean} alt="Football Stars" className="w-full h-full object-cover object-right" />
-           {/* Gradient overlay to blend left side into the light background and ensure text readability */}
-           <div className="absolute inset-0 bg-gradient-to-r from-white via-white/90 to-transparent md:via-white/70"></div>
-        </div>
-
-        {/* Left Content */}
-        <div className="relative z-10 w-full md:w-[60%] flex flex-col items-start justify-center p-6 sm:p-8 md:p-12 lg:p-16 -mt-12 md:mt-0">
+        {/* Content Box (Pushed to the bottom) */}
+        <div className="relative z-10 w-full md:w-[70%] flex flex-col items-start justify-end p-6 sm:p-8 md:p-12 lg:p-16 mt-auto">
           
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/60 backdrop-blur-md border border-slate-200 mb-6 w-max shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-700">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-slate-200 mb-4 md:mb-6 w-max shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-700">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
             <span className="text-xs font-bold uppercase tracking-wider text-slate-800">Live Now</span>
           </div>
           
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-4 leading-[1.15] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-3 md:mb-4 leading-[1.15] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
             <span className="text-slate-900">The </span>
             <span className="text-blue-600 relative inline-block">
               Beautiful
-              <svg className="absolute -bottom-2 w-full h-3 text-blue-200 -z-10" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M0 15 Q 50 0 100 15" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/></svg>
+              <svg className="absolute -bottom-1 md:-bottom-2 w-full h-2 md:h-3 text-blue-200 -z-10" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M0 15 Q 50 0 100 15" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/></svg>
             </span>
             <span className="text-slate-900"> Game <br className="hidden md:block" /></span>
             <span className="text-red-600 font-extrabold italic pr-1"> Unites </span>
             <span className="text-slate-900">Us</span>
           </h1>
           
-          <p className="text-base md:text-lg text-slate-600 mb-8 max-w-lg leading-relaxed font-medium animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+          <p className="text-base md:text-lg text-slate-700 font-medium mb-6 md:mb-8 max-w-lg leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 drop-shadow-sm">
             Follow live matches, explore competitions, play quizzes and get the latest football updates all in one place.
           </p>
 
-          <div className="flex flex-wrap gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+          <div className="flex flex-wrap gap-3 md:gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 w-full sm:w-auto">
             <Link 
               to="/livescore"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 text-white font-bold rounded-xl transition-all shadow-md hover:bg-blue-700 hover:-translate-y-0.5"
+              className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-5 py-3 md:px-6 md:py-3.5 bg-blue-600 text-white font-bold rounded-xl transition-all shadow-md hover:bg-blue-700 hover:-translate-y-0.5 whitespace-nowrap"
             >
               Explore Matches
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link 
               to="/quiz"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-md hover:-translate-y-0.5 shadow-red-500/20"
+              className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-5 py-3 md:px-6 md:py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-md hover:-translate-y-0.5 shadow-red-500/20 whitespace-nowrap"
             >
               <Trophy className="w-4 h-4 text-white" />
               Enter Arena
             </Link>
           </div>
         </div>
+      </div>
 
-        {/* Right Content */}
-        <div className="relative z-10 w-full md:w-[40%] hidden md:flex">
-            {/* Kept empty to let the background image shine on the right side */}
-        </div>      </div>
+      {polls.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full max-w-4xl mx-auto">
+          {polls.map(poll => (
+            <div key={poll.id} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Star size={64} className="text-orange-500" />
+              </div>
+              <div className="flex items-center gap-2 mb-3 relative z-10">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Live Fan Poll</span>
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-4 relative z-10 leading-tight">{poll.question}</h3>
+              
+              <div className="space-y-2 relative z-10">
+                {poll.options.map((opt: string, i: number) => {
+                  const hasVoted = votedPolls[poll.id] !== undefined;
+                  const isSelected = votedPolls[poll.id] === i;
+                  return (
+                    <button
+                      key={i}
+                      disabled={hasVoted}
+                      onClick={() => submitVote(poll.id, i)}
+                      className={cn(
+                        "w-full text-left p-3 rounded-xl border text-sm font-bold transition-all flex justify-between items-center",
+                        hasVoted
+                          ? isSelected 
+                            ? "bg-blue-50 border-blue-200 text-blue-700" 
+                            : "bg-slate-50 border-slate-100 text-slate-500"
+                          : "bg-white border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-700"
+                      )}
+                    >
+                      {opt}
+                      {isSelected && <Check size={16} className="text-blue-600" />}
+                    </button>
+                  );
+                })}
+              </div>
+              {votedPolls[poll.id] !== undefined && (
+                <p className="text-xs text-center text-slate-400 mt-4 font-medium uppercase tracking-wider">Vote Recorded</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Bento Grid Layout */}
       <div className="flex flex-col gap-6 w-full max-w-4xl mx-auto">

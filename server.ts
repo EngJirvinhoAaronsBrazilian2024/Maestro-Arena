@@ -7,18 +7,19 @@ import quizRoutes from "./src/server/routes/quizRoutes.js";
 import userRoutes from "./src/server/routes/userRoutes.js";
 import tipsRoutes from "./src/server/routes/tipsRoutes.js";
 
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// API Routes
+app.use("/api/sports", sportsRoutes);
+app.use("/api/quiz", quizRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/tips", tipsRoutes);
+
 async function startServer() {
-  const app = express();
-  const PORT = 3000;
-
-  app.use(cors());
-  app.use(express.json());
-
-  // API Routes
-  app.use("/api/sports", sportsRoutes);
-  app.use("/api/quiz", quizRoutes);
-  app.use("/api/users", userRoutes);
-  app.use("/api/tips", tipsRoutes);
+  const PORT = process.env.PORT || 3000;
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
@@ -35,9 +36,13 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT as number, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;

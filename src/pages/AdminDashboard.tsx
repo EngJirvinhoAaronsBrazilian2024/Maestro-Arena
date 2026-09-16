@@ -1,37 +1,36 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getAllUsers, updateUserRole, deleteUserRecord, UserData } from '../services/userService';
-import { Users, Shield, Trash2, Edit2, ShieldAlert, Search, AlertCircle } from 'lucide-react';
+import { Users, Shield, Trash2, ShieldAlert, AlertCircle, Activity, UserPlus, Database, Star } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { motion, AnimatePresence } from 'motion/react';
+import { Card, CardContent } from '../components/ui/Card';
 
 export function AdminDashboard() {
   const { user, userData } = useAuth();
+  
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
   
   const isAdmin = userData?.role === 'admin';
 
   useEffect(() => {
     if (isAdmin) {
-      loadUsers();
+      loadData();
     } else {
       setLoading(false);
     }
   }, [isAdmin]);
 
-  const loadUsers = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
-      const fetchedUsers = await getAllUsers();
-      setUsers(fetchedUsers);
+      const data = await getAllUsers();
+      setUsers(data);
       setError(null);
     } catch (err) {
       console.error(err);
-      setError('Failed to load users.');
+      setError('Failed to load data.');
     }
     setLoading(false);
   };
@@ -46,8 +45,8 @@ export function AdminDashboard() {
     }
   };
 
-  const handleDelete = async (userId: string) => {
-    if (!user || !confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
+  const handleDeleteUser = async (userId: string) => {
+    if (!user || !confirm('Are you sure you want to delete this user?')) return;
     try {
       await deleteUserRecord(userId, user.uid);
       setUsers(users.filter(u => u.id !== userId));
@@ -58,143 +57,146 @@ export function AdminDashboard() {
 
   if (!isAdmin) {
     return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center">
-        <div className="rounded-full bg-red-100 p-4 mb-4">
-          <ShieldAlert className="h-10 w-10 text-red-600" />
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <ShieldAlert className="w-16 h-16 text-red-500 mb-4" />
         <h2 className="text-2xl font-bold text-slate-900">Access Denied</h2>
-        <p className="mt-2 text-slate-500 max-w-sm">You do not have the required administrative privileges to view this section.</p>
+        <p className="text-slate-500">You need administrator privileges to view this page.</p>
       </div>
     );
   }
 
-  const filteredUsers = users.filter(u => 
-    u.email?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.displayName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">User Dashboard</h1>
-          <p className="text-sm text-slate-500">Manage user accounts and administrative roles.</p>
-        </div>
+    <div className="max-w-7xl mx-auto pb-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div>
+        <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Platform Overview</h1>
+        <p className="text-slate-500">Manage user accounts, roles, and monitor platform health.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-            <Users className="h-6 w-6" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="border-none shadow-sm bg-gradient-to-br from-blue-600 to-blue-800 text-white overflow-hidden relative">
+          <div className="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
+            <Users size={120} />
           </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Total Users</p>
-            <p className="text-2xl font-bold text-slate-900">{users.length}</p>
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100 text-green-600">
-            <Shield className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Administrators</p>
-            <p className="text-2xl font-bold text-slate-900">{users.filter(u => u.role === 'admin').length}</p>
-          </div>
-        </div>
+          <CardContent className="p-6 relative z-10">
+            <div className="flex items-center gap-3 mb-4 opacity-80 font-bold uppercase tracking-wider text-sm">
+              <Users size={18} />
+              Total Users
+            </div>
+            <div className="text-4xl font-black">{users.length}</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-none shadow-sm bg-white border border-slate-200">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4 text-slate-500 font-bold uppercase tracking-wider text-sm">
+              <Shield size={18} className="text-purple-500" />
+              Administrators
+            </div>
+            <div className="text-4xl font-black text-slate-900">{users.filter(u => u.role === 'admin').length}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm bg-white border border-slate-200">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4 text-slate-500 font-bold uppercase tracking-wider text-sm">
+              <Star size={18} className="text-orange-500" />
+              Engagement
+            </div>
+            <div className="flex flex-col">
+              <div className="text-sm font-bold text-slate-900">Manage Polls & Seasons</div>
+              <p className="text-xs text-slate-500 mt-1">Use the sidebar to view active features.</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-none shadow-sm bg-white border border-slate-200">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4 text-slate-500 font-bold uppercase tracking-wider text-sm">
+              <Activity size={18} className="text-green-500" />
+              System Status
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+              <div className="text-xl font-black text-slate-900">Operational</div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="flex border-b border-slate-200 p-4 bg-slate-50 items-center">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-4 text-sm outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition-all"
-            />
-          </div>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+            <Database className="text-slate-400" size={20} />
+            User Directory
+          </h3>
         </div>
-
-        {error ? (
-          <div className="p-8 text-center flex flex-col items-center">
-            <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
-            <p className="text-red-600 font-medium">{error}</p>
+        
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-blue-600 animate-spin"></div>
           </div>
-        ) : loading ? (
-          <div className="p-12 text-center text-slate-500">Loading users...</div>
+        ) : error ? (
+          <div className="p-6">
+            <div className="p-4 bg-red-50 text-red-700 rounded-xl flex items-center gap-2 font-medium">
+              <AlertCircle className="w-5 h-5" />{error}
+            </div>
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-4 font-semibold">User</th>
-                  <th className="px-6 py-4 font-semibold">Role</th>
-                  <th className="px-6 py-4 font-semibold">Joined</th>
-                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
+            <table className="w-full text-left border-collapse min-w-[600px]">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider font-bold text-slate-500">
+                  <th className="p-5">User</th>
+                  <th className="p-5">Role</th>
+                  <th className="p-5">Joined</th>
+                  <th className="p-5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                <AnimatePresence>
-                  {filteredUsers.map((u) => (
-                    <motion.tr 
-                      key={u.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-600">
-                            {u.displayName?.charAt(0).toUpperCase() || u.email?.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-slate-900">{u.displayName || 'Unnamed User'}</div>
-                            <div className="text-xs text-slate-500">{u.email}</div>
-                          </div>
+              <tbody className="divide-y divide-slate-100">
+                {users.map(u => (
+                  <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="p-5">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold shadow-sm">
+                          {u.displayName?.charAt(0).toUpperCase() || (u.email ? u.email.charAt(0).toUpperCase() : 'U')}
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <select
-                          value={u.role || 'user'}
-                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                          disabled={u.id === user?.uid}
-                          className={cn(
-                            "rounded-lg border border-slate-200 p-1.5 text-xs font-medium outline-none focus:ring-1 focus:ring-slate-500 transition-colors",
-                            u.role === 'admin' ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700",
-                            u.id === user?.uid && "opacity-50 cursor-not-allowed"
-                          )}
-                        >
-                          <option value="user">User</option>
-                          <option value="editor">Editor</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </td>
-                      <td className="px-6 py-4">
-                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'Unknown'}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleDelete(u.id)}
-                          disabled={u.id === user?.uid}
-                          className="rounded-md p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-30"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
+                        <div>
+                          <div className="font-bold text-slate-900">{u.displayName || 'Unnamed User'}</div>
+                          <div className="text-sm text-slate-500">{u.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-5">
+                      <select
+                        value={u.role || 'user'}
+                        onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                        className={cn(
+                          "bg-white border border-slate-200 text-sm font-bold rounded-lg focus:ring-2 focus:ring-blue-500 outline-none p-2.5 transition-all shadow-sm",
+                          u.role === 'admin' ? "text-purple-700 bg-purple-50 border-purple-200" : "text-slate-700"
+                        )}
+                      >
+                        <option value="user">User</option>
+                        <option value="editor">Editor</option>
+                        <option value="moderator">Moderator</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </td>
+                    <td className="p-5 text-slate-500 text-sm font-medium">
+                      {new Date(u.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </td>
+                    <td className="p-5 text-right">
+                      <button 
+                        onClick={() => handleDeleteUser(u.id)} 
+                        className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100 opacity-0 group-hover:opacity-100"
+                        title="Delete User"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-            
-            {filteredUsers.length === 0 && (
-              <div className="p-12 text-center text-slate-500">
-                No users found matching "{searchTerm}".
-              </div>
-            )}
           </div>
         )}
       </div>

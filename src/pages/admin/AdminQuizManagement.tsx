@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
+import Papa from 'papaparse';
 import { insforge } from '../../lib/insforge';
 import { useAuth } from '../../context/AuthContext';
-import { Brain, Search, Edit2, Plus, Trash2, X, CheckCircle, Clock } from 'lucide-react';
+import { Brain, Search, Edit2, Plus, Trash2, X, CheckCircle, Clock, Upload, Download, FileText, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { QuizQuestion, QuizCategory, QuizDifficulty } from '../../types/quiz';
@@ -16,6 +17,10 @@ export const AdminQuizManagement: React.FC = () => {
   
   const [isEditing, setIsEditing] = useState(false);
   const [currentQ, setCurrentQ] = useState<Partial<QuizQuestion>>({});
+
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [bulkPreview, setBulkPreview] = useState<any[]>([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   useEffect(() => {
     loadQuestions();
@@ -81,6 +86,76 @@ export const AdminQuizManagement: React.FC = () => {
     const newOpts = [...(currentQ.options || ['', '', '', ''])];
     newOpts[index] = val;
     setCurrentQ({ ...currentQ, options: newOpts });
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const parsed = results.data.map((row: any) => ({
+          question: row.Question || row.question || '',
+          category: row.Category || row.category || 'World Football',
+          difficulty: row.Difficulty || row.difficulty || 'Medium',
+          options: [
+            row['Option A'] || row.optionA || row.option_a || '',
+            row['Option B'] || row.optionB || row.option_b || '',
+            row['Option C'] || row.optionC || row.option_c || '',
+            row['Option D'] || row.optionD || row.option_d || ''
+          ].filter(Boolean),
+          correct_answer: row['Correct Answer'] || row.correctAnswer || row.correct_answer || '',
+          explanation: row.Explanation || row.explanation || '',
+          status: 'published'
+        }));
+        setBulkPreview(parsed);
+      },
+      error: (error: any) => {
+        alert("Error parsing CSV: " + error.message);
+      }
+    });
+    // Reset file input
+    e.target.value = '';
+  };
+
+  const handleSaveBulk = async () => {
+    if (bulkPreview.length === 0) return;
+    setBulkLoading(true);
+    try {
+      const validQuestions = bulkPreview.filter(q => q.question && q.correct_answer && q.options && q.options.length >= 2);
+      
+      if (validQuestions.length === 0) {
+        alert("No valid questions found. Please check your CSV format.");
+        setBulkLoading(false);
+        return;
+      }
+
+      const { error } = await insforge.database.from('quiz_questions').insert(validQuestions);
+      
+      if (error) throw error;
+      
+      alert(`Successfully imported ${validQuestions.length} questions!`);
+      setIsBulkUploadOpen(false);
+      setBulkPreview([]);
+      loadQuestions();
+    } catch (error: any) {
+      console.error("Error bulk saving:", error);
+      alert("Failed to save questions: " + error.message);
+    }
+    setBulkLoading(false);
+  };
+
+  const downloadTemplate = () => {
+    const template = "Question,Category,Difficulty,Option A,Option B,Option C,Option D,Correct Answer,Explanation\nWho won the 2022 World Cup?,World Football,Easy,France,Argentina,Brazil,Spain,Argentina,Argentina beat France in the final on penalties.\n";
+    const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'quiz_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const filteredQs = questions.filter(q => q.question?.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -218,6 +293,108 @@ export const AdminQuizManagement: React.FC = () => {
     );
   }
 
+  if (isBulkUploadOpen) {
+    return (
+      <div className="mx-auto max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Bulk Upload Questions</h1>
+            <p className="text-sm text-slate-500">Upload a CSV file containing multiple questions.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={downloadTemplate}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+            >
+              <Download className="h-4 w-4" />
+              Template
+            </button>
+            <button
+              onClick={() => { setIsBulkUploadOpen(false); setBulkPreview([]); }}
+              className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+          <div className="mb-8 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center transition-colors hover:bg-slate-100/50">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+              <Upload className="h-6 w-6" />
+            </div>
+            <h3 className="mb-1 text-base font-semibold text-slate-900">Upload CSV File</h3>
+            <p className="mb-6 text-sm text-slate-500">Drag and drop your file here, or click to browse</p>
+            <label className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm">
+              <span>Select File</span>
+              <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+            </label>
+          </div>
+
+          {bulkPreview.length > 0 && (
+            <div className="mt-8 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <h3 className="text-lg font-bold text-slate-900">Preview ({bulkPreview.length} questions)</h3>
+                <button
+                  onClick={handleSaveBulk}
+                  disabled={bulkLoading}
+                  className="flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-50"
+                >
+                  {bulkLoading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4" />
+                  )}
+                  Save All Questions
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-600">
+                  <thead className="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Question</th>
+                      <th className="px-4 py-3 font-semibold">Category</th>
+                      <th className="px-4 py-3 font-semibold">Difficulty</th>
+                      <th className="px-4 py-3 font-semibold">Answer</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {bulkPreview.slice(0, 10).map((q, i) => (
+                      <tr key={i} className="hover:bg-slate-50">
+                        <td className="px-4 py-3">
+                          <div className="font-semibold text-slate-900 line-clamp-1">{q.question || <span className="text-red-500">Missing</span>}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-800">
+                            {q.category || 'World Football'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                            {q.difficulty || 'Medium'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-medium text-green-700 truncate block max-w-[150px]">{q.correct_answer}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {bulkPreview.length > 10 && (
+                  <div className="py-3 text-center text-sm font-medium text-slate-500 bg-slate-50 rounded-b-lg">
+                    + {bulkPreview.length - 10} more questions
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -225,16 +402,25 @@ export const AdminQuizManagement: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900">Quiz Management</h1>
           <p className="text-sm text-slate-500">Manage trivia questions for the football quizzes.</p>
         </div>
-        <button
-          onClick={() => { 
-            setCurrentQ({ options: ['', '', '', ''] }); 
-            setIsEditing(true); 
-          }}
-          className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 shadow-sm transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Add Question
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setIsBulkUploadOpen(true)}
+            className="flex items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 shadow-sm transition-colors"
+          >
+            <Upload className="h-4 w-4" />
+            Bulk Upload
+          </button>
+          <button
+            onClick={() => { 
+              setCurrentQ({ options: ['', '', '', ''] }); 
+              setIsEditing(true); 
+            }}
+            className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 shadow-sm transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Add Question
+          </button>
+        </div>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">

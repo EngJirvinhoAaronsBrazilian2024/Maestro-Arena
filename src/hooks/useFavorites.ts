@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 
 export interface FavoriteItem {
   id: string; // e.g. "team_33"
-  type: 'team' | 'competition' | 'player';
+  type: 'team' | 'competition' | 'player' | 'match';
   name: string;
   logo?: string;
 }
