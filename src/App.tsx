@@ -13,6 +13,7 @@ import { Layout } from './components/layout/Layout';
 import { AuthLayout } from './components/layout/AuthLayout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { AdminLayout } from './components/layout/AdminLayout';
+import { InstallPrompt } from './components/pwa/InstallPrompt';
 
 // Optimize with React.lazy
 const Home = React.lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
@@ -61,6 +62,7 @@ export default function App() {
     
       <AuthProvider>
       <NotificationProvider>
+        <InstallPrompt />
         <Toaster position="top-right" richColors />
         <BrowserRouter>
           <ScrollToTop />

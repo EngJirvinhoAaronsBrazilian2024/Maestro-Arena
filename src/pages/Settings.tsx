@@ -1,14 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Monitor, Bell, Shield, MessageSquare, Send } from 'lucide-react';
+import { Monitor, Bell, Shield, MessageSquare, Send, Smartphone } from 'lucide-react';
 import { insforge } from '../lib/insforge';
 import { toast } from 'sonner';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
 export function Settings() {
     const { user } = useAuth();
     const [feedback, setFeedback] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    
+    // PWA Install state
+    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const [isStandalone, setIsStandalone] = useState(false);
+
+    useEffect(() => {
+      setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone);
+
+      const handleBeforeInstallPrompt = (e: Event) => {
+        e.preventDefault();
+        setDeferredPrompt(e as BeforeInstallPromptEvent);
+      };
+
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    }, []);
+
+    const handleInstallApp = async () => {
+      if (!deferredPrompt) {
+        toast.error("Installation is not supported or already installed.");
+        return;
+      }
+      await deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    };
 
     const handleFeedbackSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -32,6 +65,30 @@ export function Settings() {
           Manage your app preferences and settings.
         </p>
       </div>
+
+        {!isStandalone && deferredPrompt && (
+        <Card className="border-blue-100 bg-blue-50/50">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2 text-blue-900">
+              <Smartphone className="h-5 w-5 text-blue-600" />
+              Install App
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <p className="text-sm text-blue-800">
+                Install Maestro Arena on your device for a faster, full-screen mobile experience.
+              </p>
+              <button 
+                onClick={handleInstallApp}
+                className="whitespace-nowrap flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition font-bold"
+              >
+                Install Now
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -60,6 +117,30 @@ export function Settings() {
         </CardContent>
       </Card>
 
+        {!isStandalone && deferredPrompt && (
+        <Card className="border-blue-100 bg-blue-50/50">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2 text-blue-900">
+              <Smartphone className="h-5 w-5 text-blue-600" />
+              Install App
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <p className="text-sm text-blue-800">
+                Install Maestro Arena on your device for a faster, full-screen mobile experience.
+              </p>
+              <button 
+                onClick={handleInstallApp}
+                className="whitespace-nowrap flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition font-bold"
+              >
+                Install Now
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -79,6 +160,30 @@ export function Settings() {
           </div>
         </CardContent>
       </Card>
+
+        {!isStandalone && deferredPrompt && (
+        <Card className="border-blue-100 bg-blue-50/50">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2 text-blue-900">
+              <Smartphone className="h-5 w-5 text-blue-600" />
+              Install App
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <p className="text-sm text-blue-800">
+                Install Maestro Arena on your device for a faster, full-screen mobile experience.
+              </p>
+              <button 
+                onClick={handleInstallApp}
+                className="whitespace-nowrap flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition font-bold"
+              >
+                Install Now
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
