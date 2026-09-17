@@ -34,7 +34,9 @@ export default defineConfig(() => {
         },
         workbox: {
           navigateFallbackDenylist: [/^\/api/],
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg}'],
+          // Ignore high-resolution hero images during initial download to drastically speed up installation
+          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          maximumFileSizeToCacheInBytes: 3000000, // 3MB limit per file
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/media\.api-sports\.io\/.*/i,
