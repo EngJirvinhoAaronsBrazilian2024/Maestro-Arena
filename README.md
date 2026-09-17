@@ -1,76 +1,80 @@
-# Maestro Arena - Vercel Deployment Guide
+# Maestro Arena - Netlify Deployment Guide
 
-This is a production-ready sports application designed for high-performance deployment on Vercel.
+This is a production-ready sports application designed for high-performance deployment on Netlify.
 
 ## Tech Stack
-- Frontend: React + Vite + Tailwind CSS
-- Backend: Express Serverless API
+- Frontend: React + TypeScript + Vite + Tailwind CSS
+- Backend: Express Serverless API wrapped with `serverless-http`
 - Database & Auth: InsForge (PostgreSQL BaaS)
 - External APIs: API-Sports, Gemini AI
 
-## Running Locally
-
+## 1. Running Locally
 1. **Install Dependencies**
    ```bash
    npm install
    ```
-
 2. **Configure Environment Variables**
    Create a `.env` file based on `.env.example`:
    ```bash
    cp .env.example .env
    ```
    Fill in your API keys (InsForge, Gemini, and API-Sports).
-
 3. **Start Development Server**
    ```bash
    npm run dev
    ```
 
-4. **Production Build (Local Verification)**
+## 2. Production Build (Local Verification)
+1. **Build the Application**
    ```bash
    npm run build
-   npm start
+   ```
+   This compiles the React frontend into the `dist/` directory using Vite.
+2. **Type Check**
+   ```bash
+   npm run lint
    ```
 
-## Deploying to Vercel
+## 3. GitHub Preparation
+1. Make sure your `.gitignore` is intact and does not commit your `.env`, `.env.local`, or `.env.production` files.
+2. Push your project to your GitHub repository:
+   ```bash
+   git add .
+   git commit -m "Configure for Netlify Deployment"
+   git push origin main
+   ```
 
-This project is configured out-of-the-box for zero-downtime deployment on Vercel. 
-The `vercel.json` and `api/index.ts` files automatically proxy API calls to the serverless Express backend.
+## 4. Deploying to Netlify
+This project uses `netlify.toml` and a custom `netlify/functions/api.ts` file to wrap the Express backend correctly, bypassing complex and error-prone module bundlers.
 
-### Step 1: Connect your GitHub Repository
-1. Push this code to a GitHub repository.
-2. Log into your [Vercel Dashboard](https://vercel.com/).
-3. Click **Add New...** -> **Project**.
-4. Import your GitHub repository.
+1. Go to [Netlify](https://www.netlify.com/) and log in with GitHub.
+2. Click **Add new site** -> **Import an existing project**.
+3. Select your GitHub repository.
+4. Netlify will automatically detect the settings from `netlify.toml`:
+   - **Build Command**: `npm run build`
+   - **Publish Directory**: `dist`
+   - **Functions**: Handled via `netlify/functions/api.ts`
 
-### Step 2: Configure Build Settings
-Vercel should automatically detect the framework as **Vite**.
-Leave the defaults as they are:
-- **Framework Preset**: Vite
-- **Build Command**: `npm run build`
-- **Output Directory**: `dist`
+### 5. Environment Variables
+Before clicking Deploy, click **Environment variables** (or **Show Advanced**) and add the exact variables from `.env.example`.
 
-### Step 3: Add Environment Variables
-In the Vercel deployment screen, expand the **Environment Variables** section and add the required keys exactly as they appear in `.env.example`:
+**Frontend-Safe Variables** (publicly exposed to browser):
+- `VITE_INSFORGE_URL`
+- `VITE_INSFORGE_ANON_KEY`
 
-- `GEMINI_API_KEY` (Your Google Gemini AI API key)
+**Server-Only Variables** (PRIVATE, DO NOT expose with `VITE_`):
 - `SPORTS_API_KEY` (Your API-Sports API key)
 - `SPORTS_API_URL` (Set to `https://v3.football.api-sports.io`)
-- `VITE_INSFORGE_URL` (Your InsForge project URL)
-- `VITE_INSFORGE_ANON_KEY` (Your InsForge anon/public key)
+- `GEMINI_API_KEY` (Your Google Gemini AI API key)
 - `INSFORGE_API_KEY` (Your InsForge service_role/admin key)
 
-*Note: Ensure the `INSFORGE_API_KEY` (service role) is **not** prefixed with `VITE_`, as it is kept secure on the backend.*
+### 6. Redeploying
+If you update environment variables in the Netlify dashboard after the initial deployment, you must trigger a manual redeploy for them to take effect.
+Go to **Deploys** -> **Trigger deploy** -> **Deploy site**.
 
-### Step 4: Deploy
-Click **Deploy**. Vercel will build the static frontend into `dist/` and automatically deploy `api/index.ts` as a serverless Node.js function.
-
-### Troubleshooting
-- **404 on page refresh**: This is automatically resolved by the `vercel.json` rewrites rules.
-- **Failed API Calls**: Double-check that your `VITE_INSFORGE_URL` and `VITE_INSFORGE_ANON_KEY` variables are deployed. Remember that Vercel requires a re-deploy if you add environment variables after the build.
-- **Database Access Errors**: Make sure your InsForge row-level security (RLS) policies are correctly configured.
-
-## Architecture & Security
-- **Secure Backend Integration:** API routes (`/api/*`) are heavily utilized to keep secret keys out of client-side bundles.
-- **Serverless Scaling:** Handled natively through Vercel's Edge/Serverless functions mechanism pointing to `api/index.ts`.
+### 7. Troubleshooting Live Scores API Failures
+If Live Scores fail to load in production:
+1. Open the Network tab in your browser's Developer Tools.
+2. Check the response for `/api/sports/live`.
+3. If it returns an empty array `[]`, there are simply no live matches occurring right now.
+4. If it returns an error related to rate limits, verify your API-Sports quota. The Netlify Function securely proxies your request and attaches your `SPORTS_API_KEY` on the backend, preventing quota abuse or key leakage.

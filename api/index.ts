@@ -1,2 +1,22 @@
-import app from "../dist/server.js";
+import express from "express";
+import cors from "cors";
+
+// Import route handlers directly, bypassing server.ts and Vite
+import sportsRoutes from "../src/server/routes/sportsRoutes.js";
+import quizRoutes from "../src/server/routes/quizRoutes.js";
+import userRoutes from "../src/server/routes/userRoutes.js";
+import tipsRoutes from "../src/server/routes/tipsRoutes.js";
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// API Routes
+app.use("/api/sports", sportsRoutes);
+app.use("/api/quiz", quizRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/tips", tipsRoutes);
+
+// Export for Vercel Serverless
 export default app;
