@@ -9,6 +9,7 @@ import { ScrollToTop } from './components/ScrollToTop';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { Toaster } from 'sonner';
+import { Toaster as HotToaster } from 'react-hot-toast';
 import { Layout } from './components/layout/Layout';
 import { AuthLayout } from './components/layout/AuthLayout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
@@ -64,6 +65,7 @@ export default function App() {
       <NotificationProvider>
         <InstallPrompt />
         <Toaster position="top-right" richColors />
+        <HotToaster position="top-right" />
         <BrowserRouter>
           <ScrollToTop />
           <Suspense fallback={<LoadingScreen />}>

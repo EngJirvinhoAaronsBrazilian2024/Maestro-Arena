@@ -17,6 +17,17 @@ export function AdminPolls() {
   const loadPolls = async () => {
     try {
       setLoading(true);
+      const res = await fetch('/api/admin/polls');
+      if (res.ok) {
+        const data = await res.json();
+        setPolls(data);
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
+    try {
       const { data, error } = await insforge.database
         .from('polls')
         .select('*')
@@ -44,6 +55,24 @@ export function AdminPolls() {
     }
 
     try {
+      const res = await fetch('/api/admin/polls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, options: validOptions })
+      });
+
+      if (res.ok) {
+        toast.success('Poll created successfully!');
+        setQuestion('');
+        setOptions(['', '']);
+        loadPolls();
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
+    try {
       const { error } = await insforge.database
         .from('polls')
         .insert([{ question, options: validOptions }]);
@@ -61,6 +90,17 @@ export function AdminPolls() {
 
   const closePoll = async (id: string) => {
     try {
+      const res = await fetch(`/api/admin/polls/${id}/close`, { method: 'PUT' });
+      if (res.ok) {
+        toast.success('Poll closed');
+        loadPolls();
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
+    try {
       await insforge.database.from('polls').update({ status: 'closed' }).eq('id', id);
       toast.success('Poll closed');
       loadPolls();
@@ -68,6 +108,17 @@ export function AdminPolls() {
   };
 
   const deletePoll = async (id: string) => {
+    try {
+      const res = await fetch(`/api/admin/polls/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Poll deleted');
+        loadPolls();
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
     try {
       await insforge.database.from('polls').delete().eq('id', id);
       toast.success('Poll deleted');

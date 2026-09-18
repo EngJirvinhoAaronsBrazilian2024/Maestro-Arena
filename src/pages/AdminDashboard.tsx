@@ -1,15 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getAllUsers, updateUserRole, deleteUserRecord, UserData } from '../services/userService';
-import { Users, Shield, Trash2, ShieldAlert, AlertCircle, Activity, UserPlus, Database, Star } from 'lucide-react';
+import { Users, Shield, Trash2, ShieldAlert, AlertCircle, Activity, Database, Star, RefreshCw, HelpCircle, FileText, Target, Search } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Card, CardContent } from '../components/ui/Card';
+import { toast } from 'sonner';
 
 export function AdminDashboard() {
   const { user, userData } = useAuth();
   
   const [users, setUsers] = useState<UserData[]>([]);
+  const [stats, setStats] = useState<any>({
+    totalUsers: 0,
+    totalAdmins: 0,
+    totalTips: 0,
+    totalQuestions: 0,
+    totalArticles: 0,
+    openFeedbackCount: 0
+  });
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
   
   const isAdmin = userData?.role === 'admin';
@@ -25,35 +36,71 @@ export function AdminDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
+      // Load users
       const data = await getAllUsers();
       setUsers(data);
+      
+      // Load stats
+      try {
+        const res = await fetch('/api/admin/overview');
+        if (res.ok) {
+          const overview = await res.json();
+          setStats(overview);
+        }
+      } catch (statErr) {
+        console.warn('Overview stats error:', statErr);
+      }
+      
       setError(null);
     } catch (err) {
       console.error(err);
-      setError('Failed to load data.');
+      setError('Failed to load user directory.');
     }
     setLoading(false);
   };
 
+  const handleSyncUsers = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/admin/users/sync', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`User sync complete! ${data.synced} new accounts synced.`);
+        loadData();
+      } else {
+        toast.error(data.error || 'Failed to sync users.');
+      }
+    } catch (e: any) {
+      toast.error('Sync failed: ' + e.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleRoleChange = async (userId: string, newRole: string) => {
     if (!user) return;
-    const currentAdminId = user.id || user.uid;
+    const currentAdminId = user.id || (user as any).uid;
     try {
       await updateUserRole(userId, newRole, currentAdminId);
       setUsers(users.map(u => u.id === userId ? { ...u, role: newRole as any } : u));
+      toast.success(`User role updated to ${newRole}`);
+      // Refresh stats
+      loadData();
     } catch (err: any) {
-      alert("Failed to update role: " + err.message);
+      toast.error("Failed to update role: " + err.message);
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
     if (!user || !confirm('Are you sure you want to delete this user?')) return;
-    const currentAdminId = user.id || user.uid;
+    const currentAdminId = user.id || (user as any).uid;
     try {
       await deleteUserRecord(userId, currentAdminId);
       setUsers(users.filter(u => u.id !== userId));
+      toast.success("User removed from database");
+      loadData();
     } catch (err: any) {
-      alert("Failed to delete user: " + err.message);
+      toast.error("Failed to delete user: " + err.message);
     }
   };
 
@@ -67,11 +114,25 @@ export function AdminDashboard() {
     );
   }
 
+  const filteredUsers = users.filter(u => 
+    (u.displayName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="max-w-7xl mx-auto pb-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Platform Overview</h1>
-        <p className="text-slate-500">Manage user accounts, roles, and monitor platform health.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Platform Overview</h1>
+          <p className="text-slate-500">Manage user accounts, database state, and monitor platform activity.</p>
+        </div>
+        <button
+          onClick={loadData}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition-all"
+        >
+          <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+          Refresh Stats
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -84,7 +145,7 @@ export function AdminDashboard() {
               <Users size={18} />
               Total Users
             </div>
-            <div className="text-4xl font-black">{users.length}</div>
+            <div className="text-4xl font-black">{stats.totalUsers || users.length}</div>
           </CardContent>
         </Card>
         
@@ -94,19 +155,19 @@ export function AdminDashboard() {
               <Shield size={18} className="text-purple-500" />
               Administrators
             </div>
-            <div className="text-4xl font-black text-slate-900">{users.filter(u => u.role === 'admin').length}</div>
+            <div className="text-4xl font-black text-slate-900">{stats.totalAdmins || users.filter(u => u.role === 'admin').length}</div>
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-sm bg-white border border-slate-200">
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-4 text-slate-500 font-bold uppercase tracking-wider text-sm">
-              <Star size={18} className="text-orange-500" />
-              Engagement
+              <Target size={18} className="text-emerald-500" />
+              Active Predictions
             </div>
-            <div className="flex flex-col">
-              <div className="text-sm font-bold text-slate-900">Manage Polls & Seasons</div>
-              <p className="text-xs text-slate-500 mt-1">Use the sidebar to view active features.</p>
+            <div className="flex items-baseline gap-2">
+              <div className="text-4xl font-black text-slate-900">{stats.totalTips || 0}</div>
+              <span className="text-xs text-slate-500 font-medium">Tips in database</span>
             </div>
           </CardContent>
         </Card>
@@ -115,22 +176,45 @@ export function AdminDashboard() {
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-4 text-slate-500 font-bold uppercase tracking-wider text-sm">
               <Activity size={18} className="text-green-500" />
-              System Status
+              Database Engine
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
-              <div className="text-xl font-black text-slate-900">Operational</div>
+              <div className="text-xl font-black text-slate-900">InsForge Connected</div>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
             <Database className="text-slate-400" size={20} />
-            User Directory
+            User Directory ({users.length})
           </h3>
+
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Search user or email..."
+                className="pl-9 pr-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-48 sm:w-64"
+              />
+            </div>
+
+            <button
+              onClick={handleSyncUsers}
+              disabled={syncing}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors shadow-sm disabled:opacity-50"
+              title="Sync newly registered auth users into public users table"
+            >
+              <RefreshCw size={13} className={syncing ? "animate-spin" : ""} />
+              {syncing ? 'Syncing...' : 'Sync Auth'}
+            </button>
+          </div>
         </div>
         
         {loading ? (
@@ -155,7 +239,7 @@ export function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {users.map(u => (
+                {filteredUsers.map(u => (
                   <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="p-5">
                       <div className="flex items-center gap-4">
@@ -164,7 +248,7 @@ export function AdminDashboard() {
                         </div>
                         <div>
                           <div className="font-bold text-slate-900">{u.displayName || 'Unnamed User'}</div>
-                          <div className="text-sm text-slate-500">{u.email}</div>
+                          <div className="text-sm text-slate-500 font-mono">{u.email}</div>
                         </div>
                       </div>
                     </td>

@@ -4,6 +4,23 @@ import { isSameDay } from '../lib/dateUtils';
 
 export async function getTips(date?: number, category?: TipCategory, status?: TipStatus): Promise<Tip[]> {
   try {
+    const params = new URLSearchParams();
+    if (date) params.append('date', String(date));
+    if (category) params.append('category', category);
+    if (status) params.append('status', status);
+
+    const res = await fetch(`/api/tips?${params.toString()}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        return data;
+      }
+    }
+  } catch (err) {
+    // fallback to direct insforge query
+  }
+
+  try {
     let query = insforge.database.from('tips').select('*').order('created_at', { ascending: false });
     
     if (category) {
@@ -23,13 +40,13 @@ export async function getTips(date?: number, category?: TipCategory, status?: Ti
     let tips: Tip[] = (data || []).map(t => ({
       id: t.id,
       category: t.category,
-      matches: t.matches,
+      matches: typeof t.matches === 'string' ? JSON.parse(t.matches) : (t.matches || []),
       odds: t.odds,
       analysis: t.analysis,
       status: t.status,
-      bookingCode: t.booking_code,
-      publishDate: t.publish_date,
-      createdAt: t.created_at
+      bookingCode: t.booking_code || t.bookingCode || '',
+      publishDate: Number(t.publish_date || t.publishDate || Date.now()),
+      createdAt: Number(t.created_at || t.createdAt || Date.now())
     }));
 
     if (date) {
@@ -38,7 +55,7 @@ export async function getTips(date?: number, category?: TipCategory, status?: Ti
     
     return tips;
   } catch (error) {
-    console.error("Error in getTips:", error);
+    console.error("Error in getTips fallback:", error);
     return [];
   }
 }
@@ -47,6 +64,20 @@ export async function createTip(adminId: string, tip: Omit<Tip, 'id' | 'createdA
   const newId = 'tip_' + Date.now() + Math.random().toString(36).substring(2, 9);
   const now = Date.now();
   
+  try {
+    const res = await fetch('/api/tips', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId, ...tip, id: newId })
+    });
+    if (res.ok) {
+      const created = await res.json();
+      return created;
+    }
+  } catch (e) {
+    // fallback below
+  }
+
   const { data, error } = await insforge.database.from('tips').insert([{
     id: newId,
     category: tip.category,
@@ -76,6 +107,17 @@ export async function createTip(adminId: string, tip: Omit<Tip, 'id' | 'createdA
 }
 
 export async function updateTip(adminId: string, id: string, updates: Partial<Tip>): Promise<void> {
+  try {
+    const res = await fetch(`/api/tips/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId, ...updates })
+    });
+    if (res.ok) return;
+  } catch (e) {
+    // fallback below
+  }
+
   const dbUpdates: any = {};
   if (updates.category !== undefined) dbUpdates.category = updates.category;
   if (updates.matches !== undefined) dbUpdates.matches = updates.matches;
@@ -90,6 +132,15 @@ export async function updateTip(adminId: string, id: string, updates: Partial<Ti
 }
 
 export async function deleteTip(adminId: string, id: string): Promise<void> {
+  try {
+    const res = await fetch(`/api/tips/${id}?adminId=${adminId}`, {
+      method: 'DELETE'
+    });
+    if (res.ok) return;
+  } catch (e) {
+    // fallback below
+  }
+
   const { error } = await insforge.database.from('tips').delete().eq('id', id);
   if (error) throw error;
 }

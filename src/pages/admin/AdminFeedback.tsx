@@ -14,6 +14,17 @@ export function AdminFeedback() {
   const loadFeedback = async () => {
     try {
       setLoading(true);
+      const res = await fetch('/api/admin/feedback');
+      if (res.ok) {
+        const data = await res.json();
+        setFeedbacks(data);
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
+    try {
       const { data, error } = await insforge.database
         .from('feedback')
         .select('*')
@@ -30,6 +41,17 @@ export function AdminFeedback() {
   };
 
   const resolveFeedback = async (id: string) => {
+    try {
+      const res = await fetch(`/api/admin/feedback/${id}/resolve`, { method: 'PUT' });
+      if (res.ok) {
+        toast.success('Marked as resolved');
+        loadFeedback();
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
     try {
       await insforge.database.from('feedback').update({ status: 'resolved' }).eq('id', id);
       toast.success('Marked as resolved');

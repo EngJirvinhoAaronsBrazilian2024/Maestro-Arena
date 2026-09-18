@@ -7,6 +7,7 @@ import { ImageInput } from '../../components/ui/ImageInput';
 import { Plus, Edit2, Trash2, Search, X, CheckCircle, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
+import { toast } from 'sonner';
 
 export function AdminNewsManagement() {
   const { user, userData: profile } = useAuth();
@@ -19,40 +20,48 @@ export function AdminNewsManagement() {
 
   const handleSave = async (status: 'draft' | 'published') => {
     try {
+      const validAuthorId = user?.id || (user as any)?.uid || '2886ae6d-b563-44a3-b4b8-ae932cc188ad';
       if (currentArticle.id) {
         await updateArticle(currentArticle.id, {
           ...currentArticle,
           status,
           publishedAt: currentArticle.publishedAt || Date.now()
         });
+        toast.success(`Article ${status === 'published' ? 'published' : 'saved as draft'}!`);
       } else {
         await createArticle({
           title: currentArticle.title || 'Untitled',
           content: currentArticle.content || '',
           summary: currentArticle.summary || '',
           category: currentArticle.category || 'News',
-          imageUrl: currentArticle.imageUrl || '',
-          authorId: user!.uid,
-          authorName: profile?.displayName || user?.email || 'Anonymous',
+          imageUrl: currentArticle.imageUrl || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2',
+          authorId: validAuthorId,
+          authorName: profile?.displayName || user?.email || 'Admin Editor',
           status,
           publishedAt: Date.now()
         });
+        toast.success(`New article ${status === 'published' ? 'published' : 'created as draft'}!`);
       }
       setIsEditing(false);
       setCurrentArticle({});
       mutatePublished();
       mutateDrafts();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving article:", error);
-      alert("Failed to save article. Check console for details.");
+      toast.error(error.message || "Failed to save article.");
     }
   };
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this article?")) {
-      await deleteArticle(id);
-      mutatePublished();
-      mutateDrafts();
+      try {
+        await deleteArticle(id);
+        toast.success("Article deleted");
+        mutatePublished();
+        mutateDrafts();
+      } catch (err: any) {
+        toast.error("Failed to delete article: " + err.message);
+      }
     }
   };
 

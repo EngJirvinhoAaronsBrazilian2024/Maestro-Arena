@@ -22,7 +22,11 @@ export async function getQuizQuestions(category: QuizCategory | 'All', difficult
       exactSnapshot = data || [];
     }
     
-    let questions = exactSnapshot.map(doc => ({ id: doc.id, ...doc } as QuizQuestion));
+    let questions = exactSnapshot.map(doc => ({
+      id: doc.id,
+      ...doc,
+      correctAnswer: doc.correctanswer || doc.correctAnswer || doc.correct_answer
+    } as QuizQuestion));
 
     // 2. Add from MOCK_QUESTIONS (Exact Match)
     let mockExact = MOCK_QUESTIONS.filter(q => q.difficulty === difficulty && (category === 'All' || q.category === category));
@@ -55,7 +59,11 @@ export async function getQuizQuestions(category: QuizCategory | 'All', difficult
           .eq('status', 'PUBLISHED');
         catSnapshot = data || [];
       }
-      const catQuestions = catSnapshot.map(doc => ({ id: doc.id, ...doc } as QuizQuestion));
+      const catQuestions = catSnapshot.map(doc => ({
+        id: doc.id,
+        ...doc,
+        correctAnswer: doc.correctanswer || doc.correctAnswer || doc.correct_answer
+      } as QuizQuestion));
       for (const q of catQuestions) {
         if (!seen.has(q.question)) {
           merged.push(q);
@@ -243,9 +251,22 @@ export async function getLeaderboard(limitCount: number = 10): Promise<QuizResul
 
 export async function getAllQuizQuestions(): Promise<QuizQuestion[]> {
   try {
+    const res = await fetch('/api/admin/quiz');
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    // fallback below
+  }
+
+  try {
     const { data, error } = await insforge.database.from('quiz_questions').select('*').order('created_at', { ascending: false });
     if (error) throw error;
-    return (data || []).map(doc => ({ id: doc.id, ...doc } as QuizQuestion));
+    return (data || []).map(doc => ({
+      id: doc.id,
+      ...doc,
+      correctAnswer: doc.correctanswer || doc.correctAnswer || doc.correct_answer
+    } as QuizQuestion));
   } catch (error) {
     console.error(error);
     return [];
@@ -253,20 +274,79 @@ export async function getAllQuizQuestions(): Promise<QuizQuestion[]> {
 }
 
 export async function createQuizQuestion(adminId: string, question: Omit<QuizQuestion, 'id'>): Promise<QuizQuestion> {
+  try {
+    const res = await fetch('/api/admin/quiz/question', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(question)
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    // fallback below
+  }
+
   const newId = 'q_' + Date.now() + Math.random().toString(36).substring(2, 9);
   const now = Date.now();
-  const newQuestion = { ...question, id: newId, status: 'PUBLISHED', created_at: now };
-  const { data, error } = await insforge.database.from('quiz_questions').insert([newQuestion]).select('*');
+  const dbPayload: any = {
+    id: newId,
+    question: question.question,
+    category: question.category,
+    difficulty: question.difficulty,
+    options: question.options,
+    correctanswer: question.correctAnswer || (question as any).correctanswer,
+    explanation: question.explanation || '',
+    hint: question.hint || null,
+    image: question.image || null,
+    source: question.source || null,
+    status: 'PUBLISHED',
+    created_at: now
+  };
+
+  const { data, error } = await insforge.database.from('quiz_questions').insert([dbPayload]).select('*');
   if (error) throw error;
-  return data[0] as QuizQuestion;
+  return {
+    ...data[0],
+    correctAnswer: data[0].correctanswer || data[0].correctAnswer
+  } as QuizQuestion;
 }
 
 export async function updateQuizQuestion(adminId: string, id: string, updates: Partial<QuizQuestion>): Promise<void> {
-  const { error } = await insforge.database.from('quiz_questions').update(updates).eq('id', id);
+  try {
+    const res = await fetch(`/api/admin/quiz/question/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (res.ok) return;
+  } catch (e) {
+    // fallback below
+  }
+
+  const dbUpdates: any = { ...updates };
+  if (updates.correctAnswer !== undefined) {
+    dbUpdates.correctanswer = updates.correctAnswer;
+    delete dbUpdates.correctAnswer;
+  }
+  if ((updates as any).status) {
+    dbUpdates.status = (updates as any).status.toUpperCase();
+  }
+
+  const { error } = await insforge.database.from('quiz_questions').update(dbUpdates).eq('id', id);
   if (error) throw error;
 }
 
 export async function deleteQuizQuestion(adminId: string, id: string): Promise<void> {
+  try {
+    const res = await fetch(`/api/admin/quiz/question/${id}`, {
+      method: 'DELETE'
+    });
+    if (res.ok) return;
+  } catch (e) {
+    // fallback below
+  }
+
   const { error } = await insforge.database.from('quiz_questions').delete().eq('id', id);
   if (error) throw error;
 }

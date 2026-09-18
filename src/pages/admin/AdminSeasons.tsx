@@ -17,6 +17,17 @@ export function AdminSeasons() {
   const loadSeasons = async () => {
     try {
       setLoading(true);
+      const res = await fetch('/api/admin/seasons');
+      if (res.ok) {
+        const data = await res.json();
+        setSeasons(data);
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
+    try {
       const { data, error } = await insforge.database
         .from('quiz_seasons')
         .select('*')
@@ -34,6 +45,25 @@ export function AdminSeasons() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      const res = await fetch('/api/admin/seasons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, start_date: startDate, end_date: endDate })
+      });
+
+      if (res.ok) {
+        toast.success('Season created successfully!');
+        setName('');
+        setStartDate('');
+        setEndDate('');
+        loadSeasons();
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
     try {
       const { error } = await insforge.database
         .from('quiz_seasons')
@@ -53,6 +83,22 @@ export function AdminSeasons() {
 
   const toggleActive = async (id: string, currentStatus: boolean) => {
     try {
+      const res = await fetch(`/api/admin/seasons/${id}/toggle`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentStatus })
+      });
+
+      if (res.ok) {
+        toast.success(currentStatus ? 'Season deactivated' : 'Season activated');
+        loadSeasons();
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
+    try {
       // Deactivate all others first if we are activating
       if (!currentStatus) {
         await insforge.database.from('quiz_seasons').update({ is_active: false }).neq('id', id);
@@ -67,6 +113,17 @@ export function AdminSeasons() {
   };
 
   const deleteSeason = async (id: string) => {
+    try {
+      const res = await fetch(`/api/admin/seasons/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Season deleted');
+        loadSeasons();
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
     try {
       await insforge.database.from('quiz_seasons').delete().eq('id', id);
       toast.success('Season deleted');

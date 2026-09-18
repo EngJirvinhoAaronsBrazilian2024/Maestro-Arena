@@ -3,14 +3,16 @@ import { getTips, createTip, updateTip, deleteTip } from '../../services/tipsSer
 import { Tip, TipCategory, TipStatus } from '../../types/tips';
 import { useAuth } from '../../context/AuthContext';
 import { formatLocalDate, parseDateInputToTimestamp } from '../../lib/dateUtils';
-import { Target, Plus, Trash2, Edit2, Calendar, FileText, ChevronRight, CheckCircle2, AlertCircle, HelpCircle, X } from 'lucide-react';
+import { Target, Plus, Trash2, Edit2, Calendar, FileText, ChevronRight, CheckCircle2, AlertCircle, HelpCircle, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
+import toast from 'react-hot-toast';
 
 export function AdminTipsManagement() {
   const { userData, user } = useAuth();
   const [tips, setTips] = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   
   // Form State
@@ -72,8 +74,12 @@ export function AdminTipsManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user) {
+      toast.error('You must be logged in as an administrator');
+      return;
+    }
 
+    setIsSaving(true);
     try {
       const tipData = {
         category,
@@ -93,24 +99,30 @@ export function AdminTipsManagement() {
 
       if (editingId) {
         await updateTip(user.id, editingId, tipData);
+        toast.success('Tip updated successfully');
       } else {
         await createTip(user.id, tipData);
+        toast.success('Tip created and published successfully');
       }
       setIsFormOpen(false);
-      fetchTips();
-    } catch (err) {
+      await fetchTips();
+    } catch (err: any) {
       console.error(err);
-      alert('Error saving tip');
+      toast.error(err.message || 'Error saving tip');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!user || !confirm('Delete tip?')) return;
+    if (!user || !confirm('Are you sure you want to delete this tip?')) return;
     try {
       await deleteTip(user.id, id);
-      fetchTips();
-    } catch (err) {
+      toast.success('Tip deleted');
+      await fetchTips();
+    } catch (err: any) {
       console.error(err);
+      toast.error(err.message || 'Failed to delete tip');
     }
   };
 
@@ -237,7 +249,14 @@ export function AdminTipsManagement() {
                   
                   <div className="flex gap-4 justify-end pt-6 border-t border-slate-100">
                     <button type="button" onClick={() => setIsFormOpen(false)} className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors">Cancel</button>
-                    <button type="submit" className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-sm">Save Tip</button>
+                    <button 
+                      type="submit" 
+                      disabled={isSaving}
+                      className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
+                    >
+                      {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                      {isSaving ? 'Saving...' : 'Save Tip'}
+                    </button>
                   </div>
                 </form>
               </div>

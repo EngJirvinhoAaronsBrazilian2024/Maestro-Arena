@@ -18,18 +18,27 @@ export function AdminNotifications() {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      const { data, error } = await insforge.database
+      const res = await fetch('/api/admin/notifications');
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
+    try {
+      const { data } = await insforge.database
         .from('app_notifications')
         .select('*')
         .order('created_at', { ascending: false });
       
-      if (error && error.code !== 'PGRST116') {
-        // Table might not exist yet
-      } else if (data) {
+      if (data) {
         setNotifications(data);
       }
     } catch (e) {
-      console.log('Notifications table not ready', e);
+      console.log('Notifications table query fallback', e);
     } finally {
       setLoading(false);
     }
@@ -37,6 +46,24 @@ export function AdminNotifications() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      const res = await fetch('/api/admin/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, message, type })
+      });
+
+      if (res.ok) {
+        toast.success('Notification broadcasted successfully!');
+        setTitle('');
+        setMessage('');
+        loadNotifications();
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
     try {
       const { error } = await insforge.database
         .from('app_notifications')
@@ -54,6 +81,17 @@ export function AdminNotifications() {
   };
 
   const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/admin/notifications/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setNotifications(notifications.filter(n => n.id !== id));
+        toast.success('Notification deleted');
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
     try {
       const { error } = await insforge.database
         .from('app_notifications')

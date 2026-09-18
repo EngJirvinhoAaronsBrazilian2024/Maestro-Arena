@@ -63,13 +63,27 @@ export async function getArticleById(id: string): Promise<Article | null> {
 
 // Editor actions
 export async function createArticle(article: Omit<Article, 'id'>): Promise<string> {
+  try {
+    const res = await fetch('/api/admin/articles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(article)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.id || 'ok';
+    }
+  } catch (e) {
+    // fallback
+  }
+
   const { data, error } = await insforge.database
     .from('articles')
     .insert([{
       title: article.title,
       content: article.content,
       image_url: article.imageUrl,
-      author_id: article.authorId,
+      author_id: article.authorId || '2886ae6d-b563-44a3-b4b8-ae932cc188ad',
       status: article.status,
       category: article.category || 'general',
       published_at: article.publishedAt
@@ -82,6 +96,17 @@ export async function createArticle(article: Omit<Article, 'id'>): Promise<strin
 }
 
 export async function updateArticle(id: string, updates: Partial<Article>): Promise<void> {
+  try {
+    const res = await fetch(`/api/admin/articles/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (res.ok) return;
+  } catch (e) {
+    // fallback
+  }
+
   const payload: any = {};
   if (updates.title !== undefined) payload.title = updates.title;
   if (updates.content !== undefined) payload.content = updates.content;
@@ -100,6 +125,13 @@ export async function updateArticle(id: string, updates: Partial<Article>): Prom
 }
 
 export async function deleteArticle(id: string): Promise<void> {
+  try {
+    const res = await fetch(`/api/admin/articles/${id}`, { method: 'DELETE' });
+    if (res.ok) return;
+  } catch (e) {
+    // fallback
+  }
+
   const { error } = await insforge.database
     .from('articles')
     .delete()

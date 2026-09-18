@@ -3,11 +3,13 @@ import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import { insforge } from '../../lib/insforge';
 import { useAuth } from '../../context/AuthContext';
-import { Brain, Search, Edit2, Plus, Trash2, X, CheckCircle, Clock, Upload, Download, FileText, AlertCircle } from 'lucide-react';
+import { createQuizQuestion, updateQuizQuestion, deleteQuizQuestion, getAllQuizQuestions } from '../../services/quizService';
+import { Brain, Search, Edit2, Plus, Trash2, X, CheckCircle, Clock, Upload, Download, FileText, AlertCircle, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { QuizQuestion, QuizCategory, QuizDifficulty } from '../../types/quiz';
 import { ImageInput } from '../../components/ui/ImageInput';
+import { toast } from 'sonner';
 
 export const AdminQuizManagement: React.FC = () => {
   const { userData } = useAuth();
@@ -29,15 +31,11 @@ export const AdminQuizManagement: React.FC = () => {
   const loadQuestions = async () => {
     setLoading(true);
     try {
-      const { data, error } = await insforge.database.from('quiz_questions').select('*').order('created_at', { ascending: false });
-      if (error) {
-        // Fallback for mock if table doesnt exist yet
-        console.warn('Quiz table error, falling back to mock or empty');
-      } else if (data) {
-        setQuestions(data as unknown as QuizQuestion[]);
-      }
+      const data = await getAllQuizQuestions();
+      setQuestions(data);
     } catch (e) {
       console.error(e);
+      toast.error("Failed to load questions from database");
     }
     setLoading(false);
   };
@@ -45,40 +43,65 @@ export const AdminQuizManagement: React.FC = () => {
   const handleSave = async () => {
     try {
       if (!currentQ.question || !currentQ.correctAnswer || !currentQ.options || currentQ.options.length < 2) {
-        alert("Please fill all required fields properly.");
+        toast.error("Please fill all required fields properly.");
         return;
       }
-      
-      const payload = {
-        question: currentQ.question,
-        category: currentQ.category || 'World Football',
-        difficulty: currentQ.difficulty || 'Medium',
-        options: currentQ.options,
-        correct_answer: currentQ.correctAnswer,
-        explanation: currentQ.explanation || '',
-        image: currentQ.image || null,
-        status: 'published'
-      };
 
       if (currentQ.id) {
-        await insforge.database.from('quiz_questions').update(payload).eq('id', currentQ.id);
+        await updateQuizQuestion(userData?.id || '', currentQ.id, currentQ);
+        toast.success("Question updated successfully!");
       } else {
-        await insforge.database.from('quiz_questions').insert([payload]);
+        await createQuizQuestion(userData?.id || '', {
+          question: currentQ.question,
+          category: currentQ.category || 'World Football',
+          difficulty: currentQ.difficulty || 'Medium',
+          options: currentQ.options,
+          correctAnswer: currentQ.correctAnswer,
+          explanation: currentQ.explanation || '',
+          hint: currentQ.hint || null,
+          image: currentQ.image || null,
+          source: currentQ.source || null,
+          status: 'PUBLISHED'
+        } as any);
+        toast.success("New question published to database!");
       }
       
       setIsEditing(false);
       setCurrentQ({});
       loadQuestions();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving question:", error);
-      alert("Failed to save question. Make sure the database schema is updated.");
+      toast.error(error.message || "Failed to save question.");
     }
   };
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this question?")) {
-      await insforge.database.from('quiz_questions').delete().eq('id', id);
-      loadQuestions();
+      try {
+        await deleteQuizQuestion(userData?.id || '', id);
+        toast.success("Question deleted.");
+        loadQuestions();
+      } catch (err: any) {
+        toast.error("Error deleting question: " + err.message);
+      }
+    }
+  };
+
+  const handleSeedQuestions = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/admin/quiz/seed?force=true', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Seeded ${data.seeded || 10} official football questions!`);
+        loadQuestions();
+      } else {
+        toast.error(data.error || "Failed to seed questions.");
+      }
+    } catch (e: any) {
+      toast.error("Error seeding questions: " + e.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -106,14 +129,14 @@ export const AdminQuizManagement: React.FC = () => {
             row['Option C'] || row.optionC || row.option_c || '',
             row['Option D'] || row.optionD || row.option_d || ''
           ].filter(Boolean),
-          correct_answer: row['Correct Answer'] || row.correctAnswer || row.correct_answer || '',
+          correctAnswer: row['Correct Answer'] || row.correctAnswer || row.correct_answer || row.correctanswer || '',
           explanation: row.Explanation || row.explanation || '',
-          status: 'published'
+          status: 'PUBLISHED'
         }));
         setBulkPreview(parsed);
       },
       error: (error: any) => {
-        alert("Error parsing CSV: " + error.message);
+        toast.error("Error parsing CSV: " + error.message);
       }
     });
     // Reset file input
@@ -124,25 +147,32 @@ export const AdminQuizManagement: React.FC = () => {
     if (bulkPreview.length === 0) return;
     setBulkLoading(true);
     try {
-      const validQuestions = bulkPreview.filter(q => q.question && q.correct_answer && q.options && q.options.length >= 2);
+      const validQuestions = bulkPreview.filter(q => q.question && q.correctAnswer && q.options && q.options.length >= 2);
       
       if (validQuestions.length === 0) {
-        alert("No valid questions found. Please check your CSV format.");
+        toast.error("No valid questions found. Please check your CSV format.");
         setBulkLoading(false);
         return;
       }
 
-      const { error } = await insforge.database.from('quiz_questions').insert(validQuestions);
+      const res = await fetch('/api/admin/quiz/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions: validQuestions })
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.error || 'Failed to bulk import');
+      }
       
-      if (error) throw error;
-      
-      alert(`Successfully imported ${validQuestions.length} questions!`);
+      toast.success(`Successfully imported ${validQuestions.length} questions into database!`);
       setIsBulkUploadOpen(false);
       setBulkPreview([]);
       loadQuestions();
     } catch (error: any) {
       console.error("Error bulk saving:", error);
-      alert("Failed to save questions: " + error.message);
+      toast.error("Failed to save questions: " + error.message);
     }
     setBulkLoading(false);
   };
@@ -402,7 +432,15 @@ export const AdminQuizManagement: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900">Quiz Management</h1>
           <p className="text-sm text-slate-500">Manage trivia questions for the football quizzes.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={handleSeedQuestions}
+            className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100 shadow-sm transition-colors"
+            title="Seed official football trivia into the database"
+          >
+            <Sparkles className="h-4 w-4" />
+            Seed Questions
+          </button>
           <button
             onClick={() => setIsBulkUploadOpen(true)}
             className="flex items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 shadow-sm transition-colors"
