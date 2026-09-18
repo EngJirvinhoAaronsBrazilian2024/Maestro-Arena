@@ -28,19 +28,18 @@ export function Register() {
       if (authError) throw authError;
 
       if (authData.user) {
-        // Create user profile in InsForge database
+        // Create user profile in InsForge database matching existing public.users schema (id, email, display_name, role, created_at)
+        const normalizedEmail = email.trim().toLowerCase();
         const { error: dbError } = await insforge.database.from('users').insert([{
           id: authData.user.id,
-          email: email,
-          display_name: name,
-          role: 'user', // Default role
-          created_at: Date.now(),
-          updated_at: Date.now()
+          email: normalizedEmail,
+          display_name: name.trim(),
+          role: normalizedEmail === 'kisakyearon72@gmail.com' ? 'admin' : 'user',
+          created_at: Date.now()
         }]);
         
         if (dbError) {
           console.error("Failed to insert user profile:", dbError);
-          // Don't throw, they are authenticated, profile might just be missing
         }
       }
 

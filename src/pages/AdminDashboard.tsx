@@ -37,8 +37,9 @@ export function AdminDashboard() {
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     if (!user) return;
+    const currentAdminId = user.id || user.uid;
     try {
-      await updateUserRole(userId, newRole, user.uid);
+      await updateUserRole(userId, newRole, currentAdminId);
       setUsers(users.map(u => u.id === userId ? { ...u, role: newRole as any } : u));
     } catch (err: any) {
       alert("Failed to update role: " + err.message);
@@ -47,8 +48,9 @@ export function AdminDashboard() {
 
   const handleDeleteUser = async (userId: string) => {
     if (!user || !confirm('Are you sure you want to delete this user?')) return;
+    const currentAdminId = user.id || user.uid;
     try {
-      await deleteUserRecord(userId, user.uid);
+      await deleteUserRecord(userId, currentAdminId);
       setUsers(users.filter(u => u.id !== userId));
     } catch (err: any) {
       alert("Failed to delete user: " + err.message);

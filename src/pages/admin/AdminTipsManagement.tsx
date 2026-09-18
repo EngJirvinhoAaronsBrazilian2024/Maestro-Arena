@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getTips, createTip, updateTip, deleteTip } from '../../services/tipsService';
 import { Tip, TipCategory, TipStatus } from '../../types/tips';
 import { useAuth } from '../../context/AuthContext';
+import { formatLocalDate, parseDateInputToTimestamp } from '../../lib/dateUtils';
 import { Target, Plus, Trash2, Edit2, Calendar, FileText, ChevronRight, CheckCircle2, AlertCircle, HelpCircle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
@@ -23,11 +24,7 @@ export function AdminTipsManagement() {
   const [bookingCode, setBookingCode] = useState('');
   const [analysis, setAnalysis] = useState('');
   const [status, setStatus] = useState<TipStatus>('pending');
-  const [publishDate, setPublishDate] = useState(() => {
-    const d = new Date();
-    d.setHours(0,0,0,0);
-    return d.toISOString().split('T')[0];
-  });
+  const [publishDate, setPublishDate] = useState(() => formatLocalDate());
 
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -55,8 +52,7 @@ export function AdminTipsManagement() {
       setBookingCode(tip.bookingCode || '');
       setAnalysis(tip.analysis || '');
       setStatus(tip.status);
-      const d = new Date(tip.publishDate);
-      setPublishDate(d.toISOString().split('T')[0]);
+      setPublishDate(formatLocalDate(new Date(tip.publishDate)));
     } else {
       setEditingId(null);
       setCategory('single');
@@ -69,6 +65,7 @@ export function AdminTipsManagement() {
       setBookingCode('');
       setAnalysis('');
       setStatus('pending');
+      setPublishDate(formatLocalDate());
     }
     setIsFormOpen(true);
   };
@@ -91,7 +88,7 @@ export function AdminTipsManagement() {
         bookingCode: bookingCode || undefined,
         analysis,
         status,
-        publishDate: new Date(publishDate).getTime()
+        publishDate: parseDateInputToTimestamp(publishDate)
       };
 
       if (editingId) {

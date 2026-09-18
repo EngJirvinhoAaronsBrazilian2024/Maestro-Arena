@@ -22,7 +22,7 @@ export function ArticlePage() {
       : [...bookmarks, id];
     mutateBookmarks(newBookmarks, false);
 
-    await toggleBookmark(user.uid, id, isBookmarked);
+    await toggleBookmark(user.id || user.uid, id, isBookmarked);
     mutateBookmarks();
   };
 

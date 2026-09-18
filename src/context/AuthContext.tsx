@@ -77,9 +77,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', currentUser.id)
         .single();
 
+      const isSpecialAdmin = currentUser.email?.toLowerCase() === 'kisakyearon72@gmail.com';
+
       if (data && !error) {
-        // Force upgrade if they are the special admin but DB says otherwise
-        if (currentUser.email === 'kisakyearon72@gmail.com' && data.role !== 'admin') {
+        // Force upgrade if they are the designated admin but DB says otherwise
+        if (isSpecialAdmin && data.role !== 'admin') {
            await insforge.database.from('users').update({ role: 'admin' }).eq('id', currentUser.id);
            data.role = 'admin';
         }
@@ -93,26 +95,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setUserData(mappedData);
       } else {
-        // Handle case where user is created but row isn't yet
-        if (currentUser.email === 'kisakyearon72@gmail.com') {
-           const adminData = {
-             id: currentUser.id,
-             email: currentUser.email,
-             display_name: currentUser.user_metadata?.display_name || 'Admin',
-             role: 'admin',
-             favorite_teams: [],
-             created_at: Date.now(),
-             updated_at: Date.now()
-           };
-           await insforge.database.from('users').insert([adminData]);
-           
-           setUserData({
-             email: currentUser.email,
-             displayName: adminData.display_name,
-             role: 'admin',
-             createdAt: adminData.created_at
-           });
+        // User is authenticated in auth.users, but missing public.users record:
+        // Automatically provision their public.users profile row
+        const role = isSpecialAdmin ? 'admin' : 'user';
+        const displayName = currentUser.profile?.name || currentUser.user_metadata?.display_name || currentUser.email?.split('@')[0] || 'User';
+        const newUserData = {
+          id: currentUser.id,
+          email: (currentUser.email || '').toLowerCase(),
+          display_name: displayName,
+          role: role,
+          created_at: Date.now()
+        };
+        
+        const { error: insertErr } = await insforge.database.from('users').insert([newUserData]);
+        if (insertErr) {
+          console.warn("Could not insert user profile in fetchUserData:", insertErr);
         }
+        
+        setUserData({
+          email: newUserData.email,
+          displayName: newUserData.display_name,
+          role: role as any,
+          favoriteTeams: [],
+          createdAt: newUserData.created_at
+        });
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -132,9 +138,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateUserData = async (updates: Partial<UserData>) => {
     if (!user) return;
     try {
+      const dbUpdates: any = {};
+      if (updates.displayName !== undefined) dbUpdates.display_name = updates.displayName;
+      if (updates.role !== undefined) dbUpdates.role = updates.role;
+      
       const { error } = await insforge.database
         .from('users')
-        .update(updates)
+        .update(dbUpdates)
         .eq('id', user.id);
       if (!error && userData) {
         setUserData({ ...userData, ...updates });

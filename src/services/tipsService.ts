@@ -1,5 +1,6 @@
 import { Tip, TipCategory, TipStatus } from '../types/tips';
 import { insforge } from '../lib/insforge';
+import { isSameDay } from '../lib/dateUtils';
 
 export async function getTips(date?: number, category?: TipCategory, status?: TipStatus): Promise<Tip[]> {
   try {
@@ -14,7 +15,10 @@ export async function getTips(date?: number, category?: TipCategory, status?: Ti
     }
     
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) {
+      console.error("InsForge getTips query error:", error);
+      throw error;
+    }
     
     let tips: Tip[] = (data || []).map(t => ({
       id: t.id,
@@ -29,15 +33,12 @@ export async function getTips(date?: number, category?: TipCategory, status?: Ti
     }));
 
     if (date) {
-      const targetDate = Number(date);
-      const startOfDay = new Date(targetDate).setHours(0, 0, 0, 0);
-      const endOfDay = new Date(targetDate).setHours(23, 59, 59, 999);
-      tips = tips.filter(t => t.publishDate >= startOfDay && t.publishDate <= endOfDay);
+      tips = tips.filter(t => isSameDay(t.publishDate, date));
     }
     
     return tips;
   } catch (error) {
-    console.error(error);
+    console.error("Error in getTips:", error);
     return [];
   }
 }

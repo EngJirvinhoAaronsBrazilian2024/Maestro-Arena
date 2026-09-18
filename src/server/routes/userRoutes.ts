@@ -29,7 +29,7 @@ router.post('/role', async (req, res) => {
     // 2. Perform the update
     const { error: updateError } = await insforgeAdmin.database
       .from('users')
-      .update({ role: newRole, updated_at: Date.now() })
+      .update({ role: newRole })
       .eq('id', userId);
       
     if (updateError) {

@@ -6,15 +6,15 @@ let adminClient: ReturnType<typeof createAdminClient> | null = null;
 
 export function getInsforgeAdmin() {
   if (!adminClient) {
-    const url = process.env.VITE_INSFORGE_URL;
+    const url = (process.env.VITE_INSFORGE_URL || 'https://gci83gu5.us-east.insforge.app').replace(/\/+$/, '');
     const apiKey = process.env.INSFORGE_API_KEY;
 
-    if (!url || !apiKey) {
-      console.warn("INSFORGE_API_KEY or VITE_INSFORGE_URL is not set. Admin backend operations will fail.");
+    if (!apiKey) {
+      console.warn("INSFORGE_API_KEY is not set. Admin backend operations will fail.");
     }
     
     adminClient = createAdminClient({
-      baseUrl: url || 'https://gci83gu5.us-east.insforge.app',
+      baseUrl: url,
       apiKey: apiKey || 'dummy-key',
     });
   }

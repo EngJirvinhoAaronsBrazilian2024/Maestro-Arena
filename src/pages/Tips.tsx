@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { getTips } from '../services/tipsService';
 import { Tip, TipCategory } from '../types/tips';
 import { Card, CardContent } from '../components/ui/Card';
-import { Calendar, AlertCircle, Info, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { isSameDay } from '../lib/dateUtils';
+import { Calendar, AlertCircle, Info, RefreshCw, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 
 const CATEGORIES: { id: TipCategory; label: string }[] = [
   { id: 'single', label: 'SINGLE' },
@@ -17,7 +18,7 @@ export function Tips() {
   const [category, setCategory] = useState<TipCategory>('single');
   
   // Date selection
-  const [selectedDate, setSelectedDate] = useState<number>(() => new Date().setHours(0,0,0,0));
+  const [selectedDate, setSelectedDate] = useState<number>(() => Date.now());
 
   const fetchTips = async () => {
     setLoading(true);
@@ -26,6 +27,7 @@ export function Tips() {
       const data = await getTips(selectedDate);
       setTips(data);
     } catch (e) {
+      console.error("Error loading tips:", e);
       setError(true);
     } finally {
       setLoading(false);
@@ -38,11 +40,28 @@ export function Tips() {
 
   const filteredTips = useMemo(() => tips.filter(t => t.category === category), [tips, category]);
 
+  // Count tips in each category for the selected date
+  const categoryCounts = useMemo(() => {
+    const counts: Record<TipCategory, number> = {
+      'single': 0,
+      'maestro2+': 0,
+      'odd4+': 0
+    };
+    tips.forEach(t => {
+      if (counts[t.category] !== undefined) {
+        counts[t.category]++;
+      }
+    });
+    return counts;
+  }, [tips]);
+
   const handlePrevDay = () => setSelectedDate(prev => prev - 86400000);
   const handleNextDay = () => setSelectedDate(prev => prev + 86400000);
-  const handleToday = () => setSelectedDate(new Date().setHours(0,0,0,0));
+  const handleToday = () => setSelectedDate(Date.now());
 
-  const isToday = selectedDate === new Date().setHours(0,0,0,0);
+  const isToday = isSameDay(selectedDate, Date.now());
+  const maxFutureDate = Date.now() + 7 * 86400000;
+  const isMaxFuture = selectedDate > maxFutureDate;
   
   const statusColor = (status: string) => {
     switch (status) {
@@ -65,32 +84,74 @@ export function Tips() {
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2 text-white">
           Maestro Arena Tips
         </h1>
-        <p className="text-slate-300 mb-6">Daily football predictions and selections</p>
+        <p className="text-slate-300 mb-6">Daily football predictions and expert selections</p>
         
-        <div className="flex items-center justify-center gap-4 text-sm font-medium">
-          <button onClick={handlePrevDay} className="p-2 hover:bg-slate-800 rounded-full transition"><ChevronLeft size={20}/></button>
-          <div className="bg-slate-800 px-4 py-2 rounded-full border border-slate-700 min-w-[140px]">
+        <div className="flex flex-wrap items-center justify-center gap-3 text-sm font-medium">
+          <button 
+            onClick={handlePrevDay} 
+            className="p-2 hover:bg-slate-800 rounded-full transition"
+            title="Previous Day"
+          >
+            <ChevronLeft size={20}/>
+          </button>
+          
+          <div className="bg-slate-800 px-4 py-2 rounded-full border border-slate-700 min-w-[150px] text-center font-bold">
             {isToday ? "TODAY" : new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
           </div>
-          <button onClick={handleNextDay} className="p-2 hover:bg-slate-800 rounded-full transition" disabled={isToday}><ChevronRight size={20}/></button>
+
+          <button 
+            onClick={handleNextDay} 
+            className="p-2 hover:bg-slate-800 rounded-full transition disabled:opacity-40 disabled:cursor-not-allowed" 
+            disabled={isMaxFuture}
+            title="Next Day"
+          >
+            <ChevronRight size={20}/>
+          </button>
+
+          {!isToday && (
+            <button
+              onClick={handleToday}
+              className="text-xs bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-full transition font-semibold"
+            >
+              Back to Today
+            </button>
+          )}
+
+          <button
+            onClick={fetchTips}
+            className="p-2 hover:bg-slate-800 rounded-full transition text-slate-300 hover:text-white"
+            title="Refresh Tips"
+          >
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+          </button>
         </div>
       </div>
 
-      {/* TABS */}
+      {/* TABS WITH BADGES */}
       <div className="flex bg-white rounded-xl shadow-sm p-1 border border-slate-100 gap-1 overflow-x-auto hide-scrollbar">
-        {CATEGORIES.map(c => (
-          <button
-            key={c.id}
-            onClick={() => setCategory(c.id)}
-            className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm whitespace-nowrap transition-all ${
-              category === c.id 
-                ? 'bg-blue-600 text-white shadow-md' 
-                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            {c.label}
-          </button>
-        ))}
+        {CATEGORIES.map(c => {
+          const count = categoryCounts[c.id];
+          return (
+            <button
+              key={c.id}
+              onClick={() => setCategory(c.id)}
+              className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm whitespace-nowrap transition-all flex items-center justify-center gap-2 ${
+                category === c.id 
+                  ? 'bg-blue-600 text-white shadow-md' 
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <span>{c.label}</span>
+              {count > 0 && (
+                <span className={`text-xs px-2 py-0.5 rounded-full font-extrabold ${
+                  category === c.id ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* CONTENT */}
@@ -108,7 +169,7 @@ export function Tips() {
         ) : error ? (
           <div className="bg-red-50 text-red-600 p-8 rounded-xl text-center border border-red-100">
             <AlertCircle className="mx-auto h-8 w-8 mb-3" />
-            <p className="font-medium mb-4">Unable to load today's tips.</p>
+            <p className="font-medium mb-4">Unable to load tips from the server.</p>
             <button onClick={fetchTips} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center justify-center gap-2 mx-auto">
               <RefreshCw size={16} /> Retry
             </button>
@@ -117,7 +178,25 @@ export function Tips() {
           <div className="bg-white p-10 rounded-xl text-center border border-slate-200 shadow-sm">
             <Calendar className="mx-auto h-12 w-12 text-slate-300 mb-4" />
             <h3 className="text-lg font-bold text-slate-800 mb-2">NO TIPS AVAILABLE</h3>
-            <p className="text-slate-500">There are no Maestro Arena tips available in this category for this date.</p>
+            <p className="text-slate-500 mb-4">
+              There are no {CATEGORIES.find(c => c.id === category)?.label} tips available for this date.
+            </p>
+
+            {/* If tips exist in another category on this date, guide the user */}
+            {tips.length > 0 && (
+              <div className="inline-flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-slate-100 mt-2">
+                <span className="text-xs text-slate-400 font-medium">Tips available in other categories:</span>
+                {CATEGORIES.filter(c => c.id !== category && categoryCounts[c.id] > 0).map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => setCategory(c.id)}
+                    className="text-xs bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 px-3 py-1 rounded-full font-bold transition"
+                  >
+                    View {c.label} ({categoryCounts[c.id]})
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
