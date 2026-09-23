@@ -13,7 +13,9 @@ import { toast } from 'sonner';
 import heroImage from '../assets/images/football_stars_hero_2026_1788809874968.jpg';
 import madridTrioHero from '../assets/images/madrid_trio_hero_1789305202373.jpg';
 import premiumHeroAlt from '../assets/images/premium_hero_players_alt_1789403921046.jpg';
-import lightHeroClean from '../assets/images/light_hero_clean_1789408427982.jpg';
+import nextgenStars2027 from '../assets/images/nextgen_stars_2027_1790182919231.jpg';
+import starsEra2027 from '../assets/images/stars_era_2027_1790182517204.jpg';
+import uclStars2027 from '../assets/images/ucl_stars_2027_1790182533293.jpg';
 import stadiumBg from '../assets/images/stadium_atmosphere_1789303106987.jpg';
 import premiumTexture from '../assets/images/premium_football_texture_1789303121778.jpg';
 import imgCel1 from '../assets/images/player_celebration_1_1788810962003.jpg';
@@ -181,6 +183,36 @@ export function Home() {
   const [polls, setPolls] = useState<any[]>([]);
   const [votedPolls, setVotedPolls] = useState<Record<string, number>>({});
 
+  const HERO_PRESETS = [
+    {
+      id: 'stars-2027',
+      name: '2027 Superstars',
+      subtitle: 'Yamal · Mbappé · Haaland · Bellingham',
+      image: starsEra2027,
+    },
+    {
+      id: 'nextgen-2027',
+      name: 'Next-Gen Stars',
+      subtitle: 'Vinicius Jr · Bukayo Saka · Jamal Musiala',
+      image: nextgenStars2027,
+    },
+    {
+      id: 'ucl-clash',
+      name: 'Champions Arena',
+      subtitle: 'Yamal vs Bellingham European Duel',
+      image: uclStars2027,
+    },
+  ];
+  const [activeHeroPreset, setActiveHeroPreset] = useState(0);
+
+  // Auto-scroll images every 3 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveHeroPreset(prev => (prev + 1) % HERO_PRESETS.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [HERO_PRESETS.length]);
+
   useEffect(() => {
     const loadPolls = async () => {
       try {
@@ -292,32 +324,45 @@ export function Home() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
-                  {/* Premium Hero Section */}
-      <div className="relative w-full overflow-hidden rounded-[24px] shadow-sm border border-slate-200 flex flex-col min-h-[650px] md:min-h-[550px] group mb-10 bg-white">
+                  {/* Premium Hero Section - Fully Responsive Across All Devices */}
+      <div className="relative w-full overflow-hidden rounded-[24px] shadow-sm border border-slate-200 flex flex-col md:min-h-[550px] group mb-10 bg-white">
         
-        {/* Full Background Image (Desktop & Mobile) */}
-        <div className="absolute inset-0 z-0">
-           {/* object-[80%_top] on mobile ensures we see faces at the top. md:object-[right_top] on desktop */}
-           <img src={lightHeroClean} alt="Football Stars" className="w-full h-full object-cover object-[80%_top] md:object-[right_top]" />
+        {/* Full Image Container:
+            - On Mobile (< md): Displays in natural 16:9 widescreen so ALL players are 100% visible edge-to-edge
+            - On Desktop (md:): Spans background with smooth crossfades and subtle bottom-left gradient */}
+        <div className="relative w-full aspect-[16/9] sm:aspect-[16/9] md:aspect-auto md:absolute md:inset-0 z-0 bg-slate-900 overflow-hidden">
+           {HERO_PRESETS.map((preset, idx) => (
+             <img 
+               key={preset.id}
+               src={preset.image} 
+               alt="SportsHub Football Arena"
+               referrerPolicy="no-referrer"
+               className={cn(
+                 "absolute inset-0 w-full h-full object-cover object-center md:object-[right_top] transition-opacity duration-1000 ease-in-out",
+                 activeHeroPreset === idx ? "opacity-100 scale-100" : "opacity-0 scale-105 pointer-events-none"
+               )} 
+             />
+           ))}
            
-           {/* Gradients tailored to keep the top half (faces/shirts) 100% clear */}
-           {/* Desktop: A smooth fade from bottom-left corner targeting only where the text sits */}
+           {/* Desktop Gradients: Subtle fade in bottom-left corner targeting only where text sits */}
            <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/70 to-transparent h-[60%] top-auto bottom-0 hidden md:block pointer-events-none"></div>
            <div className="absolute inset-y-0 left-0 w-[50%] bg-gradient-to-r from-white/95 via-white/40 to-transparent hidden md:block pointer-events-none"></div>
            
-           {/* Mobile: Gradient strictly at the bottom (shorts level) where the text will be placed */}
-           <div className="absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-white/95 via-white/80 to-transparent md:hidden pointer-events-none"></div>
+           {/* Mobile Bottom Blend: Clean gradient transition into the content below */}
+           <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent md:hidden pointer-events-none"></div>
         </div>
 
-        {/* Content Box (Pushed to the bottom) */}
-        <div className="relative z-10 w-full md:w-[70%] flex flex-col items-start justify-end p-6 sm:p-8 md:p-12 lg:p-16 mt-auto">
+        {/* Content Box (Comfortable padding on mobile, smooth overlay on desktop) */}
+        <div className="relative z-10 w-full md:w-[70%] flex flex-col items-start justify-end p-5 sm:p-7 md:p-12 lg:p-16 md:mt-auto">
           
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-50/90 backdrop-blur-md border border-cyan-200/80 mb-4 md:mb-6 w-max shadow-2xs animate-in fade-in slide-in-from-bottom-2 duration-700">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
             </span>
-            <span className="text-xs font-black uppercase tracking-wider text-cyan-800">Live Arena</span>
+            <span className="text-xs font-black uppercase tracking-wider text-cyan-800">
+              Live Arena
+            </span>
           </div>
           
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-3 md:mb-4 leading-[1.15] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">

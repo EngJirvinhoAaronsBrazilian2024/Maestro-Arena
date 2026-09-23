@@ -5,6 +5,18 @@ import { Card, CardContent } from '../components/ui/Card';
 import { isSameDay } from '../lib/dateUtils';
 import { Calendar, AlertCircle, Info, RefreshCw, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '../lib/utils';
+import manUtdTipsBg from '../assets/images/manutd_pl_tips_1790183435495.jpg';
+import arsenalTipsBg from '../assets/images/arsenal_pl_tips_1790184270568.jpg';
+import mancityTipsBg from '../assets/images/mancity_pl_tips_1790184285657.jpg';
+import chelseaTipsBg from '../assets/images/chelsea_pl_tips_1790184303424.jpg';
+
+const TIPS_SLIDES = [
+  { id: 'manutd', team: 'Manchester United', image: manUtdTipsBg },
+  { id: 'arsenal', team: 'Arsenal', image: arsenalTipsBg },
+  { id: 'mancity', team: 'Manchester City', image: mancityTipsBg },
+  { id: 'chelsea', team: 'Chelsea', image: chelseaTipsBg },
+];
 
 const CATEGORIES: { id: TipCategory; label: string }[] = [
   { id: 'single', label: 'SINGLE' },
@@ -17,9 +29,18 @@ export function Tips() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [category, setCategory] = useState<TipCategory>('single');
+  const [activeSlide, setActiveSlide] = useState(0);
   
   // Date selection
   const [selectedDate, setSelectedDate] = useState<number>(() => Date.now());
+
+  // Auto-scroll hero images every 3 seconds with smooth crossfade
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % TIPS_SLIDES.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchTips = async () => {
     setLoading(true);
@@ -110,57 +131,101 @@ export function Tips() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* 100% LIGHT-MODE HEADER */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 text-slate-900 text-center shadow-[0_8px_32px_rgba(15,23,42,0.04)] border border-white/80 relative overflow-hidden">
-        <div className="absolute top-0 right-0 opacity-5 pointer-events-none transform translate-x-4 -translate-y-4">
-          <Calendar size={130} />
-        </div>
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-black uppercase tracking-wider mb-3">
-          Daily Analysis
-        </div>
-        <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2 text-slate-950">
-          Maestro Arena <span className="text-rose-600">Tips</span>
-        </h1>
-        <p className="text-slate-600 text-sm md:text-base font-medium mb-6">Football predictions, market odds and expert analysis</p>
+      {/* MAESTRO ARENA TIPS HERO - FULLY RESPONSIVE WITHOUT CUTTING OFF PLAYERS ON MOBILE */}
+      <div className="relative w-full overflow-hidden rounded-[24px] shadow-sm border border-slate-200 flex flex-col md:min-h-[460px] group mb-6 bg-white">
         
-        <div className="flex flex-wrap items-center justify-center gap-2.5 text-sm font-semibold">
-          <button 
-            onClick={handlePrevDay} 
-            className="p-2 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer"
-            title="Previous Day"
-          >
-            <ChevronLeft size={20}/>
-          </button>
+        {/* Full Image Container:
+            - On Mobile (< md): Displays in true 16:9 widescreen so ALL players are 100% visible without being cut off
+            - On Desktop (md:): Spans the full card background with soft bottom-left fade */}
+        <div className="relative w-full aspect-[16/9] sm:aspect-[16/9] md:aspect-auto md:absolute md:inset-0 z-0 bg-slate-900 overflow-hidden">
+          {TIPS_SLIDES.map((slide, idx) => (
+            <img 
+              key={slide.id}
+              src={slide.image} 
+              alt={slide.team} 
+              referrerPolicy="no-referrer"
+              className={cn(
+                "absolute inset-0 w-full h-full object-cover object-center md:object-[right_top] transition-opacity duration-1000 ease-in-out",
+                activeSlide === idx ? "opacity-100 scale-100" : "opacity-0 scale-105 pointer-events-none"
+              )} 
+            />
+          ))}
           
-          <div className="bg-rose-50/90 text-rose-700 px-4 py-2 rounded-full border border-rose-200/80 min-w-[150px] text-center font-black shadow-2xs">
-            {isToday ? "TODAY" : new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+          {/* Desktop Gradients: Smooth fade in bottom-left corner targeting only where text sits */}
+          <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/70 to-transparent h-[65%] top-auto bottom-0 hidden md:block pointer-events-none"></div>
+          <div className="absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-white/95 via-white/40 to-transparent hidden md:block pointer-events-none"></div>
+          
+          {/* Mobile Bottom Blend: Clean gradient transition into the controls below */}
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent md:hidden pointer-events-none"></div>
+        </div>
+
+        {/* Content Box:
+            - On Mobile: Placed neatly below the image with comfortable padding so players remain completely unobstructed
+            - On Desktop: Overlays smoothly at bottom-left */}
+        <div className="relative z-10 w-full md:w-[65%] lg:w-[60%] flex flex-col items-start justify-end p-5 sm:p-7 md:p-10 md:mt-auto">
+          
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-50/90 backdrop-blur-md border border-rose-200/80 mb-3 w-max shadow-2xs">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+            </span>
+            <span className="text-xs font-black uppercase tracking-wider text-rose-700">
+              Premier League Analysis
+            </span>
           </div>
+          
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight mb-2 leading-[1.15]">
+            <span className="text-slate-950">Maestro Arena </span>
+            <span className="text-rose-600 relative inline-block">
+              Tips
+              <svg className="absolute -bottom-1 w-full h-2 text-rose-200 -z-10" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M0 15 Q 50 0 100 15" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/></svg>
+            </span>
+          </h1>
+          
+          <p className="text-xs sm:text-sm md:text-base text-slate-600 font-medium mb-5 max-w-lg leading-relaxed">
+            Verified football predictions, market odds, and expert matchday breakdowns.
+          </p>
 
-          <button 
-            onClick={handleNextDay} 
-            className="p-2 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer" 
-            disabled={isMaxFuture}
-            title="Next Day"
-          >
-            <ChevronRight size={20}/>
-          </button>
-
-          {!isToday && (
-            <button
-              onClick={handleToday}
-              className="text-xs bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-full transition-colors font-bold shadow-xs cursor-pointer"
+          {/* Date Selector & Controls */}
+          <div className="flex flex-wrap items-center gap-2 text-sm font-semibold w-full sm:w-auto">
+            <button 
+              onClick={handlePrevDay} 
+              className="p-2 sm:p-2.5 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer"
+              title="Previous Day"
             >
-              Back to Today
+              <ChevronLeft size={18}/>
             </button>
-          )}
+            
+            <div className="bg-rose-50/95 text-rose-700 px-3.5 sm:px-5 py-2 rounded-full border border-rose-200/90 flex-1 sm:flex-initial text-center font-black shadow-2xs text-xs sm:text-sm">
+              {isToday ? "TODAY" : new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+            </div>
 
-          <button
-            onClick={fetchTips}
-            className="p-2 bg-white/90 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer"
-            title="Refresh Tips"
-          >
-            <RefreshCw size={16} className={loading ? "animate-spin text-rose-600" : ""} />
-          </button>
+            <button 
+              onClick={handleNextDay} 
+              className="p-2 sm:p-2.5 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer" 
+              disabled={isMaxFuture}
+              title="Next Day"
+            >
+              <ChevronRight size={18}/>
+            </button>
+
+            {!isToday && (
+              <button
+                onClick={handleToday}
+                className="text-xs bg-rose-600 hover:bg-rose-700 text-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full transition-colors font-bold shadow-xs cursor-pointer"
+              >
+                Back to Today
+              </button>
+            )}
+
+            <button
+              onClick={fetchTips}
+              className="p-2 sm:p-2.5 bg-white/90 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer ml-auto sm:ml-0"
+              title="Refresh Tips"
+            >
+              <RefreshCw size={16} className={loading ? "animate-spin text-rose-600" : ""} />
+            </button>
+          </div>
         </div>
       </div>
 
