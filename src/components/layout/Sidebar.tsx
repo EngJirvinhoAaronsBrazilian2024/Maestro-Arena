@@ -26,19 +26,19 @@ export function Sidebar() {
         <img src="/logo.png" alt="Maestro Arena Logo" className="h-16 w-auto object-contain" />
       </div>
       {userData && (
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50 mb-2">
+        <div className="p-4 border-b border-slate-100 bg-slate-50/60 mb-2">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white font-bold shadow-sm">
-              {userData.displayName?.charAt(0).toUpperCase() || (userData.email ? userData.email.charAt(0).toUpperCase() : 'F')}
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-rose-600 to-red-700 text-white font-black shadow-sm shadow-rose-600/25">
+              {(userData?.displayName || userData?.email || 'Fan').charAt(0).toUpperCase()}
             </div>
             <div className="overflow-hidden">
-              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Welcome,</p>
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Welcome,</p>
               <p className="truncate text-sm font-bold text-slate-900">{userData.displayName || (userData.email ? userData.email.split('@')[0] : 'Fan')}</p>
             </div>
           </div>
         </div>
       )}
-      <nav className="flex-1 space-y-2 px-4 overflow-y-auto">
+      <nav className="flex-1 space-y-1.5 px-3 overflow-y-auto">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
@@ -46,15 +46,24 @@ export function Sidebar() {
             className={() => {
               const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
               return cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                'flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200 group',
                 isActive
-                  ? 'bg-green-50 text-green-700  '
-                  : 'text-slate-600 hover:bg-slate-100'
-              )
+                  ? 'bg-rose-50/90 text-rose-700 font-bold shadow-2xs border-l-4 border-rose-600 pl-3'
+                  : 'text-slate-600 hover:text-rose-600 hover:bg-rose-50/40'
+              );
             }}
           >
-            <item.icon className="h-5 w-5" />
-            {item.label}
+            {({ isActive }) => (
+              <>
+                <div className="flex items-center gap-3">
+                  <item.icon className={cn("h-5 w-5 transition-colors", isActive ? "text-rose-600" : "text-slate-500 group-hover:text-rose-600")} />
+                  <span>{item.label}</span>
+                </div>
+                {isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-2xs" />
+                )}
+              </>
+            )}
           </NavLink>
         ))}
         {isEditor && (
@@ -62,14 +71,14 @@ export function Sidebar() {
             to="/editor"
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors',
                 isActive
-                  ? 'bg-purple-50 text-purple-700  '
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-rose-50 text-rose-700 font-bold border-l-4 border-rose-600 pl-3'
+                  : 'text-slate-600 hover:text-rose-600 hover:bg-rose-50/40'
               )
             }
           >
-            <Edit3 className="h-5 w-5 text-purple-500" />
+            <Edit3 className="h-5 w-5 text-rose-600" />
             Editor Dashboard
           </NavLink>
         )}
@@ -78,14 +87,14 @@ export function Sidebar() {
             to="/admin"
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors',
                 isActive || location.pathname.startsWith('/admin')
-                  ? 'bg-red-50 text-red-700  '
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-rose-50 text-rose-700 font-bold border-l-4 border-rose-600 pl-3'
+                  : 'text-slate-600 hover:text-rose-600 hover:bg-rose-50/40'
               )
             }
           >
-            <Shield className="h-5 w-5 text-red-500" />
+            <Shield className="h-5 w-5 text-rose-600" />
             Admin Dashboard
           </NavLink>
         )}
@@ -94,7 +103,7 @@ export function Sidebar() {
       <div className="mt-auto p-4 border-t border-slate-100 bg-slate-50/50">
         <button 
           onClick={logout}
-          className="w-full flex items-center justify-center gap-2 rounded-md bg-white border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors shadow-sm"
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50/30 transition-colors shadow-xs cursor-pointer"
         >
           <LogOut className="h-4 w-4" />
           Logout

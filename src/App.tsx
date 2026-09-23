@@ -46,7 +46,7 @@ const PlaceholderPage = React.lazy(() => import('./pages/PlaceholderPage').then(
 
 const LoadingScreen = () => (
   <div className="flex h-[50vh] items-center justify-center">
-    <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-600 border-t-transparent"></div>
+    <div className="h-8 w-8 animate-spin rounded-full border-4 border-rose-600 border-t-transparent"></div>
   </div>
 );
 
@@ -59,13 +59,42 @@ function LoginRedirect() {
 }
 
 export default function App() {
+  const [isMobile, setIsMobile] = React.useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
-    
-      <AuthProvider>
+    <AuthProvider>
       <NotificationProvider>
         <InstallPrompt />
-        <Toaster position="top-right" richColors />
-        <HotToaster position="top-right" />
+        <Toaster 
+          position={isMobile ? "top-center" : "top-right"} 
+          richColors 
+          closeButton 
+          visibleToasts={2}
+          duration={3500}
+        />
+        <HotToaster 
+          position={isMobile ? "top-center" : "top-right"} 
+          toastOptions={{
+            duration: 3500,
+            style: {
+              borderRadius: '12px',
+              padding: '12px 16px',
+              fontSize: '14px',
+              maxWidth: '380px'
+            }
+          }}
+        />
         <BrowserRouter>
           <ScrollToTop />
           <Suspense fallback={<LoadingScreen />}>

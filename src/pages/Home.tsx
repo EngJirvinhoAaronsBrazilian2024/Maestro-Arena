@@ -312,39 +312,43 @@ export function Home() {
         {/* Content Box (Pushed to the bottom) */}
         <div className="relative z-10 w-full md:w-[70%] flex flex-col items-start justify-end p-6 sm:p-8 md:p-12 lg:p-16 mt-auto">
           
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-slate-200 mb-4 md:mb-6 w-max shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-700">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-800">Live Now</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-50/90 backdrop-blur-md border border-cyan-200/80 mb-4 md:mb-6 w-max shadow-2xs animate-in fade-in slide-in-from-bottom-2 duration-700">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+            </span>
+            <span className="text-xs font-black uppercase tracking-wider text-cyan-800">Live Arena</span>
           </div>
           
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-3 md:mb-4 leading-[1.15] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-            <span className="text-slate-900">The </span>
-            <span className="text-blue-600 relative inline-block">
+            <span className="text-slate-950">The </span>
+            <span className="text-rose-600 relative inline-block">
               Beautiful
-              <svg className="absolute -bottom-1 md:-bottom-2 w-full h-2 md:h-3 text-blue-200 -z-10" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M0 15 Q 50 0 100 15" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/></svg>
+              <svg className="absolute -bottom-1 md:-bottom-2 w-full h-2 md:h-3 text-rose-200 -z-10" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M0 15 Q 50 0 100 15" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/></svg>
             </span>
-            <span className="text-slate-900"> Game <br className="hidden md:block" /></span>
-            <span className="text-red-600 font-extrabold italic pr-1"> Unites </span>
-            <span className="text-slate-900">Us</span>
+            <span className="text-slate-950"> Game <br className="hidden md:block" /></span>
+            <span className="bg-gradient-to-r from-rose-600 to-red-600 bg-clip-text text-transparent font-extrabold italic pr-1"> Unites </span>
+            <span className="text-slate-950">Us</span>
           </h1>
           
-          <p className="text-base md:text-lg text-slate-700 font-medium mb-6 md:mb-8 max-w-lg leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 drop-shadow-sm">
+          <p className="text-base md:text-lg text-slate-700 font-medium mb-6 md:mb-8 max-w-lg leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 drop-shadow-xs">
             Follow live matches, explore competitions, play quizzes and get the latest football updates all in one place.
           </p>
 
           <div className="flex flex-wrap gap-3 md:gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 w-full sm:w-auto">
             <Link 
               to="/livescore"
-              className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-5 py-3 md:px-6 md:py-3.5 bg-blue-600 text-white font-bold rounded-xl transition-all shadow-md hover:bg-blue-700 hover:-translate-y-0.5 whitespace-nowrap"
+              className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-bold rounded-2xl transition-all shadow-md shadow-cyan-600/25 hover:from-cyan-500 hover:to-teal-500 hover:-translate-y-0.5 whitespace-nowrap cursor-pointer"
             >
+              <Activity className="w-4 h-4" />
               Explore Matches
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link 
               to="/quiz"
-              className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-5 py-3 md:px-6 md:py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-md hover:-translate-y-0.5 shadow-red-500/20 whitespace-nowrap"
+              className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-rose-600 via-rose-600 to-red-600 text-white font-bold rounded-2xl transition-all shadow-md shadow-rose-600/25 hover:from-rose-500 hover:to-red-500 hover:-translate-y-0.5 whitespace-nowrap cursor-pointer"
             >
-              <Trophy className="w-4 h-4 text-white" />
+              <Trophy className="w-4 h-4 text-amber-300" />
               Enter Arena
             </Link>
           </div>
@@ -354,13 +358,16 @@ export function Home() {
       {polls.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full max-w-4xl mx-auto">
           {polls.map(poll => (
-            <div key={poll.id} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group">
+            <div key={poll.id} className="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-slate-200/90 shadow-sm relative overflow-hidden group hover:border-rose-200/80 transition-all">
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Star size={64} className="text-orange-500" />
+                <Star size={64} className="text-amber-500" />
               </div>
               <div className="flex items-center gap-2 mb-3 relative z-10">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Live Fan Poll</span>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                </span>
+                <span className="text-xs font-black uppercase tracking-wider text-cyan-700">Live Fan Poll</span>
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-4 relative z-10 leading-tight">{poll.question}</h3>
               
@@ -374,22 +381,22 @@ export function Home() {
                       disabled={hasVoted}
                       onClick={() => submitVote(poll.id, i)}
                       className={cn(
-                        "w-full text-left p-3 rounded-xl border text-sm font-bold transition-all flex justify-between items-center",
+                        "w-full text-left p-3 rounded-xl border text-sm font-bold transition-all flex justify-between items-center cursor-pointer",
                         hasVoted
                           ? isSelected 
-                            ? "bg-blue-50 border-blue-200 text-blue-700" 
+                            ? "bg-rose-50 border-rose-300 text-rose-800 shadow-2xs" 
                             : "bg-slate-50 border-slate-100 text-slate-500"
-                          : "bg-white border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-700"
+                          : "bg-white/90 border-slate-200 hover:border-rose-300 hover:bg-rose-50/40 text-slate-800"
                       )}
                     >
                       {opt}
-                      {isSelected && <Check size={16} className="text-blue-600" />}
+                      {isSelected && <Check size={16} className="text-rose-600" />}
                     </button>
                   );
                 })}
               </div>
               {votedPolls[poll.id] !== undefined && (
-                <p className="text-xs text-center text-slate-400 mt-4 font-medium uppercase tracking-wider">Vote Recorded</p>
+                <p className="text-xs text-center text-rose-600 mt-4 font-bold uppercase tracking-wider">Vote Recorded</p>
               )}
             </div>
           ))}
@@ -402,14 +409,14 @@ export function Home() {
         {/* Left Column (Main Content: Feed & Live) */}
         <div className="space-y-6 w-full">
           
-                    {/* General Live & Upcoming */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Clock className="h-5 w-5 text-red-500" />
+          {/* General Live & Upcoming */}
+          <Card className="border border-white/80 bg-white/70 backdrop-blur-xl">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-slate-100">
+              <CardTitle className="text-lg font-black text-slate-950 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-rose-600" />
                 World Football
               </CardTitle>
-              <Link to="/livescore" className="text-sm font-medium text-blue-600 hover:underline">
+              <Link to="/livescore" className="text-sm font-bold text-rose-600 hover:text-rose-700 hover:underline">
                 View All
               </Link>
             </CardHeader>
@@ -427,8 +434,8 @@ export function Home() {
               )}
               
               <div className="mt-6">
-                <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5" /> Upcoming Highlights
+                <h3 className="mb-3 text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-2">
+                  <Calendar className="w-3.5 h-3.5 text-cyan-600" /> Upcoming Highlights
                 </h3>
                 {isLoadingUpcoming ? (
                   <div className="grid gap-3 sm:grid-cols-2"><div className="h-20 animate-pulse rounded-lg bg-slate-100"></div></div>
@@ -452,16 +459,16 @@ export function Home() {
         <div className="space-y-6">
           
           {/* Favorites Widget / Team Browser */}
-          <Card className="relative overflow-hidden bg-white">
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+          <Card className="relative overflow-hidden bg-white/75 backdrop-blur-xl border border-white/80 shadow-[0_8px_32px_rgba(15,23,42,0.04)]">
+            <CardHeader className="bg-slate-50/70 border-b border-slate-100">
               <div className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2 text-slate-800">
-                  <Star className="h-4 w-4 text-blue-500 fill-blue-500/20" />
+                <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-900">
+                  <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
                   Your Teams
                 </CardTitle>
                 <button 
                   onClick={() => setShowTeamBrowser(!showTeamBrowser)}
-                  className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm transition-all hover:border-blue-200 hover:shadow"
+                  className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-2xs transition-all hover:border-rose-200 hover:bg-rose-50/50 cursor-pointer"
                 >
                   {showTeamBrowser ? 'Done' : 'Edit Teams'}
                 </button>
@@ -477,7 +484,7 @@ export function Home() {
                       placeholder="Search teams..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all"
                     />
                   </div>
                   
@@ -488,7 +495,7 @@ export function Home() {
                           onClick={() => setExpandedLeague(expandedLeague === league.name ? null : league.name)}
                           className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
                         >
-                          <span className="font-bold text-slate-800 text-sm">{league.name}</span>
+                          <span className="font-bold text-slate-900 text-sm">{league.name}</span>
                           {expandedLeague === league.name || searchQuery ? (
                             <ChevronUp className="h-4 w-4 text-slate-500" />
                           ) : (
@@ -504,19 +511,19 @@ export function Home() {
                                 <button
                                   key={team.id}
                                   onClick={() => toggleFavorite(team)}
-                                  className={`flex items-center justify-between p-2.5 rounded-lg border text-left transition-all ${
+                                  className={`flex items-center justify-between p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
                                     isSelected 
-                                      ? 'border-blue-500 bg-blue-50/50 shadow-sm' 
+                                      ? 'border-rose-400 bg-rose-50/70 shadow-2xs' 
                                       : 'border-transparent hover:bg-slate-50'
                                   }`}
                                 >
                                   <div className="flex items-center gap-3">
                                     <img src={`https://media.api-sports.io/football/teams/${team.id.replace('team_', '').replace('_fr', '')}.png`} alt={team.name} className="w-6 h-6 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                                    <span className={`text-sm font-medium ${isSelected ? 'text-blue-900' : 'text-slate-700'}`}>
+                                    <span className={`text-sm font-bold ${isSelected ? 'text-rose-900' : 'text-slate-800'}`}>
                                       {team.name}
                                     </span>
                                   </div>
-                                  {isSelected && <Check className="h-4 w-4 text-blue-500" />}
+                                  {isSelected && <Check className="h-4 w-4 text-rose-600" />}
                                 </button>
                               );
                             })}
@@ -531,12 +538,12 @@ export function Home() {
               ) : favorites.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {favorites.map(team => (
-                    <div key={team.id} className="group flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-200 pl-2 pr-1.5 py-1.5 rounded-full shadow-sm transition-all">
+                    <div key={team.id} className="group flex items-center gap-2 bg-white hover:bg-rose-50/40 border border-slate-200/90 pl-2 pr-1.5 py-1.5 rounded-full shadow-2xs transition-all">
                       {team.logo ? <img src={team.logo} alt={team.name} className="w-5 h-5 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} /> : <img src={`https://media.api-sports.io/football/teams/${team.id.replace('team_', '').replace('_fr', '')}.png`} alt={team.name} className="w-5 h-5 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />}
-                      <span className="text-xs font-bold text-slate-800">{team.name}</span>
+                      <span className="text-xs font-bold text-slate-900">{team.name}</span>
                       <button 
                         onClick={() => toggleFavorite(team)}
-                        className="p-1 rounded-full hover:bg-slate-200 text-slate-400 hover:text-red-500 transition-colors ml-1"
+                        className="p-1 rounded-full hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors ml-1 cursor-pointer"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -546,11 +553,11 @@ export function Home() {
               ) : (
                 <div className="flex items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
                   <div className="flex flex-col items-center gap-2 text-slate-500">
-                    <Star className="h-6 w-6 text-slate-400 mb-1" />
-                    <p className="font-semibold text-slate-700 text-sm">No teams added</p>
+                    <Star className="h-6 w-6 text-amber-400 mb-1" />
+                    <p className="font-bold text-slate-800 text-sm">No teams added</p>
                     <button 
                       onClick={() => setShowTeamBrowser(true)}
-                      className="mt-2 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-4 py-2 rounded-full transition-colors"
+                      className="mt-2 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/70 border border-rose-200/70 px-4 py-2 rounded-full transition-colors cursor-pointer"
                     >
                       Browse Teams
                     </button>
@@ -561,30 +568,30 @@ export function Home() {
           </Card>
 
           {/* Top News Widget */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 bg-slate-50/50 border-b border-slate-100">
-              <CardTitle className="text-base flex items-center gap-2 text-slate-800">
-                <Trophy className="h-4 w-4 text-yellow-500" />
+          <Card className="border border-white/80 bg-white/75 backdrop-blur-xl shadow-[0_8px_32px_rgba(15,23,42,0.04)]">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 bg-slate-50/70 border-b border-slate-100">
+              <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-900">
+                <Trophy className="h-4 w-4 text-amber-500" />
                 Latest Stories
               </CardTitle>
-              <Link to="/news" className="text-xs font-medium text-blue-600 hover:underline">
+              <Link to="/news" className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline">
                 View All
               </Link>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
               {isLoadingNews ? (
                 <div className="flex h-32 items-center justify-center">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-green-600 border-t-transparent"></div>
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-rose-600 border-t-transparent"></div>
                 </div>
               ) : topNews.length > 0 ? (
                 topNews.map((article, index) => (
                   <React.Fragment key={article.id}>
                     <div className="space-y-1 group">
-                      <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">
+                      <p className="text-[10px] text-rose-600 font-black uppercase tracking-wider">
                         {article.category || 'News'}
                       </p>
                       <Link to={`/news/${article.id}`}>
-                        <h4 className="font-semibold text-sm text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug">
+                        <h4 className="font-bold text-sm text-slate-900 group-hover:text-rose-600 transition-colors line-clamp-2 leading-snug">
                           {article.title}
                         </h4>
                       </Link>

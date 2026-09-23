@@ -80,11 +80,11 @@ export function AdminLayout() {
         <div className="px-6 py-6">
           <div className="rounded-xl bg-slate-50 p-4 border border-slate-100 flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold">
-              {userData.displayName?.charAt(0).toUpperCase() || 'A'}
+              {(userData?.displayName || userData?.email || 'Admin').charAt(0).toUpperCase()}
             </div>
             <div className="overflow-hidden">
-              <p className="truncate text-sm font-bold text-slate-900">{userData.displayName || 'Administrator'}</p>
-              <p className="truncate text-xs text-slate-500">{userData.email}</p>
+              <p className="truncate text-sm font-bold text-slate-900">{userData?.displayName || 'Administrator'}</p>
+              <p className="truncate text-xs text-slate-500">{userData?.email || ''}</p>
             </div>
           </div>
         </div>

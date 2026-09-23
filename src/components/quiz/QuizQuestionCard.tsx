@@ -1,26 +1,56 @@
 import React, { useState, useEffect } from 'react';
-import { QuizQuestion } from '../../types/quiz';
+import { QuizQuestion, QuizCategory } from '../../types/quiz';
 import { cn } from '../../lib/utils';
-import { CheckCircle2, XCircle, HelpCircle, Clock, ChevronRight, Trophy } from 'lucide-react';
+import { 
+  CheckCircle2, 
+  XCircle, 
+  HelpCircle, 
+  Clock, 
+  ChevronRight, 
+  Trophy, 
+  Flame, 
+  Sparkles,
+  Shield,
+  Globe,
+  Users,
+  BookOpen,
+  Flag,
+  Award
+} from 'lucide-react';
 
 interface QuizQuestionCardProps {
   question: QuizQuestion;
   currentNumber: number;
   totalQuestions: number;
   timeRemaining: number | null;
+  maxTime?: number;
   currentScore?: number;
-  category?: string;
+  category?: QuizCategory | 'All' | string;
+  difficulty?: string;
+  userAnswersHistory?: { questionId: string; answer: string; isCorrect: boolean }[];
   onAnswerSubmit: (selectedOption: string) => void;
   onNextQuestion: () => void;
 }
+
+const getCategoryIcon = (cat: string) => {
+  if (cat.includes('World') || cat.includes('FIFA')) return Globe;
+  if (cat.includes('League') || cat.includes('Liga') || cat.includes('Serie') || cat.includes('Clubs') || cat.includes('Bundesliga')) return Shield;
+  if (cat.includes('Players') || cat.includes('Managers')) return Users;
+  if (cat.includes('History') || cat.includes('Records') || cat.includes('Rules')) return BookOpen;
+  if (cat.includes('African')) return Flag;
+  return Trophy;
+};
 
 export function QuizQuestionCard({
   question,
   currentNumber,
   totalQuestions,
   timeRemaining,
+  maxTime = 25,
   currentScore = 0,
   category = 'Mixed',
+  difficulty = 'Medium',
+  userAnswersHistory = [],
   onAnswerSubmit,
   onNextQuestion
 }: QuizQuestionCardProps) {
@@ -28,11 +58,14 @@ export function QuizQuestionCard({
   const [showHint, setShowHint] = useState(false);
   const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
   const [animatingOut, setAnimatingOut] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     setSelectedAnswer(null);
     setShowHint(false);
     setAnimatingOut(false);
+    setImageError(false);
+    // Shuffle options cleanly once per question
     setShuffledOptions([...question.options].sort(() => 0.5 - Math.random()));
   }, [question]);
 
@@ -52,129 +85,257 @@ export function QuizQuestionCard({
     setAnimatingOut(true);
     setTimeout(() => {
       onNextQuestion();
-    }, 300);
+    }, 280);
   };
 
   const isAnswerCorrect = selectedAnswer === question.correctAnswer;
-  const progressPercent = ((currentNumber) / totalQuestions) * 100;
-  
+  const progressPercent = (currentNumber / totalQuestions) * 100;
+  const isTimeLow = timeRemaining !== null && timeRemaining <= 5;
+  const CategoryIcon = getCategoryIcon(category);
+
+  // SVG Circular countdown geometry
+  const radius = 20;
+  const circumference = 2 * Math.PI * radius;
+  const timeProgress = timeRemaining !== null ? Math.max(0, Math.min(1, timeRemaining / (maxTime || 25))) : 1;
+  const strokeOffset = circumference * (1 - timeProgress);
+
   const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 
   return (
     <div className={cn(
-      "w-full max-w-4xl mx-auto space-y-6 transition-all duration-300",
-      animatingOut ? "opacity-0 -translate-x-8" : "animate-in fade-in slide-in-from-right-8 duration-500"
+      "w-full transition-all duration-300",
+      animatingOut ? "opacity-0 -translate-x-6 scale-[0.98]" : "animate-in fade-in slide-in-from-right-6 duration-400"
     )}>
       
-      {/* Top Meta Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-md">
-            <Trophy className="h-5 w-5 text-yellow-400" />
-          </div>
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Maestro Arena</h2>
-            <p className="text-sm font-black text-slate-800">{category === 'All' ? 'Mixed' : category}</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-4 md:gap-8">
-          <div className="text-right">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Question</p>
-            <p className="text-sm font-black text-slate-800">{currentNumber} <span className="text-slate-400">/ {totalQuestions}</span></p>
-          </div>
-          <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
-          <div className="text-right hidden sm:block">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Score</p>
-            <p className="text-sm font-black text-blue-600">{currentScore}</p>
-          </div>
-          
-          {timeRemaining !== null && (
-            <div className={cn(
-              "flex flex-col items-center justify-center w-12 h-12 rounded-full border-4 transition-colors duration-300",
-              timeRemaining <= 5 ? "border-red-500 text-red-600 animate-pulse bg-red-50" : "border-slate-900 text-slate-900"
-            )}>
-              <span className="text-sm font-black leading-none">{timeRemaining}</span>
-            </div>
-          )}
-        </div>
-      </div>
-      
-      {/* Progress Bar */}
-      <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden shadow-inner">
-        <div 
-          className="h-full bg-blue-600 transition-all duration-500 ease-out rounded-full" 
-          style={{ width: `${progressPercent}%` }} 
-        />
-      </div>
+      {/* RESPONSIVE FOOTBALL ARENA QUESTION CARD (Mobile & Desktop) */}
+      <div className="w-full max-w-4xl mx-auto space-y-4 sm:space-y-6">
+      {/* 1. QUIZ HEADER: 100% Light Mode Football Header */}
+      <div className="relative overflow-hidden rounded-[28px] bg-white/80 backdrop-blur-xl border border-white/90 text-slate-900 shadow-[0_8px_32px_rgba(15,23,42,0.04)]">
+        {/* Pitch line graphics & subtle brand glow */}
+        <div className="absolute top-0 right-1/4 w-72 h-72 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-10 -left-10 w-60 h-60 bg-rose-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-      {/* Question Text */}
-      <div className="bg-white rounded-[32px] p-8 md:p-12 shadow-sm border border-slate-100 relative overflow-hidden">
-        {/* Subtle background decoration */}
-        <div className="absolute -right-12 -top-12 opacity-[0.03] text-slate-900 pointer-events-none">
-          <svg width="200" height="200" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" />
-          </svg>
-        </div>
-        
-        {question.image && (
-          <div className="w-full aspect-video md:aspect-[21/9] rounded-2xl overflow-hidden mb-8 bg-slate-100 relative shadow-inner">
-            <img 
-              src={question.image} 
-              alt="Quiz visual" 
-              className="absolute inset-0 w-full h-full object-cover" 
-            />
-          </div>
-        )}
-        
-        <h2 className="text-2xl md:text-4xl font-black text-slate-900 leading-tight mb-2 relative z-10">
-          {question.question}
-        </h2>
-        
-        {question.hint && !selectedAnswer && (
-          <div className="mt-8">
-            {!showHint ? (
-              <button 
-                onClick={() => setShowHint(true)}
-                className="flex items-center gap-2 text-sm text-slate-500 hover:text-blue-600 font-bold transition-colors bg-slate-50 hover:bg-blue-50 px-4 py-2.5 rounded-xl"
-              >
-                <HelpCircle className="w-4 h-4" /> Need a hint?
-              </button>
-            ) : (
-              <div className="p-5 bg-blue-50/50 text-blue-900 rounded-2xl text-sm border border-blue-100 font-medium flex items-start gap-3">
-                <HelpCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold uppercase tracking-wider text-xs block mb-1 text-blue-600">Hint</span>
-                  {question.hint}
+        <div className="relative z-10 p-5 md:p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            {/* Title & Brand */}
+            <div className="flex items-center gap-3.5">
+              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-600 to-red-700 text-white shadow-md shadow-rose-600/25 border border-rose-400/30">
+                <Trophy className="h-6 w-6 text-amber-300" />
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                </span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-950 flex items-center gap-1.5">
+                    Maestro Quiz
+                  </h1>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-cyan-50 text-cyan-800 border border-cyan-200">
+                    Live
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-semibold flex items-center gap-2 mt-0.5">
+                  <span>Test your football knowledge</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-rose-600 font-bold">{difficulty}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Score & Circular Countdown Timer */}
+            <div className="flex items-center gap-4 self-end sm:self-center">
+              {/* Current Score Tag - Gold Accent */}
+              <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-amber-50/80 border border-amber-200/80 shadow-2xs backdrop-blur-md">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-600">
+                  <Flame className="w-4 h-4 fill-amber-500 text-amber-500" />
+                </div>
+                <div className="text-left">
+                  <div className="text-[10px] font-black uppercase tracking-wider text-amber-800">Score</div>
+                  <div className="text-lg font-black leading-none text-slate-950">{currentScore} <span className="text-xs font-bold text-amber-700">pts</span></div>
                 </div>
               </div>
-            )}
+
+              {/* Circular Timer Component */}
+              {timeRemaining !== null && (
+                <div className="relative flex items-center justify-center">
+                  <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 54 54">
+                    {/* Background track */}
+                    <circle
+                      cx="27"
+                      cy="27"
+                      r={radius}
+                      className="stroke-slate-100"
+                      strokeWidth="4"
+                      fill="transparent"
+                    />
+                    {/* Countdown track */}
+                    <circle
+                      cx="27"
+                      cy="27"
+                      r={radius}
+                      stroke={isTimeLow ? '#E11D48' : '#0891B2'}
+                      strokeWidth="4"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={strokeOffset}
+                      strokeLinecap="round"
+                      fill="transparent"
+                      className="transition-all duration-1000 ease-linear"
+                    />
+                  </svg>
+                  <div className={cn(
+                    "absolute flex flex-col items-center justify-center transition-transform",
+                    isTimeLow ? "scale-110 text-rose-600 animate-pulse" : "text-slate-900"
+                  )}>
+                    <span className="text-sm font-black leading-none">{timeRemaining}</span>
+                    <span className="text-[8px] font-black uppercase text-slate-400 leading-none mt-0.5">sec</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Stepper Dots & Current Question Progress */}
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-bold">
+                <CategoryIcon className="w-3.5 h-3.5 text-rose-600" />
+                {category === 'All' ? 'Mixed Arena' : category}
+              </span>
+              <span className="text-slate-500 font-medium">
+                Question <strong className="text-slate-950 font-black">{currentNumber}</strong> of {totalQuestions}
+              </span>
+            </div>
+
+            {/* Micro Question Step Indicators */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+              {Array.from({ length: totalQuestions }).map((_, idx) => {
+                const pastAnswer = userAnswersHistory[idx];
+                const isCurrent = idx === currentNumber - 1;
+                
+                let dotClass = "w-6 h-2 rounded-full transition-all ";
+                if (pastAnswer) {
+                  dotClass += pastAnswer.isCorrect ? "bg-cyan-500 shadow-xs shadow-cyan-500/40" : "bg-rose-500 shadow-xs shadow-rose-500/40";
+                } else if (isCurrent) {
+                  dotClass += "bg-rose-600 ring-2 ring-rose-400/50 scale-110 shadow-xs shadow-rose-600/50 animate-pulse";
+                } else {
+                  dotClass += "bg-slate-200";
+                }
+
+                return (
+                  <div 
+                    key={idx} 
+                    title={`Question ${idx + 1}`}
+                    className={dotClass}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Global Progress Bar on bottom edge */}
+        <div className="h-1.5 w-full bg-slate-100 overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-rose-600 via-rose-500 to-cyan-500 transition-all duration-500 ease-out" 
+            style={{ width: `${progressPercent}%` }} 
+          />
+        </div>
+      </div>
+
+      {/* 2. QUESTION CARD: Deep Navy Typography & Clean Light Card */}
+      <div className="bg-white/85 backdrop-blur-xl rounded-3xl sm:rounded-[32px] p-4 sm:p-6 md:p-10 shadow-[0_8px_32px_rgba(15,23,42,0.04)] border border-white/90 relative overflow-hidden">
+        {/* Subtle decorative football geometry watermark */}
+        <div className="absolute -right-10 -bottom-10 opacity-[0.03] text-slate-950 pointer-events-none">
+          <svg width="240" height="240" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none" />
+            <polygon points="12,7 16,10 14.5,15 9.5,15 8,10" fill="currentColor" opacity="0.4" />
+          </svg>
+        </div>
+
+        {/* Meta tags atop question */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 mb-4 sm:mb-5">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-800 border border-slate-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+              Question {currentNumber}
+            </span>
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] sm:text-xs font-black bg-amber-50 text-amber-800 border border-amber-200">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              10 Pts
+            </span>
+          </div>
+
+          {question.hint && !selectedAnswer && (
+            <button 
+              onClick={() => setShowHint(!showHint)}
+              className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-rose-600 font-bold transition-colors bg-white hover:bg-rose-50 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full border border-slate-200 shadow-2xs cursor-pointer"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-rose-500" />
+              {showHint ? "Hide Tactical Hint" : "Need a Hint?"}
+            </button>
+          )}
+        </div>
+
+        {/* Optional Question Football Image with fallback */}
+        {question.image && !imageError && (
+          <div className="w-full max-h-56 sm:max-h-72 md:max-h-80 rounded-2xl overflow-hidden mb-4 sm:mb-6 bg-slate-100 relative shadow-inner border border-slate-200/80 group">
+            <img 
+              src={question.image} 
+              alt="Question Visual" 
+              onError={() => setImageError(true)}
+              className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" 
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent pointer-events-none"></div>
+            <div className="absolute bottom-2.5 left-3 text-xs font-bold text-white/90 drop-shadow-md flex items-center gap-1.5">
+              <Award className="w-4 h-4 text-amber-300" /> Visual Clue
+            </div>
+          </div>
+        )}
+
+        {/* Question Text - Deep Navy / Indigo */}
+        <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black text-slate-950 leading-[1.3] tracking-tight relative z-10 mb-2">
+          {question.question}
+        </h2>
+
+        {/* Tactical Hint Dropdown */}
+        {showHint && question.hint && (
+          <div className="mt-4 sm:mt-5 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-950 text-xs sm:text-sm font-medium flex items-start gap-2.5 sm:gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </div>
+            <div>
+              <span className="font-extrabold uppercase tracking-wider text-[10px] sm:text-xs block mb-0.5 text-amber-800">Tactical Coach Hint</span>
+              <p className="text-amber-900 leading-relaxed">{question.hint}</p>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Options */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      {/* 3. ANSWER OPTIONS: Interactive Football Gaming Cards with Electric Aqua for correct */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5 md:gap-4">
         {shuffledOptions.map((option, index) => {
           const isSelected = selectedAnswer === option;
           const isCorrectOption = option === question.correctAnswer;
           
-          let btnClass = "w-full text-left p-5 md:p-6 rounded-2xl border-2 transition-all duration-300 text-lg md:text-xl font-bold flex items-center gap-4 relative overflow-hidden outline-none ";
-          let labelClass = "flex items-center justify-center w-10 h-10 rounded-xl text-sm shrink-0 font-black transition-colors ";
-          
+          let btnClass = "w-full text-left p-3.5 sm:p-4 md:p-5 rounded-2xl border-2 transition-all duration-200 text-sm sm:text-base md:text-lg font-bold flex items-center gap-3 sm:gap-4 relative overflow-hidden outline-none cursor-pointer min-h-[52px] ";
+          let labelBadgeClass = "flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl text-xs sm:text-sm shrink-0 font-black transition-all ";
+
           if (!selectedAnswer) {
-            btnClass += "border-slate-100 bg-white shadow-sm hover:border-slate-300 hover:bg-slate-50 text-slate-800 focus:ring-4 focus:ring-slate-100 cursor-pointer hover:-translate-y-1";
-            labelClass += "bg-slate-100 text-slate-500";
+            // Idle state before answer
+            btnClass += "bg-white/90 border-slate-200/90 hover:border-cyan-400 hover:bg-cyan-50/30 text-slate-800 shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0";
+            labelBadgeClass += "bg-slate-100 text-slate-700 border border-slate-200";
           } else {
+            // Evaluated states after answer: Aqua for correct, Coral/Rose for warning incorrect
             if (isCorrectOption) {
-              btnClass += "border-green-500 bg-green-50 text-green-900 shadow-sm z-10 scale-[1.02]";
-              labelClass += "bg-green-500 text-white";
+              btnClass += "border-cyan-500 bg-cyan-50/90 text-cyan-950 shadow-md shadow-cyan-500/15 scale-[1.01] ring-2 ring-cyan-400/40";
+              labelBadgeClass += "bg-cyan-600 text-white shadow-2xs";
             } else if (isSelected && !isCorrectOption) {
-              btnClass += "border-red-500 bg-red-50 text-red-900 shadow-sm animate-in shake";
-              labelClass += "bg-red-500 text-white";
+              btnClass += "border-rose-400 bg-rose-50/90 text-rose-950 shadow-md shadow-rose-500/15 shake";
+              labelBadgeClass += "bg-rose-600 text-white shadow-2xs";
             } else {
-              btnClass += "border-slate-100 bg-white opacity-40 text-slate-400";
-              labelClass += "bg-slate-100 text-slate-400";
+              btnClass += "border-slate-100 bg-slate-50/50 opacity-45 text-slate-400 cursor-not-allowed";
+              labelBadgeClass += "bg-slate-100 text-slate-400";
             }
           }
 
@@ -184,20 +345,27 @@ export function QuizQuestionCard({
               disabled={selectedAnswer !== null}
               onClick={() => handleOptionClick(option)}
               className={btnClass}
+              type="button"
             >
-              <div className={labelClass}>
+              {/* Option Key Letter (A, B, C, D) */}
+              <div className={labelBadgeClass}>
                 {OPTION_LABELS[index] || String.fromCharCode(65 + index)}
               </div>
-              <span className="flex-1 leading-snug">{option}</span>
+
+              {/* Option Text */}
+              <span className="flex-1 leading-snug break-words pr-7 sm:pr-8">
+                {option}
+              </span>
               
+              {/* Status Icons */}
               {selectedAnswer && isCorrectOption && (
-                <div className="absolute right-4 w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0 animate-in zoom-in">
-                  <CheckCircle2 className="w-6 h-6 text-green-600" />
+                <div className="absolute right-3 sm:right-4 w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center shrink-0 animate-in zoom-in-75 duration-200">
+                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               )}
               {selectedAnswer && isSelected && !isCorrectOption && (
-                <div className="absolute right-4 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0 animate-in zoom-in">
-                  <XCircle className="w-6 h-6 text-red-600" />
+                <div className="absolute right-3 sm:right-4 w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 animate-in zoom-in-75 duration-200">
+                  <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               )}
             </button>
@@ -205,34 +373,50 @@ export function QuizQuestionCard({
         })}
       </div>
 
-      {/* Explanation & Next Button */}
+      {/* 4. EXPLANATION & ACTION CARD */}
       {selectedAnswer && (
-        <div className="mt-8 animate-in fade-in slide-in-from-bottom-8 duration-500 bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex flex-col md:flex-row gap-6 items-center">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-3">
-              {isAnswerCorrect ? (
-                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center"><CheckCircle2 className="w-7 h-7 text-green-600" /></div>
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center"><XCircle className="w-7 h-7 text-red-600" /></div>
-              )}
-              <h3 className={cn("font-black text-2xl md:text-3xl", isAnswerCorrect ? "text-green-600" : "text-red-600")}>
-                {isAnswerCorrect ? 'Correct!' : (selectedAnswer === '__TIMEOUT__' ? 'Time\'s Up!' : 'Incorrect!')}
-              </h3>
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 bg-white/90 backdrop-blur-xl p-4 sm:p-6 md:p-8 rounded-3xl sm:rounded-[28px] border border-white/90 shadow-[0_8px_32px_rgba(15,23,42,0.06)] flex flex-col md:flex-row gap-4 sm:gap-6 items-stretch md:items-center justify-between">
+          <div className="flex-1 flex items-start gap-3 sm:gap-4">
+            <div className={cn(
+              "w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs",
+              isAnswerCorrect ? "bg-cyan-100 text-cyan-700" : "bg-rose-100 text-rose-600"
+            )}>
+              {isAnswerCorrect ? <CheckCircle2 className="w-5 h-5 sm:w-7 sm:h-7" /> : <XCircle className="w-5 h-5 sm:w-7 sm:h-7" />}
             </div>
-            {question.explanation && (
-              <p className="text-base font-medium text-slate-600 leading-relaxed md:pr-8">{question.explanation}</p>
-            )}
+            
+            <div className="space-y-1 text-left min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className={cn("font-black text-base sm:text-xl md:text-2xl", isAnswerCorrect ? "text-cyan-800" : "text-rose-700")}>
+                  {isAnswerCorrect ? 'Goal! Correct Answer' : (selectedAnswer === '__TIMEOUT__' ? 'Full Time! Out of Time' : 'Missed Chance! Incorrect')}
+                </h3>
+                {isAnswerCorrect && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black bg-cyan-100 text-cyan-900 shrink-0">
+                    +10 Pts
+                  </span>
+                )}
+              </div>
+              {question.explanation ? (
+                <p className="text-xs sm:text-sm font-medium text-slate-600 leading-relaxed max-w-2xl">
+                  {question.explanation}
+                </p>
+              ) : (
+                <p className="text-xs sm:text-sm text-slate-500">
+                  {isAnswerCorrect ? 'Great football knowledge!' : `The correct answer is: ${question.correctAnswer}`}
+                </p>
+              )}
+            </div>
           </div>
           
           <button
             onClick={handleNext}
-            className="w-full md:w-auto shrink-0 flex items-center justify-center gap-2 bg-slate-900 text-white px-8 py-5 rounded-2xl font-bold text-lg hover:bg-slate-800 shadow-[0_8px_20px_rgba(15,23,42,0.15)] hover:-translate-y-1 transition-all group"
+            className="w-full md:w-auto shrink-0 flex items-center justify-center gap-2.5 bg-gradient-to-r from-rose-600 via-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-black text-sm sm:text-base shadow-md shadow-rose-600/30 active:scale-[0.98] transition-all cursor-pointer group"
           >
-            {currentNumber === totalQuestions ? 'Final Results' : 'Next Question'} 
-            <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+            <span>{currentNumber === totalQuestions ? 'Final Whistle (Results)' : 'Next Question'}</span>
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }

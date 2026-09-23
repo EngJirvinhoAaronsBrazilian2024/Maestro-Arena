@@ -245,7 +245,7 @@ export function H2HQuiz() {
             <p className="text-xs text-slate-500">Q: {opponentState.currentQuestionIndex + 1}/{matchState.questions.length}</p>
           </div>
           <div className="h-10 w-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center font-bold">
-            {opponentState.displayName.charAt(0).toUpperCase()}
+            {(opponentState?.displayName || 'Opponent').charAt(0).toUpperCase()}
           </div>
         </div>
       </div>

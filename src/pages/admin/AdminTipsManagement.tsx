@@ -266,8 +266,8 @@ export function AdminTipsManagement() {
       </AnimatePresence>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {tips.map(tip => (
-          <div key={tip.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow group flex flex-col">
+        {tips.map((tip, tipIdx) => (
+          <div key={`${tip.id || 'tip'}_${tipIdx}`} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow group flex flex-col">
             <div className="p-5 flex-1 flex flex-col">
               <div className="flex justify-between items-start mb-4">
                 <span className="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">{tip.category}</span>

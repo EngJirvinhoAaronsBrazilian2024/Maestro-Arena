@@ -13,7 +13,12 @@ export async function getTips(date?: number, category?: TipCategory, status?: Ti
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data)) {
-        return data;
+        const seen = new Set<string>();
+        return data.filter(t => {
+          if (!t || !t.id || seen.has(t.id)) return false;
+          seen.add(t.id);
+          return true;
+        });
       }
     }
   } catch (err) {
@@ -53,7 +58,12 @@ export async function getTips(date?: number, category?: TipCategory, status?: Ti
       tips = tips.filter(t => isSameDay(t.publishDate, date));
     }
     
-    return tips;
+    const seen = new Set<string>();
+    return tips.filter(t => {
+      if (!t || !t.id || seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
   } catch (error) {
     console.error("Error in getTips fallback:", error);
     return [];

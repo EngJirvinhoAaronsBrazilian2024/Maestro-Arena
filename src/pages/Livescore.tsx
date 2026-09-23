@@ -89,21 +89,21 @@ export function Livescore() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
+          <h1 className="text-3xl font-black tracking-tight text-slate-950 flex items-center gap-3">
             <LiveIndicator /> Live Scores
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm font-medium text-slate-600 mt-1">
             Real-time updates from matches around the world.
           </p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-2">
-          <div className="flex bg-slate-100 p-1 rounded-lg">
+          <div className="flex bg-white/80 border border-slate-200/80 p-1 rounded-xl shadow-2xs">
             <button
               onClick={() => setFilter('All')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filter === 'All' ? 'bg-white text-slate-900 shadow-sm  ' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`px-3.5 py-1.5 text-sm font-bold rounded-lg transition-all cursor-pointer ${filter === 'All' ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-950'}`}
             >
-              All
+              All Matches
             </button>
           </div>
           
@@ -116,7 +116,7 @@ export function Livescore() {
                 setFilter('All');
               }
             }}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium shadow-sm focus:border-blue-500 focus:outline-none"
+            className="rounded-xl border border-slate-200/90 bg-white/90 px-3.5 py-1.5 text-sm font-bold text-slate-800 shadow-2xs focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all cursor-pointer"
           >
             <option value="">Specific League...</option>
             {availableLeagues.map(league => (
@@ -130,26 +130,26 @@ export function Livescore() {
 
       {isLoading ? (
         <div className="flex h-40 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-600 border-t-transparent"></div>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500 border-t-transparent"></div>
         </div>
       ) : isError ? (
-        <div className="rounded-lg bg-red-50 p-6 text-center text-red-600">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-6 text-center text-rose-700 font-medium">
           Failed to load live scores. Please try again later.
         </div>
       ) : groupedAndSortedMatches.length > 0 ? (
         <div className="space-y-8">
           {groupedAndSortedMatches.map((group) => (
             <div key={group.competition.id} className="space-y-3">
-              <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
-                {group.competition.logoUrl ? (
-                  <img src={group.competition.logoUrl} alt={group.competition.name} className="h-6 w-6 object-contain" />
+              <div className="flex items-center gap-3 border-l-4 border-rose-600 pl-3 py-1">
+                {group.competition?.logoUrl ? (
+                  <img src={group.competition.logoUrl} alt={group.competition?.name || 'Competition'} className="h-6 w-6 object-contain" />
                 ) : (
-                  <div className="flex h-6 w-6 items-center justify-center rounded bg-slate-200 text-xs font-bold">
-                    {group.competition.name.charAt(0)}
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-200 text-xs font-bold text-slate-700">
+                    {(group.competition?.name || 'C').charAt(0)}
                   </div>
                 )}
-                <h2 className="text-lg font-bold text-slate-800">
-                  {group.competition.name} <span className="text-sm font-normal text-slate-500">({group.competition.country})</span>
+                <h2 className="text-lg font-bold text-slate-900">
+                  {group.competition?.name || 'Competition'} <span className="text-xs font-semibold text-slate-500">({group.competition?.country || ''})</span>
                 </h2>
               </div>
               <div className="flex flex-col gap-4 w-full max-w-3xl mx-auto">
@@ -161,8 +161,8 @@ export function Livescore() {
           ))}
         </div>
       ) : (
-        <div className="flex h-40 flex-col items-center justify-center rounded-lg bg-slate-50 text-slate-500">
-          <p>No live matches currently in progress for the selected filter.</p>
+        <div className="flex h-40 flex-col items-center justify-center rounded-2xl border border-slate-200/80 bg-white/60 backdrop-blur-md text-slate-500">
+          <p className="font-semibold text-slate-700">No live matches currently in progress for the selected filter.</p>
         </div>
       )}
     </div>

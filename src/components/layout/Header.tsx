@@ -1,12 +1,64 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, User, LogOut, ChevronLeft, Bell, Settings, Check, X } from 'lucide-react';
+import { Search, User, LogOut, ChevronLeft, Bell, Settings, Check, X, Trash2, BellOff, CheckCheck, Megaphone, Newspaper, Target } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
-import { useNotificationSystem } from '../../hooks/useNotificationSystem';
+import { useNotificationSystem, AppNotification } from '../../hooks/useNotificationSystem';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useSearchAll } from '../../services/sports/hooks';
 import { useDebounce } from '../../hooks/useDebounce';
+
+function formatTimeAgo(timestamp: number): string {
+  const diffMs = Date.now() - timestamp;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSec < 60) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function getNotificationIcon(type?: string) {
+  switch (type) {
+    case 'broadcast':
+    case 'alert':
+      return <Megaphone className="w-4 h-4 text-rose-600" />;
+    case 'news':
+      return <Newspaper className="w-4 h-4 text-cyan-600" />;
+    case 'tip':
+      return <Target className="w-4 h-4 text-amber-600" />;
+    case 'goal':
+      return <span className="text-sm">⚽</span>;
+    case 'match':
+      return <span className="text-sm">⏱️</span>;
+    default:
+      return <Bell className="w-4 h-4 text-slate-500" />;
+  }
+}
+
+function getNotificationBadge(type?: string) {
+  switch (type) {
+    case 'broadcast':
+      return { label: 'Announcement', class: 'bg-rose-100 text-rose-700 border border-rose-200/60' };
+    case 'alert':
+      return { label: 'Alert', class: 'bg-rose-100 text-rose-700 border border-rose-200/60' };
+    case 'news':
+      return { label: 'News', class: 'bg-cyan-100 text-cyan-800 border border-cyan-200/60' };
+    case 'tip':
+      return { label: 'Tip', class: 'bg-amber-100 text-amber-800 border border-amber-200/60' };
+    case 'goal':
+      return { label: 'Goal', class: 'bg-rose-100 text-rose-700 border border-rose-200/60' };
+    case 'match':
+      return { label: 'Match', class: 'bg-cyan-100 text-cyan-800 border border-cyan-200/60' };
+    default:
+      return { label: 'Update', class: 'bg-slate-100 text-slate-700 border border-slate-200/60' };
+  }
+}
 
 export function Header() {
   const { user, userData, logout } = useAuth();
@@ -19,7 +71,14 @@ export function Header() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   
-  const { notifications, unreadCount, markAllRead } = useNotificationSystem();
+  const { 
+    notifications, 
+    unreadCount, 
+    markAllRead, 
+    markAsRead, 
+    deleteNotification, 
+    clearAllNotifications 
+  } = useNotificationSystem();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { results: searchResults, isLoading: isSearching } = useSearchAll(debouncedQuery);
 
@@ -56,10 +115,10 @@ export function Header() {
                       {team.logoUrl ? (
                         <img src={team.logoUrl} className="w-8 h-8 object-contain" alt="logo" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold">{team.name.charAt(0)}</div>
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold">{(team.name || 'T').charAt(0)}</div>
                       )}
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-slate-800">{team.name}</span>
+                        <span className="text-sm font-medium text-slate-800">{team.name || 'Team'}</span>
                         {team.country && <span className="text-xs text-slate-400">{team.country}</span>}
                       </div>
                     </div>
@@ -68,7 +127,7 @@ export function Header() {
                         e.stopPropagation(); 
                         toggleFavorite({ id: team.id, name: team.name, logo: team.logoUrl, type: 'team' }); 
                       }}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-colors ${isFavorite(team.id) ? 'bg-blue-50 border-blue-200 text-blue-600' : 'hover:bg-slate-100 border-slate-200 text-slate-600'}`}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-colors ${isFavorite(team.id) ? 'bg-rose-50 border-rose-200 text-rose-600' : 'hover:bg-slate-100 border-slate-200 text-slate-600'}`}
                     >
                       {isFavorite(team.id) ? <Check className="w-4 h-4" /> : 'Follow'}
                     </button>
@@ -90,10 +149,10 @@ export function Header() {
                       {player.logoUrl ? (
                         <img src={player.logoUrl} className="w-8 h-8 object-contain rounded-full" alt="logo" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold">{player.name.charAt(0)}</div>
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold">{(player.name || 'P').charAt(0)}</div>
                       )}
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-slate-800">{player.name}</span>
+                        <span className="text-sm font-medium text-slate-800">{player.name || 'Player'}</span>
                         {player.country && <span className="text-xs text-slate-400">{player.country}</span>}
                       </div>
                     </div>
@@ -102,7 +161,7 @@ export function Header() {
                         e.stopPropagation(); 
                         toggleFavorite({ id: player.id, name: player.name, logo: player.logoUrl, type: 'player' }); 
                       }}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-colors ${isFavorite(player.id) ? 'bg-blue-50 border-blue-200 text-blue-600' : 'hover:bg-slate-100 border-slate-200 text-slate-600'}`}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-colors ${isFavorite(player.id) ? 'bg-rose-50 border-rose-200 text-rose-600' : 'hover:bg-slate-100 border-slate-200 text-slate-600'}`}
                     >
                       {isFavorite(player.id) ? <Check className="w-4 h-4" /> : 'Follow'}
                     </button>
@@ -124,10 +183,10 @@ export function Header() {
                       {comp.logoUrl ? (
                         <img src={comp.logoUrl} className="w-8 h-8 object-contain" alt="logo" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold">{comp.name.charAt(0)}</div>
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold">{(comp.name || 'C').charAt(0)}</div>
                       )}
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-slate-800">{comp.name}</span>
+                        <span className="text-sm font-medium text-slate-800">{comp.name || 'Competition'}</span>
                         {comp.country && <span className="text-xs text-slate-400">{comp.country}</span>}
                       </div>
                     </div>
@@ -136,7 +195,7 @@ export function Header() {
                         e.stopPropagation(); 
                         toggleFavorite({ id: comp.id, name: comp.name, logo: comp.logoUrl, type: 'competition' }); 
                       }}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-colors ${isFavorite(comp.id) ? 'bg-blue-50 border-blue-200 text-blue-600' : 'hover:bg-slate-100 border-slate-200 text-slate-600'}`}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-colors ${isFavorite(comp.id) ? 'bg-rose-50 border-rose-200 text-rose-600' : 'hover:bg-slate-100 border-slate-200 text-slate-600'}`}
                     >
                       {isFavorite(comp.id) ? <Check className="w-4 h-4" /> : 'Follow'}
                     </button>
@@ -172,7 +231,7 @@ export function Header() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search any team in the world..."
-                className="h-10 w-full rounded-full border border-slate-200 bg-white pl-9 pr-4 text-sm outline-none focus:border-green-500 transition-all"
+                className="h-10 w-full rounded-full border border-slate-200 bg-white pl-9 pr-4 text-sm outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all"
               />
               <button 
                 onClick={() => setSearchQuery('')}
@@ -201,7 +260,7 @@ export function Header() {
               
               {/* Desktop Active Search */}
               <div className="hidden md:flex relative w-full max-w-sm items-center">
-                <Search className="absolute left-2.5 h-4 w-4 text-slate-500" />
+                <Search className="absolute left-2.5 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   value={searchQuery}
@@ -209,7 +268,7 @@ export function Header() {
                   onFocus={() => setSearchFocused(true)}
                   onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
                   placeholder="Search teams, players, leagues..."
-                  className="h-10 w-full rounded-full border border-slate-200 bg-slate-100 pl-9 pr-4 text-sm outline-none focus:border-green-500 focus:bg-white transition-all"
+                  className="h-10 w-full rounded-full border border-slate-200/80 bg-slate-100/80 pl-9 pr-4 text-sm outline-none focus:border-rose-500 focus:bg-white focus:ring-2 focus:ring-rose-500/20 transition-all"
                 />
                 {/* Search Dropdown overlay */}
                 {searchFocused && searchQuery.length > 1 && (
@@ -230,38 +289,128 @@ export function Header() {
                   variant="ghost" 
                   size="sm" 
                   className="px-2 relative"
-                  onClick={() => { setNotifOpen(!notifOpen); setDropdownOpen(false); if (!notifOpen) markAllRead(); }}
+                  onClick={() => { 
+                    const nextState = !notifOpen;
+                    setNotifOpen(nextState); 
+                    setDropdownOpen(false); 
+                    if (nextState) markAllRead(); 
+                  }}
+                  aria-label="Notifications"
                 >
                   <Bell className="h-5 w-5 text-slate-600" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-red-500 flex items-center justify-center text-[9px] font-bold text-white border-2 border-white">
+                    <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-rose-600 flex items-center justify-center text-[9px] font-black text-white border-2 border-white shadow-xs">
                       {unreadCount}
                     </span>
                   )}
                 </Button>
 
                 {notifOpen && (
-                  <div className="absolute right-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden">
-                    <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                      <h3 className="text-sm font-bold text-slate-800">Notifications</h3>
-                    </div>
-                    <div className="max-h-72 overflow-y-auto">
-                      {notifications.length > 0 ? (
-                        notifications.map(notif => (
-                          <div key={notif.id} className="p-3 border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                            <p className="text-xs font-bold text-green-600 mb-1">{notif.title}</p>
-                            <p className="text-sm text-slate-700">{notif.body}</p>
-                            <p className="text-[10px] text-slate-400 mt-1">{new Date(notif.time).toLocaleTimeString()}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-8 text-center text-sm text-slate-500">
-                          <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                          No new notifications
+                  <>
+                    {/* Dark backdrop overlay on phone */}
+                    <div 
+                      className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 md:hidden"
+                      onClick={() => setNotifOpen(false)}
+                    />
+
+                    {/* Centered modal on mobile phone, dropdown on desktop */}
+                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-sm rounded-2xl border border-slate-200 bg-white shadow-2xl z-50 overflow-hidden md:absolute md:top-auto md:left-auto md:right-0 md:translate-x-0 md:translate-y-0 md:mt-2 md:w-88 md:rounded-xl md:shadow-xl">
+                      {/* Header bar with count and Clear All button */}
+                      <div className="p-3.5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Bell className="w-4 h-4 text-rose-600" />
+                          <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
+                          {notifications.length > 0 && (
+                            <span className="text-[11px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">
+                              {notifications.length}
+                            </span>
+                          )}
                         </div>
-                      )}
+                        
+                        <div className="flex items-center gap-1.5">
+                          {notifications.length > 0 && (
+                            <button
+                              onClick={clearAllNotifications}
+                              className="text-[11px] font-semibold text-slate-500 hover:text-rose-600 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Clear all notifications"
+                            >
+                              <Trash2 className="w-3 h-3 text-slate-400 hover:text-rose-500" />
+                              <span>Clear all</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setNotifOpen(false)}
+                            className="p-1 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-600 transition md:hidden"
+                            aria-label="Close notifications"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Notification Items List with Individual Delete */}
+                      <div className="max-h-[60vh] md:max-h-80 overflow-y-auto divide-y divide-slate-100">
+                        {notifications.length > 0 ? (
+                          notifications.map((notif, notifIdx) => {
+                            const badge = getNotificationBadge(notif.type);
+                            return (
+                              <div 
+                                key={`${notif.id || 'notif'}_${notifIdx}`} 
+                                className="group relative p-3.5 hover:bg-slate-50 transition-colors flex items-start justify-between gap-2.5 cursor-pointer"
+                                onClick={() => {
+                                  markAsRead(notif.id);
+                                  if (notif.link) {
+                                    setNotifOpen(false);
+                                    navigate(notif.link);
+                                  }
+                                }}
+                              >
+                                <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                                  <div className="mt-0.5 shrink-0">
+                                    {getNotificationIcon(notif.type)}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${badge.class}`}>
+                                        {badge.label}
+                                      </span>
+                                      <span className="text-[10px] text-slate-400 font-medium">
+                                        {formatTimeAgo(notif.time)}
+                                      </span>
+                                      {!notif.read && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-600 shrink-0 ml-auto mr-1" />
+                                      )}
+                                    </div>
+                                    <p className="text-xs font-bold text-slate-900 leading-snug truncate">{notif.title}</p>
+                                    <p className="text-xs text-slate-600 leading-relaxed mt-0.5 line-clamp-2">{notif.body}</p>
+                                  </div>
+                                </div>
+
+                                {/* Delete one by one button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteNotification(notif.id);
+                                  }}
+                                  title="Delete notification"
+                                  className="p-1 rounded-md text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer"
+                                  aria-label="Delete notification"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="p-8 text-center text-sm text-slate-500">
+                            <BellOff className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                            <p className="font-semibold text-slate-700">No notifications</p>
+                            <p className="text-xs text-slate-400 mt-1">Published updates, news, and match alerts will appear here.</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
 
@@ -279,8 +428,8 @@ export function Header() {
                     className="px-2 flex items-center gap-2"
                     onClick={() => { setDropdownOpen(!dropdownOpen); setNotifOpen(false); }}
                   >
-                    <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-green-400 to-green-600 flex items-center justify-center text-xs font-bold text-white shadow-sm border border-white">
-                      {userData?.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                    <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-rose-600 to-red-700 flex items-center justify-center text-xs font-black text-white shadow-sm border border-white">
+                      {(userData?.displayName || user?.email || 'User').charAt(0).toUpperCase()}
                     </div>
                   </Button>
                   
@@ -291,17 +440,17 @@ export function Header() {
                         <p className="text-xs text-slate-500 truncate">{user.email}</p>
                       </div>
                       <div className="py-1">
-                        <Link to="/profile" className="block px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-green-600" onClick={() => setDropdownOpen(false)}>
+                        <Link to="/profile" className="block px-4 py-2 text-sm font-medium text-slate-700 hover:bg-rose-50 hover:text-rose-600" onClick={() => setDropdownOpen(false)}>
                           Profile
                         </Link>
                         {userData?.role === 'admin' && (
-                          <Link to="/admin" className="block px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-green-600" onClick={() => setDropdownOpen(false)}>
+                          <Link to="/admin" className="block px-4 py-2 text-sm font-medium text-slate-700 hover:bg-rose-50 hover:text-rose-600" onClick={() => setDropdownOpen(false)}>
                             Admin Dashboard
                           </Link>
                         )}
                       </div>
                       <div className="border-t border-slate-100 py-1">
-                        <button onClick={handleLogout} className="flex w-full items-center px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
+                        <button onClick={handleLogout} className="flex w-full items-center px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50">
                           <LogOut className="mr-2 h-4 w-4" />
                           Sign out
                         </button>

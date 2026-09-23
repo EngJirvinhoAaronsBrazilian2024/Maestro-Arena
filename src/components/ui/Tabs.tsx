@@ -24,10 +24,10 @@ export function Tabs({ tabs, defaultTab, className }: TabsProps) {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+              "whitespace-nowrap border-b-2 px-4 py-3 text-sm font-bold transition-all cursor-pointer relative",
               activeTab === tab.id
-                ? "border-green-600 text-green-600  "
-                : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                ? "border-rose-600 text-rose-600 font-extrabold"
+                : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800"
             )}
           >
             {tab.label}

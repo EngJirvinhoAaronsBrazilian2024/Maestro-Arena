@@ -149,8 +149,8 @@ export function AdminNotifications() {
             <p className="text-slate-500 font-medium">No notifications sent yet.</p>
           </div>
         ) : (
-          notifications.map(n => (
-            <div key={n.id} className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
+          notifications.map((n, idx) => (
+            <div key={`${n.id || 'notif'}_${idx}`} className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`w-2 h-2 rounded-full ${n.type === 'alert' ? 'bg-red-500' : n.type === 'warning' ? 'bg-orange-500' : n.type === 'success' ? 'bg-green-500' : 'bg-blue-500'}`}></span>

@@ -244,7 +244,7 @@ export function AdminDashboard() {
                     <td className="p-5">
                       <div className="flex items-center gap-4">
                         <div className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold shadow-sm">
-                          {u.displayName?.charAt(0).toUpperCase() || (u.email ? u.email.charAt(0).toUpperCase() : 'U')}
+                          {(u.displayName || u.email || 'U').charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <div className="font-bold text-slate-900">{u.displayName || 'Unnamed User'}</div>

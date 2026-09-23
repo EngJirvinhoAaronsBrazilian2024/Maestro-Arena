@@ -4,6 +4,7 @@ import { Tip, TipCategory } from '../types/tips';
 import { Card, CardContent } from '../components/ui/Card';
 import { isSameDay } from '../lib/dateUtils';
 import { Calendar, AlertCircle, Info, RefreshCw, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { toast } from 'sonner';
 
 const CATEGORIES: { id: TipCategory; label: string }[] = [
   { id: 'single', label: 'SINGLE' },
@@ -65,43 +66,79 @@ export function Tips() {
   
   const statusColor = (status: string) => {
     switch (status) {
-      case 'won': return 'bg-green-100 text-green-700 border-green-200';
-      case 'lost': return 'bg-red-100 text-red-700 border-red-200';
+      case 'won': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'lost': return 'bg-rose-50 text-rose-700 border-rose-200';
       case 'void': return 'bg-slate-100 text-slate-700 border-slate-200';
-      case 'postponed': return 'bg-orange-100 text-orange-700 border-orange-200';
-      default: return 'bg-blue-50 text-blue-700 border-blue-200'; // pending
+      case 'postponed': return 'bg-amber-50 text-amber-700 border-amber-200';
+      default: return 'bg-cyan-50 text-cyan-800 border-cyan-200'; // pending
+    }
+  };
+
+  const getCategoryStyles = (cat: TipCategory, isActive: boolean) => {
+    switch (cat) {
+      case 'single':
+        return isActive 
+          ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-md shadow-rose-600/25'
+          : 'text-slate-700 hover:text-rose-700 hover:bg-rose-50/60';
+      case 'maestro2+':
+        return isActive 
+          ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-md shadow-cyan-600/25'
+          : 'text-slate-700 hover:text-cyan-700 hover:bg-cyan-50/60';
+      case 'odd4+':
+        return isActive 
+          ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-950 font-black shadow-md shadow-amber-500/25'
+          : 'text-slate-700 hover:text-amber-800 hover:bg-amber-50/60';
+    }
+  };
+
+  const getCategoryCardBorder = (cat: TipCategory) => {
+    switch (cat) {
+      case 'single': return 'border-l-4 border-rose-600';
+      case 'maestro2+': return 'border-l-4 border-cyan-500';
+      case 'odd4+': return 'border-l-4 border-amber-500';
+    }
+  };
+
+  const getCategoryPredictionBox = (cat: TipCategory) => {
+    switch (cat) {
+      case 'single': return 'bg-rose-50/80 border border-rose-200 text-rose-950';
+      case 'maestro2+': return 'bg-cyan-50/80 border border-cyan-200 text-cyan-950';
+      case 'odd4+': return 'bg-amber-50/80 border border-amber-200 text-amber-950';
     }
   };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* HEADER */}
-      <div className="bg-slate-900 rounded-2xl p-6 text-white text-center shadow-lg relative overflow-hidden">
-        <div className="absolute top-0 right-0 opacity-10 transform translate-x-4 -translate-y-4">
-          <Calendar size={120} />
+      {/* 100% LIGHT-MODE HEADER */}
+      <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 text-slate-900 text-center shadow-[0_8px_32px_rgba(15,23,42,0.04)] border border-white/80 relative overflow-hidden">
+        <div className="absolute top-0 right-0 opacity-5 pointer-events-none transform translate-x-4 -translate-y-4">
+          <Calendar size={130} />
         </div>
-        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2 text-white">
-          Maestro Arena Tips
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-black uppercase tracking-wider mb-3">
+          Daily Analysis
+        </div>
+        <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2 text-slate-950">
+          Maestro Arena <span className="text-rose-600">Tips</span>
         </h1>
-        <p className="text-slate-300 mb-6">Daily football predictions and expert selections</p>
+        <p className="text-slate-600 text-sm md:text-base font-medium mb-6">Football predictions, market odds and expert analysis</p>
         
-        <div className="flex flex-wrap items-center justify-center gap-3 text-sm font-medium">
+        <div className="flex flex-wrap items-center justify-center gap-2.5 text-sm font-semibold">
           <button 
             onClick={handlePrevDay} 
-            className="p-2 hover:bg-slate-800 rounded-full transition"
+            className="p-2 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer"
             title="Previous Day"
           >
             <ChevronLeft size={20}/>
           </button>
           
-          <div className="bg-slate-800 px-4 py-2 rounded-full border border-slate-700 min-w-[150px] text-center font-bold">
+          <div className="bg-rose-50/90 text-rose-700 px-4 py-2 rounded-full border border-rose-200/80 min-w-[150px] text-center font-black shadow-2xs">
             {isToday ? "TODAY" : new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
           </div>
 
           <button 
             onClick={handleNextDay} 
-            className="p-2 hover:bg-slate-800 rounded-full transition disabled:opacity-40 disabled:cursor-not-allowed" 
+            className="p-2 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer" 
             disabled={isMaxFuture}
             title="Next Day"
           >
@@ -111,7 +148,7 @@ export function Tips() {
           {!isToday && (
             <button
               onClick={handleToday}
-              className="text-xs bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-full transition font-semibold"
+              className="text-xs bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-full transition-colors font-bold shadow-xs cursor-pointer"
             >
               Back to Today
             </button>
@@ -119,32 +156,29 @@ export function Tips() {
 
           <button
             onClick={fetchTips}
-            className="p-2 hover:bg-slate-800 rounded-full transition text-slate-300 hover:text-white"
+            className="p-2 bg-white/90 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer"
             title="Refresh Tips"
           >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            <RefreshCw size={16} className={loading ? "animate-spin text-rose-600" : ""} />
           </button>
         </div>
       </div>
 
-      {/* TABS WITH BADGES */}
-      <div className="flex bg-white rounded-xl shadow-sm p-1 border border-slate-100 gap-1 overflow-x-auto hide-scrollbar">
+      {/* TABS WITH COHESIVE PALETTE ACCENTS */}
+      <div className="flex bg-white/80 backdrop-blur-md rounded-2xl shadow-2xs p-1.5 border border-white/90 gap-1.5 overflow-x-auto hide-scrollbar">
         {CATEGORIES.map(c => {
           const count = categoryCounts[c.id];
+          const isActive = category === c.id;
           return (
             <button
               key={c.id}
               onClick={() => setCategory(c.id)}
-              className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm whitespace-nowrap transition-all flex items-center justify-center gap-2 ${
-                category === c.id 
-                  ? 'bg-blue-600 text-white shadow-md' 
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-              }`}
+              className={`flex-1 py-3 px-4 rounded-xl font-black text-sm whitespace-nowrap transition-all flex items-center justify-center gap-2 cursor-pointer ${getCategoryStyles(c.id, isActive)}`}
             >
               <span>{c.label}</span>
               {count > 0 && (
-                <span className={`text-xs px-2 py-0.5 rounded-full font-extrabold ${
-                  category === c.id ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700'
+                <span className={`text-xs px-2 py-0.5 rounded-full font-black ${
+                  isActive ? 'bg-black/15 text-current' : 'bg-slate-100 text-slate-700'
                 }`}>
                   {count}
                 </span>
@@ -159,7 +193,7 @@ export function Tips() {
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
-              <div key={i} className="animate-pulse bg-white h-40 rounded-xl border border-slate-100 shadow-sm p-6">
+              <div key={i} className="animate-pulse bg-white/70 h-40 rounded-2xl border border-slate-100 shadow-2xs p-6">
                 <div className="h-4 bg-slate-200 w-1/4 rounded mb-4"></div>
                 <div className="h-8 bg-slate-200 w-3/4 rounded mb-2"></div>
                 <div className="h-4 bg-slate-200 w-1/2 rounded"></div>
@@ -167,30 +201,30 @@ export function Tips() {
             ))}
           </div>
         ) : error ? (
-          <div className="bg-red-50 text-red-600 p-8 rounded-xl text-center border border-red-100">
+          <div className="bg-rose-50 text-rose-700 p-8 rounded-2xl text-center border border-rose-200 font-medium">
             <AlertCircle className="mx-auto h-8 w-8 mb-3" />
-            <p className="font-medium mb-4">Unable to load tips from the server.</p>
-            <button onClick={fetchTips} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center justify-center gap-2 mx-auto">
+            <p className="font-bold mb-4">Unable to load tips from the server.</p>
+            <button onClick={fetchTips} className="px-4 py-2 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition-colors flex items-center justify-center gap-2 mx-auto cursor-pointer">
               <RefreshCw size={16} /> Retry
             </button>
           </div>
         ) : filteredTips.length === 0 ? (
-          <div className="bg-white p-10 rounded-xl text-center border border-slate-200 shadow-sm">
+          <div className="bg-white/80 backdrop-blur-md p-10 rounded-2xl text-center border border-white/90 shadow-2xs">
             <Calendar className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-            <h3 className="text-lg font-bold text-slate-800 mb-2">NO TIPS AVAILABLE</h3>
-            <p className="text-slate-500 mb-4">
+            <h3 className="text-lg font-black text-slate-900 mb-2">NO TIPS AVAILABLE</h3>
+            <p className="text-slate-600 mb-4 text-sm font-medium">
               There are no {CATEGORIES.find(c => c.id === category)?.label} tips available for this date.
             </p>
 
             {/* If tips exist in another category on this date, guide the user */}
             {tips.length > 0 && (
-              <div className="inline-flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-slate-100 mt-2">
-                <span className="text-xs text-slate-400 font-medium">Tips available in other categories:</span>
+              <div className="inline-flex flex-wrap items-center justify-center gap-2 pt-3 border-t border-slate-100 mt-2">
+                <span className="text-xs text-slate-500 font-semibold">Tips available in other categories:</span>
                 {CATEGORIES.filter(c => c.id !== category && categoryCounts[c.id] > 0).map(c => (
                   <button
                     key={c.id}
                     onClick={() => setCategory(c.id)}
-                    className="text-xs bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 px-3 py-1 rounded-full font-bold transition"
+                    className="text-xs bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 px-3 py-1 rounded-full font-bold transition-colors cursor-pointer"
                   >
                     View {c.label} ({categoryCounts[c.id]})
                   </button>
@@ -199,12 +233,12 @@ export function Tips() {
             )}
           </div>
         ) : (
-          <div className="space-y-6">
-            {filteredTips.map((tip) => (
-              <Card key={tip.id} className="overflow-hidden hover:shadow-md transition-shadow border-slate-200">
-                <div className="bg-slate-50 px-5 py-3 border-b border-slate-100 flex justify-between items-center text-sm font-medium text-slate-500">
-                  <span className="uppercase tracking-wider">{CATEGORIES.find(cat => cat.id === tip.category)?.label || tip.category}</span>
-                  <span className={`px-2.5 py-0.5 rounded-full border text-xs font-bold uppercase tracking-wide ${statusColor(tip.status)}`}>
+          <div className="space-y-5">
+            {filteredTips.map((tip, tipIdx) => (
+              <Card key={`${tip.id || 'tip'}_${tipIdx}`} className={`overflow-hidden hover:shadow-lg transition-all border-slate-200/90 bg-white/85 ${getCategoryCardBorder(tip.category)}`}>
+                <div className="bg-slate-50/70 px-5 py-3 border-b border-slate-100 flex justify-between items-center text-sm font-bold text-slate-700">
+                  <span className="uppercase tracking-wider font-extrabold">{CATEGORIES.find(cat => cat.id === tip.category)?.label || tip.category}</span>
+                  <span className={`px-2.5 py-0.5 rounded-full border text-xs font-black uppercase tracking-wide ${statusColor(tip.status)}`}>
                     {tip.status}
                   </span>
                 </div>
@@ -213,45 +247,45 @@ export function Tips() {
                     {tip.matches.map((match, idx) => (
                       <div key={idx} className="p-5 flex flex-col md:flex-row gap-4 items-center md:items-stretch">
                         <div className="flex-1 flex flex-col justify-center items-center md:items-start text-center md:text-left">
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{match.competition}</p>
+                          <p className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-2">{match.competition}</p>
                           <div className="flex items-center gap-3 w-full justify-center md:justify-start">
                             {match.homeLogo && <img src={match.homeLogo} alt="" className="w-8 h-8 object-contain" />}
-                            <span className="font-bold text-slate-800 text-lg">{match.homeTeam}</span>
+                            <span className="font-bold text-slate-900 text-lg">{match.homeTeam}</span>
                           </div>
-                          <div className="text-slate-400 text-sm font-medium my-1">vs</div>
+                          <div className="text-slate-400 text-xs font-bold uppercase tracking-widest my-1">vs</div>
                           <div className="flex items-center gap-3 w-full justify-center md:justify-start">
                             {match.awayLogo && <img src={match.awayLogo} alt="" className="w-8 h-8 object-contain" />}
-                            <span className="font-bold text-slate-800 text-lg">{match.awayTeam}</span>
+                            <span className="font-bold text-slate-900 text-lg">{match.awayTeam}</span>
                           </div>
                           {match.kickoff && (
-                            <p className="text-xs text-slate-500 mt-3 flex items-center gap-1">
-                              <Calendar size={12} /> {new Date(match.kickoff).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            <p className="text-xs text-slate-500 font-semibold mt-3 flex items-center gap-1">
+                              <Calendar size={12} className="text-cyan-600" /> {new Date(match.kickoff).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                             </p>
                           )}
                         </div>
-                        <div className="w-full md:w-auto min-w-[200px] flex flex-col justify-center border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-5">
-                          <div className="bg-blue-50 text-blue-900 rounded-lg p-3 text-center">
-                            <p className="text-xs font-semibold text-blue-600/70 uppercase mb-1">{match.market || 'Prediction'}</p>
-                            <p className="font-bold text-[15px] leading-tight">{match.prediction}</p>
+                        <div className="w-full md:w-auto min-w-[210px] flex flex-col justify-center border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-5">
+                          <div className={`rounded-xl p-3.5 text-center shadow-2xs ${getCategoryPredictionBox(tip.category)}`}>
+                            <p className="text-[11px] font-black uppercase tracking-wider opacity-75 mb-1">{match.market || 'Prediction'}</p>
+                            <p className="font-black text-base leading-tight">{match.prediction}</p>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
                   {(tip.odds || tip.analysis || tip.bookingCode) && (
-                    <div className="bg-slate-50 p-4 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-3">
+                    <div className="bg-slate-50/80 p-4 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-3">
                       {tip.analysis && <p className="text-sm text-slate-600 italic max-w-lg">"{tip.analysis}"</p>}
                       <div className="ml-auto flex items-center gap-3">
                         {tip.bookingCode && (
-                          <div className="flex items-center gap-2 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg font-bold shadow-sm border border-blue-200">
-                            <span className="text-xs uppercase text-blue-600">Booking Code:</span>
-                            <span className="font-mono tracking-wider">{tip.bookingCode}</span>
+                          <div className="flex items-center gap-2 bg-cyan-50 text-cyan-950 px-3 py-1.5 rounded-xl font-bold shadow-2xs border border-cyan-200">
+                            <span className="text-xs uppercase font-black text-cyan-700">Booking Code:</span>
+                            <span className="font-mono tracking-wider font-extrabold">{tip.bookingCode}</span>
                             <button 
                               onClick={() => {
                                 navigator.clipboard.writeText(tip.bookingCode!);
-                                alert('Booking code copied: ' + tip.bookingCode);
+                                toast.success('Booking code copied: ' + tip.bookingCode);
                               }}
-                              className="ml-1 text-blue-600 hover:text-blue-800 transition-colors"
+                              className="ml-1 text-cyan-700 hover:text-cyan-900 transition-colors cursor-pointer"
                               title="Copy Booking Code"
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
@@ -259,7 +293,7 @@ export function Tips() {
                           </div>
                         )}
                         {tip.odds && (
-                          <div className="bg-amber-100 text-amber-900 px-4 py-1.5 rounded-lg font-bold shadow-sm border border-amber-200">
+                          <div className="bg-amber-50 text-amber-950 px-4 py-1.5 rounded-xl font-black shadow-2xs border border-amber-300">
                             ODDS: {tip.odds.toFixed(2)}
                           </div>
                         )}

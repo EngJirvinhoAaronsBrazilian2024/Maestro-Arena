@@ -60,11 +60,11 @@ export function MyFeed() {
           {favorites.filter(f => f.type === 'team').map(team => (
             <div key={team.id} className="flex-shrink-0 flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-200 pl-2 pr-1.5 py-1.5 rounded-full shadow-sm transition-all">
               {team.logo ? (
-                <img src={team.logo} alt={team.name} className="w-6 h-6 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                <img src={team.logo} alt={team.name || 'Team'} className="w-6 h-6 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
               ) : (
-                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">{team.name.charAt(0)}</div>
+                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">{(team.name || 'T').charAt(0)}</div>
               )}
-              <span className="text-sm font-bold text-slate-800">{team.name}</span>
+              <span className="text-sm font-bold text-slate-800">{team.name || 'Team'}</span>
             </div>
           ))}
         </div>
