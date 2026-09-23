@@ -40,6 +40,19 @@ import worldCupImg from '../assets/images/football_slide_world_cup_1788810581191
 import playerHeroImg from '../assets/images/football_stars_hero_2026_1788809874968.jpg';
 import trophyLiftImg from '../assets/images/team_lifting_trophy_1_1788810980124.jpg';
 
+// Quiz & Competition images for rotating hero
+import uclQuizBg from '../assets/images/quiz_ucl_trophy_1790185490017.jpg';
+import worldCupQuizBg from '../assets/images/quiz_world_cup_1790185501476.jpg';
+import premierLeagueQuizBg from '../assets/images/quiz_premier_league_1790185513108.jpg';
+import superstarsQuizBg from '../assets/images/quiz_superstars_arena_1790185526312.jpg';
+
+const QUIZ_HERO_SLIDES = [
+  { id: 'ucl', title: 'UEFA Champions League Glory', image: uclQuizBg },
+  { id: 'worldcup', title: 'FIFA World Cup Final', image: worldCupQuizBg },
+  { id: 'pl', title: 'Premier League Title Race', image: premierLeagueQuizBg },
+  { id: 'arena', title: 'Championship Arena & Legends', image: superstarsQuizBg },
+];
+
 const CATEGORIES: QuizCategory[] = [
   'World Football', 'Premier League', 'La Liga', 'Serie A', 'Bundesliga', 
   'UEFA Champions League', 'UEFA Europa League', 'FIFA World Cup', 
@@ -111,6 +124,16 @@ export function FootballQuiz() {
   const [leaderboard, setLeaderboard] = useState<QuizResult[]>([]);
   const [leaderboardTab, setLeaderboardTab] = useState<'solo' | 'h2h'>('solo');
   const [finalResult, setFinalResult] = useState<QuizResult | null>(null);
+
+  // Rotating hero slides state & 3-second auto-scroll interval
+  const [activeHeroSlide, setActiveHeroSlide] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveHeroSlide(prev => (prev + 1) % QUIZ_HERO_SLIDES.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Transition animation state
   const [transitioning, setTransitioning] = useState(false);
@@ -227,72 +250,77 @@ export function FootballQuiz() {
         {/* UNIFIED RESPONSIVE FOOTBALL ARENA: KICKOFF BUTTON AFTER SELECTION */}
         <div className="w-full max-w-6xl mx-auto space-y-5 sm:space-y-8 pb-16 min-w-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
           
-          {/* 1. HERO BANNER: Maestro Arena Football Atmosphere (100% Light Mode) */}
-          <div className="relative rounded-2xl sm:rounded-[36px] overflow-hidden bg-white/80 backdrop-blur-xl text-slate-950 shadow-[0_8px_32px_rgba(15,23,42,0.04)] border border-white/90 w-full min-w-0">
-            <div className="absolute inset-0 z-0">
-              <img 
-                src={stadiumBg} 
-                alt="Stadium Atmosphere" 
-                className="w-full h-full object-cover object-center opacity-10 filter contrast-125"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-transparent"></div>
-              <div className="absolute -top-12 -right-12 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none"></div>
-              <div className="absolute -bottom-12 -left-12 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          {/* 1. HERO BANNER: Maestro Arena Football Quiz & Competitions */}
+          <div className="relative w-full overflow-hidden rounded-[24px] sm:rounded-[32px] shadow-sm border border-slate-200 flex flex-col md:min-h-[460px] group mb-6 bg-white">
+            
+            {/* Full Image Container:
+                - On Mobile (< md): Displays in true 16:9 widescreen so trophies and competition visuals are 100% visible without being cut off
+                - On Desktop (md:): Spans the full card background with soft bottom-left fade */}
+            <div className="relative w-full aspect-[16/9] sm:aspect-[16/9] md:aspect-auto md:absolute md:inset-0 z-0 bg-slate-900 overflow-hidden">
+              {QUIZ_HERO_SLIDES.map((slide, idx) => (
+                <img 
+                  key={slide.id}
+                  src={slide.image} 
+                  alt={slide.title} 
+                  referrerPolicy="no-referrer"
+                  className={cn(
+                    "absolute inset-0 w-full h-full object-cover object-center md:object-[right_top] transition-opacity duration-1000 ease-in-out",
+                    activeHeroSlide === idx ? "opacity-100 scale-100" : "opacity-0 scale-105 pointer-events-none"
+                  )} 
+                />
+              ))}
+              
+              {/* Desktop Gradients: Smooth fade in bottom-left corner targeting only where text and buttons sit */}
+              <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/70 to-transparent h-[65%] top-auto bottom-0 hidden md:block pointer-events-none"></div>
+              <div className="absolute inset-y-0 left-0 w-[58%] bg-gradient-to-r from-white/95 via-white/40 to-transparent hidden md:block pointer-events-none"></div>
+              
+              {/* Mobile Bottom Blend: Clean gradient transition into the controls below */}
+              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent md:hidden pointer-events-none"></div>
             </div>
 
-            <div className="relative z-10 p-4 sm:p-8 md:p-14 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8">
-              <div className="text-center md:text-left max-w-2xl w-full min-w-0">
-                <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-rose-50 backdrop-blur-md border border-rose-200/80 mb-3 sm:mb-4 shadow-2xs max-w-full">
-                  <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
-                  <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-rose-700 truncate">Maestro Arena Football Quiz</span>
-                </div>
-                
-                <h1 className="text-2xl sm:text-5xl lg:text-6xl font-black mb-3 sm:mb-4 tracking-tight leading-[1.15] text-slate-950">
-                  Prove Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-600 via-rose-500 to-red-600">Football IQ</span>
-                </h1>
-                
-                <p className="text-sm sm:text-lg text-slate-600 font-medium leading-relaxed mb-6 sm:mb-8 max-w-xl">
-                  From Premier League drama to Champions League royalty and World Cup history. Choose your category, set your difficulty, and kick off below.
-                </p>
-
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center md:justify-start gap-3 sm:gap-4 w-full">
-                  <Link
-                    to="/quiz/h2h"
-                    className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white px-5 sm:px-6 py-3 sm:py-3.5 rounded-2xl font-bold text-sm sm:text-base transition-all hover:-translate-y-0.5 shadow-md shadow-rose-600/25 w-full sm:w-auto"
-                  >
-                    <Swords className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                    <span>Head-to-Head Multiplayer</span>
-                  </Link>
-
-                  <div className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl bg-white/90 border border-slate-200 text-slate-700 text-xs sm:text-sm font-semibold shadow-2xs w-full sm:w-auto">
-                    <span>Select match options below to Kick Off ↓</span>
-                  </div>
-                </div>
-
-                {/* Mobile Arena Trophy Badge */}
-                <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/90 border border-slate-200 text-left mt-4 lg:hidden max-w-sm mx-auto md:mx-0 shadow-2xs w-full">
-                  <div className="w-11 h-11 rounded-xl overflow-hidden border border-slate-200 shrink-0">
-                    <img src={trophyImg} alt="Arena Trophy" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-black uppercase text-amber-600">Current Arena Cup</div>
-                    <div className="text-xs font-bold text-slate-900 truncate">Champions Knowledge Season</div>
-                  </div>
-                </div>
+            {/* Content Box:
+                - On Mobile: Placed neatly below the image with comfortable padding so the visuals remain completely unobstructed
+                - On Desktop: Overlays smoothly at bottom-left */}
+            <div className="relative z-10 w-full md:w-[70%] lg:w-[65%] flex flex-col items-start justify-end p-5 sm:p-7 md:p-10 md:mt-auto">
+              
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-50/90 backdrop-blur-md border border-rose-200/80 mb-3 w-max shadow-2xs">
+                <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-rose-700">
+                  Maestro Arena Football Quiz
+                </span>
               </div>
+              
+              <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight mb-2 sm:mb-3 leading-[1.15] text-slate-950">
+                Prove Your{' '}
+                <span className="text-rose-600 relative inline-block">
+                  Football IQ
+                  <svg className="absolute -bottom-1 w-full h-2 text-rose-200 -z-10" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M0 15 Q 50 0 100 15" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/></svg>
+                </span>
+              </h1>
+              
+              <p className="text-xs sm:text-sm md:text-base text-slate-600 font-medium mb-5 sm:mb-6 max-w-xl leading-relaxed">
+                From Premier League drama to Champions League royalty and World Cup history. Choose your category, set your difficulty, and kick off below.
+              </p>
 
-              <div className="hidden lg:flex flex-col items-center justify-center relative shrink-0">
-                <div className="w-56 h-56 rounded-3xl overflow-hidden border-2 border-white shadow-xl shadow-slate-200/60 relative group">
-                  <img 
-                    src={trophyImg} 
-                    alt="Champions Trophy" 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent"></div>
-                  <div className="absolute bottom-3 left-3 right-3 text-center">
-                    <div className="text-xs font-black uppercase text-amber-300">Current Arena Cup</div>
-                    <div className="text-sm font-bold text-white">Champions Knowledge</div>
-                  </div>
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+                <Link
+                  to="/quiz/h2h"
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white px-4 sm:px-6 py-2.5 sm:py-3.5 rounded-2xl font-bold text-xs sm:text-sm transition-all hover:-translate-y-0.5 shadow-md shadow-rose-600/25 flex-1 sm:flex-initial whitespace-nowrap cursor-pointer"
+                >
+                  <Swords className="w-4 h-4 shrink-0" />
+                  <span>Head-to-Head Multiplayer</span>
+                </Link>
+
+                <Link
+                  to="/quiz/daily"
+                  className="inline-flex items-center justify-center gap-2 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 px-4 sm:px-5 py-2.5 sm:py-3.5 rounded-2xl font-bold text-xs sm:text-sm transition-colors shadow-2xs flex-1 sm:flex-initial whitespace-nowrap cursor-pointer"
+                >
+                  <Calendar className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span>Daily Trivia</span>
+                </Link>
+
+                <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100/80 text-slate-600 text-xs font-semibold">
+                  <span>Match options below ↓</span>
                 </div>
               </div>
             </div>

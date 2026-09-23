@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, User, LogOut, ChevronLeft, Bell, Settings, Check, X, Trash2, BellOff, CheckCheck, Megaphone, Newspaper, Target } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
@@ -63,8 +63,55 @@ function getNotificationBadge(type?: string) {
 export function Header() {
   const { user, userData, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  
+  const notifRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Automatically close notifications, search results, and dropdowns when user navigates to any other page/content
+  useEffect(() => {
+    setNotifOpen(false);
+    setDropdownOpen(false);
+    setSearchFocused(false);
+    setMobileSearchOpen(false);
+  }, [location.pathname, location.search]);
+
+  // Click outside listener for notifications and user profile dropdown
+  useEffect(() => {
+    function handlePointerDownOutside(e: MouseEvent | TouchEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+
+    if (notifOpen || dropdownOpen) {
+      document.addEventListener('mousedown', handlePointerDownOutside);
+      document.addEventListener('touchstart', handlePointerDownOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDownOutside);
+      document.removeEventListener('touchstart', handlePointerDownOutside);
+    };
+  }, [notifOpen, dropdownOpen]);
+
+  // Escape key listener to dismiss notifications and open popups
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setNotifOpen(false);
+        setDropdownOpen(false);
+        setMobileSearchOpen(false);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 300);
@@ -284,7 +331,7 @@ export function Header() {
               </Button>
               
               {/* Functional Notifications */}
-              <div className="relative">
+              <div className="relative" ref={notifRef}>
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -340,7 +387,7 @@ export function Header() {
                           )}
                           <button
                             onClick={() => setNotifOpen(false)}
-                            className="p-1 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-600 transition md:hidden"
+                            className="p-1 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-600 transition cursor-pointer"
                             aria-label="Close notifications"
                           >
                             <X className="w-4 h-4" />
@@ -359,8 +406,8 @@ export function Header() {
                                 className="group relative p-3.5 hover:bg-slate-50 transition-colors flex items-start justify-between gap-2.5 cursor-pointer"
                                 onClick={() => {
                                   markAsRead(notif.id);
+                                  setNotifOpen(false);
                                   if (notif.link) {
-                                    setNotifOpen(false);
                                     navigate(notif.link);
                                   }
                                 }}
@@ -421,7 +468,7 @@ export function Header() {
               </Link>
 
               {user ? (
-                <div className="relative">
+                <div className="relative" ref={dropdownRef}>
                   <Button 
                     variant="ghost" 
                     size="sm" 
