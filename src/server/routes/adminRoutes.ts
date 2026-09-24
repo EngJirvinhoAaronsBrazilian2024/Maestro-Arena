@@ -629,7 +629,20 @@ router.get('/articles', async (req, res) => {
       .select('*')
       .order('published_at', { ascending: false });
     if (error) throw error;
-    res.json(data || []);
+
+    const normalized = (data || []).map((a: any) => ({
+      id: a.id,
+      title: a.title,
+      content: a.content,
+      summary: a.summary || (a.content ? a.content.slice(0, 180) + '...' : ''),
+      imageUrl: a.image_url || a.imageUrl,
+      authorId: a.author_id,
+      authorName: a.author_name || 'Maestro Editor',
+      status: a.status,
+      category: a.category || 'general',
+      publishedAt: Number(a.published_at || Date.now())
+    }));
+    res.json(normalized);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -637,12 +650,11 @@ router.get('/articles', async (req, res) => {
 
 router.post('/articles', async (req, res) => {
   try {
-    const { title, content, summary, category, imageUrl, authorId, status, publishedAt } = req.body;
+    const { title, content, summary, category, imageUrl, authorId, authorName, status, publishedAt } = req.body;
     if (!title || !content) {
       return res.status(400).json({ error: 'Title and content are required' });
     }
     const admin = getInsforgeAdmin();
-    // Verify or ensure authorId is a valid user
     let validAuthorId = authorId;
     if (!validAuthorId) {
       validAuthorId = SPECIAL_ADMIN_ID;
@@ -654,8 +666,10 @@ router.post('/articles', async (req, res) => {
     const newArticle = {
       title,
       content,
+      summary: summary || (content ? content.slice(0, 180) + '...' : ''),
       image_url: imageUrl || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2',
       author_id: validAuthorId,
+      author_name: authorName || 'Maestro Editor',
       status: status || 'published',
       category: category || 'general',
       published_at: publishedAt || Date.now()
@@ -663,7 +677,21 @@ router.post('/articles', async (req, res) => {
 
     const { data, error } = await admin.database.from('articles').insert([newArticle]).select('*');
     if (error) throw error;
-    res.json(data?.[0] || { success: true });
+
+    const created = data?.[0] ? {
+      id: data[0].id,
+      title: data[0].title,
+      content: data[0].content,
+      summary: data[0].summary,
+      imageUrl: data[0].image_url,
+      authorId: data[0].author_id,
+      authorName: data[0].author_name,
+      status: data[0].status,
+      category: data[0].category,
+      publishedAt: Number(data[0].published_at)
+    } : { ...newArticle, id: 'art_' + Date.now() };
+
+    res.json(created);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -672,15 +700,17 @@ router.post('/articles', async (req, res) => {
 router.put('/articles/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content, category, imageUrl, status, publishedAt } = req.body;
+    const { title, content, summary, category, imageUrl, authorName, status, publishedAt } = req.body;
     const admin = getInsforgeAdmin();
     const updates: any = {};
     if (title !== undefined) updates.title = title;
     if (content !== undefined) updates.content = content;
+    if (summary !== undefined) updates.summary = summary;
     if (imageUrl !== undefined) updates.image_url = imageUrl;
+    if (authorName !== undefined) updates.author_name = authorName;
     if (status !== undefined) updates.status = status;
     if (category !== undefined) updates.category = category;
-    if (publishedAt !== undefined) updates.published_at = publishedAt;
+    if (publishedAt !== undefined) updates.published_at = Number(publishedAt);
 
     const { error } = await admin.database.from('articles').update(updates).eq('id', id);
     if (error) throw error;

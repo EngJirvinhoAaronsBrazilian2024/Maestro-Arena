@@ -129,7 +129,7 @@ export function MyFeed() {
                       <h3 className="font-semibold text-sm group-hover:text-blue-600 transition-colors line-clamp-2">
                         {article.title}
                       </h3>
-                      <p className="text-xs text-slate-500 mt-1">{new Date(article.published_at || article.created_at).toLocaleDateString()}</p>
+                      <p className="text-xs text-slate-500 mt-1">{new Date(article.publishedAt || (article as any).published_at || Date.now()).toLocaleDateString()}</p>
                     </Link>
                   ))}
                 </div>

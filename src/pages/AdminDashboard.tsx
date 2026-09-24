@@ -120,77 +120,85 @@ export function AdminDashboard() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto pb-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="max-w-7xl mx-auto pb-12 space-y-7 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Platform Overview</h1>
-          <p className="text-slate-500">Manage user accounts, database state, and monitor platform activity.</p>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200/80 mb-2">
+            <Shield className="w-3.5 h-3.5 text-rose-600" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-rose-700">Maestro Arena Control</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Platform Overview</h1>
+          <p className="text-xs sm:text-sm text-slate-600 font-medium">Manage user accounts, database state, and monitor platform activity.</p>
         </div>
         <button
           onClick={loadData}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition-all"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200/90 rounded-xl text-xs sm:text-sm font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200/80 shadow-2xs transition-all cursor-pointer"
         >
-          <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+          <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
           Refresh Stats
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-none shadow-sm bg-gradient-to-br from-blue-600 to-blue-800 text-white overflow-hidden relative">
-          <div className="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <Card className="border-none shadow-md shadow-rose-600/15 bg-gradient-to-br from-rose-600 via-rose-600 to-red-600 text-white overflow-hidden relative rounded-2xl">
+          <div className="absolute right-0 top-0 opacity-15 transform translate-x-4 -translate-y-4 pointer-events-none">
             <Users size={120} />
           </div>
           <CardContent className="p-6 relative z-10">
-            <div className="flex items-center gap-3 mb-4 opacity-80 font-bold uppercase tracking-wider text-sm">
-              <Users size={18} />
+            <div className="flex items-center gap-2 mb-3 opacity-90 font-extrabold uppercase tracking-wider text-xs">
+              <Users size={16} />
               Total Users
             </div>
-            <div className="text-4xl font-black">{stats.totalUsers || users.length}</div>
+            <div className="text-4xl font-black tracking-tight">{stats.totalUsers || users.length}</div>
+            <p className="text-[11px] font-medium text-rose-100 mt-1">Registered members</p>
           </CardContent>
         </Card>
         
-        <Card className="border-none shadow-sm bg-white border border-slate-200">
+        <Card className="rounded-2xl shadow-2xs bg-white border border-slate-200/80">
           <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4 text-slate-500 font-bold uppercase tracking-wider text-sm">
-              <Shield size={18} className="text-purple-500" />
+            <div className="flex items-center gap-2 mb-3 text-slate-500 font-extrabold uppercase tracking-wider text-xs">
+              <Shield size={16} className="text-purple-600" />
               Administrators
             </div>
-            <div className="text-4xl font-black text-slate-900">{stats.totalAdmins || users.filter(u => u.role === 'admin').length}</div>
+            <div className="text-4xl font-black text-slate-900 tracking-tight">{stats.totalAdmins || users.filter(u => u.role === 'admin').length}</div>
+            <p className="text-[11px] font-medium text-slate-500 mt-1">Staff with full access</p>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm bg-white border border-slate-200">
+        <Card className="rounded-2xl shadow-2xs bg-white border border-slate-200/80">
           <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4 text-slate-500 font-bold uppercase tracking-wider text-sm">
-              <Target size={18} className="text-emerald-500" />
+            <div className="flex items-center gap-2 mb-3 text-slate-500 font-extrabold uppercase tracking-wider text-xs">
+              <Target size={16} className="text-emerald-600" />
               Active Predictions
             </div>
             <div className="flex items-baseline gap-2">
-              <div className="text-4xl font-black text-slate-900">{stats.totalTips || 0}</div>
-              <span className="text-xs text-slate-500 font-medium">Tips in database</span>
+              <div className="text-4xl font-black text-slate-900 tracking-tight">{stats.totalTips || 0}</div>
+              <span className="text-xs text-slate-500 font-medium">Tips published</span>
             </div>
+            <p className="text-[11px] font-medium text-slate-500 mt-1">Matchday insights</p>
           </CardContent>
         </Card>
         
-        <Card className="border-none shadow-sm bg-white border border-slate-200">
+        <Card className="rounded-2xl shadow-2xs bg-white border border-slate-200/80">
           <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4 text-slate-500 font-bold uppercase tracking-wider text-sm">
-              <Activity size={18} className="text-green-500" />
+            <div className="flex items-center gap-2 mb-3 text-slate-500 font-extrabold uppercase tracking-wider text-xs">
+              <Activity size={16} className="text-rose-600" />
               Database Engine
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
-              <div className="text-xl font-black text-slate-900">InsForge Connected</div>
+            <div className="flex items-center gap-2.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+              <div className="text-lg font-black text-slate-900">InsForge Live</div>
             </div>
+            <p className="text-[11px] font-medium text-slate-500 mt-1">PostgreSQL & Auth online</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200/80 overflow-hidden">
         <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-            <Database className="text-slate-400" size={20} />
-            User Directory ({users.length})
+          <h3 className="font-black text-base sm:text-lg text-slate-900 flex items-center gap-2.5">
+            <Database className="text-rose-600" size={18} />
+            User Directory <span className="text-xs font-bold text-slate-400">({users.length})</span>
           </h3>
 
           <div className="flex items-center gap-3">
@@ -201,14 +209,14 @@ export function AdminDashboard() {
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Search user or email..."
-                className="pl-9 pr-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-48 sm:w-64"
+                className="pl-9 pr-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 w-48 sm:w-64 transition-all"
               />
             </div>
 
             <button
               onClick={handleSyncUsers}
               disabled={syncing}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors shadow-sm disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 text-rose-700 border border-rose-200/80 rounded-xl text-xs font-black hover:bg-rose-100 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
               title="Sync newly registered auth users into public users table"
             >
               <RefreshCw size={13} className={syncing ? "animate-spin" : ""} />
@@ -218,8 +226,8 @@ export function AdminDashboard() {
         </div>
         
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-blue-600 animate-spin"></div>
+          <div className="flex justify-center py-16">
+            <div className="w-8 h-8 rounded-full border-3 border-slate-200 border-t-rose-600 animate-spin"></div>
           </div>
         ) : error ? (
           <div className="p-6">
@@ -231,34 +239,37 @@ export function AdminDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider font-bold text-slate-500">
-                  <th className="p-5">User</th>
-                  <th className="p-5">Role</th>
-                  <th className="p-5">Joined</th>
-                  <th className="p-5 text-right">Actions</th>
+                <tr className="bg-slate-50/80 border-b border-slate-100 text-[11px] uppercase tracking-wider font-black text-slate-500">
+                  <th className="p-4 sm:p-5">User</th>
+                  <th className="p-4 sm:p-5">Role</th>
+                  <th className="p-4 sm:p-5">Joined</th>
+                  <th className="p-4 sm:p-5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredUsers.map(u => (
-                  <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="p-5">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold shadow-sm">
+                  <tr key={u.id} className="hover:bg-rose-50/20 transition-colors group">
+                    <td className="p-4 sm:p-5">
+                      <div className="flex items-center gap-3.5">
+                        <div className={cn(
+                          "h-10 w-10 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-2xs shrink-0",
+                          u.role === 'admin' ? "bg-gradient-to-tr from-rose-600 to-red-500" : "bg-slate-800"
+                        )}>
                           {(u.displayName || u.email || 'U').charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                          <div className="font-bold text-slate-900">{u.displayName || 'Unnamed User'}</div>
-                          <div className="text-sm text-slate-500 font-mono">{u.email}</div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-sm text-slate-900 truncate">{u.displayName || 'Unnamed User'}</div>
+                          <div className="text-xs text-slate-500 font-mono truncate">{u.email}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="p-5">
+                    <td className="p-4 sm:p-5">
                       <select
                         value={u.role || 'user'}
                         onChange={(e) => handleRoleChange(u.id, e.target.value)}
                         className={cn(
-                          "bg-white border border-slate-200 text-sm font-bold rounded-lg focus:ring-2 focus:ring-blue-500 outline-none p-2.5 transition-all shadow-sm",
-                          u.role === 'admin' ? "text-purple-700 bg-purple-50 border-purple-200" : "text-slate-700"
+                          "bg-white border text-xs font-bold rounded-xl focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none p-2 transition-all shadow-2xs cursor-pointer",
+                          u.role === 'admin' ? "text-purple-700 bg-purple-50/80 border-purple-200" : "text-slate-700 border-slate-200"
                         )}
                       >
                         <option value="user">User</option>
@@ -267,13 +278,13 @@ export function AdminDashboard() {
                         <option value="admin">Admin</option>
                       </select>
                     </td>
-                    <td className="p-5 text-slate-500 text-sm font-medium">
+                    <td className="p-4 sm:p-5 text-slate-500 text-xs font-semibold">
                       {new Date(u.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                     </td>
-                    <td className="p-5 text-right">
+                    <td className="p-4 sm:p-5 text-right">
                       <button 
                         onClick={() => handleDeleteUser(u.id)} 
-                        className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100 opacity-0 group-hover:opacity-100"
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
                         title="Delete User"
                       >
                         <Trash2 className="w-4 h-4" />

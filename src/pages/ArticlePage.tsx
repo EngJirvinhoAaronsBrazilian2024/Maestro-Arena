@@ -5,6 +5,7 @@ import { toggleBookmark } from '../services/newsService';
 import { useAuth } from '../context/AuthContext';
 import { Bookmark, Share2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { getImageUrl } from '../services/storageService';
 
 export function ArticlePage() {
   const { id } = useParams<{ id: string }>();
@@ -57,24 +58,30 @@ export function ArticlePage() {
     );
   }
 
+  const coverUrl = article.imageUrl ? getImageUrl(article.imageUrl) : null;
+
   return (
-    <article className="mx-auto max-w-3xl space-y-8 pb-16">
-      <Link to="/news" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-rose-600 transition-colors">
+    <article className="mx-auto max-w-3xl space-y-8 pb-16 animate-in fade-in duration-300">
+      <Link to="/news" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-rose-600 transition-colors cursor-pointer">
         <ArrowLeft className="h-4 w-4" /> Back to News
       </Link>
 
       <header className="space-y-4">
         <div className="flex items-center gap-3 text-sm">
-          <span className="font-black text-rose-600 uppercase tracking-wider">{article.category || 'News'}</span>
+          <span className="font-black text-rose-600 uppercase tracking-wider text-xs">{article.category || 'News'}</span>
           <span className="text-slate-400">•</span>
-          <span className="text-slate-500 font-medium">{new Date(article.publishedAt).toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          <span className="text-slate-500 font-medium text-xs">{new Date(article.publishedAt).toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' })}</span>
         </div>
         
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-950 lg:leading-[1.1]">{article.title}</h1>
+        <h1 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight text-slate-950 leading-tight md:leading-[1.15]">
+          {article.title}
+        </h1>
         
-        <p className="text-lg sm:text-xl text-slate-600 leading-relaxed font-medium">
-          {article.summary}
-        </p>
+        {article.summary && (
+          <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium">
+            {article.summary}
+          </p>
+        )}
 
         <div className="flex items-center justify-between pt-4 border-t border-slate-200">
           <div className="flex items-center gap-3">
@@ -112,13 +119,20 @@ export function ArticlePage() {
         </div>
       </header>
 
-      {article.imageUrl && (
-        <div className="overflow-hidden rounded-3xl bg-slate-100 aspect-[21/9] shadow-md border border-slate-200/80">
-          <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" />
+      {coverUrl && (
+        <div className="overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-900/5 shadow-md border border-slate-200/80 w-full max-h-[520px] flex items-center justify-center p-1 sm:p-2">
+          <img 
+            src={coverUrl} 
+            alt={article.title} 
+            className="w-full max-h-[500px] object-contain rounded-xl sm:rounded-2xl" 
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
         </div>
       )}
 
-      <div className="prose prose-slate max-w-none text-base sm:text-lg leading-relaxed text-slate-700 font-medium">
+      <div className="prose prose-slate max-w-none text-base sm:text-lg leading-relaxed text-slate-700 font-medium space-y-4">
         {article.content.split('\n\n').map((paragraph, i) => (
           <p key={i}>{paragraph}</p>
         ))}

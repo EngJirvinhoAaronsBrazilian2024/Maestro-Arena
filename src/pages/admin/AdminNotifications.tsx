@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { insforge } from '../../lib/insforge';
-import { Target, Send, Trash2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Bell, Send, Trash2, CheckCircle2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 
 export function AdminNotifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [type, setType] = useState('info');
@@ -46,6 +47,7 @@ export function AdminNotifications() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       const res = await fetch('/api/admin/notifications', {
         method: 'POST',
@@ -77,6 +79,8 @@ export function AdminNotifications() {
       loadNotifications();
     } catch (e: any) {
       toast.error('Failed to send notification: ' + e.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -106,64 +110,148 @@ export function AdminNotifications() {
   };
 
   return (
-    <div className="max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="mx-auto w-full max-w-5xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 pb-12">
       <div>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Global Notifications</h1>
-        <p className="text-slate-500">Blast in-app alerts to all users instantly.</p>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200/80 mb-2">
+          <Bell className="w-3.5 h-3.5 text-rose-600" />
+          <span className="text-[10px] font-black uppercase tracking-wider text-rose-700">Broadcast Center</span>
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight mb-1">Global Notifications</h1>
+        <p className="text-xs sm:text-sm text-slate-500 font-medium">Blast real-time in-app alerts and announcements to all users.</p>
       </div>
 
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <form onSubmit={handleSend} className="space-y-4">
+      <div className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+        <form onSubmit={handleSend} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Title</label>
-              <input type="text" required value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Big Match Starting!" />
+              <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-2">Notification Title</label>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs sm:text-sm font-semibold outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
+                placeholder="e.g. Champions League Final Starting Soon!"
+              />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Type</label>
-              <select value={type} onChange={e => setType(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
-                <option value="info">Info (Blue)</option>
-                <option value="success">Success (Green)</option>
-                <option value="warning">Warning (Orange)</option>
-                <option value="alert">Alert (Red)</option>
+              <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-2">Notification Style</label>
+              <select
+                value={type}
+                onChange={e => setType(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs sm:text-sm font-semibold outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all"
+              >
+                <option value="info">Info (Blue Accent)</option>
+                <option value="success">Success (Emerald Accent)</option>
+                <option value="warning">Warning (Amber Accent)</option>
+                <option value="alert">Alert (Rose/Red Accent)</option>
               </select>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Message</label>
-            <textarea required value={message} onChange={e => setMessage(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" rows={3} placeholder="Write your message here..."></textarea>
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-2">Broadcast Message</label>
+            <textarea
+              required
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs sm:text-sm font-semibold outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
+              rows={3}
+              placeholder="Write the full message details for the fan community..."
+            />
           </div>
-          <button type="submit" className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl hover:bg-slate-800 transition font-bold">
-            <Send size={18} /> Broadcast Notification
-          </button>
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 px-6 py-3 text-xs sm:text-sm font-black text-white shadow-md shadow-rose-600/25 transition-all hover:-translate-y-0.5 cursor-pointer disabled:opacity-50"
+            >
+              {submitting ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Broadcast Notification
+            </button>
+          </div>
         </form>
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-bold text-slate-900">Recent Broadcasts</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-base sm:text-lg font-black text-slate-950">Recent Broadcasts</h3>
+          <span className="text-xs font-bold text-slate-500">{notifications.length} Total</span>
+        </div>
+
         {loading ? (
-          <p className="text-slate-500">Loading...</p>
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-8 text-center text-slate-500 text-sm font-medium">
+            Loading broadcasts...
+          </div>
         ) : notifications.length === 0 ? (
-          <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
-            <Target className="mx-auto h-8 w-8 text-slate-400 mb-2" />
-            <p className="text-slate-500 font-medium">No notifications sent yet.</p>
+          <div className="rounded-2xl sm:rounded-3xl border border-dashed border-slate-200 bg-white/60 p-10 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+              <Bell className="h-6 w-6" />
+            </div>
+            <h4 className="text-sm font-black text-slate-900 mb-1">No notifications yet</h4>
+            <p className="text-xs text-slate-500 font-medium">Create your first broadcast announcement above to reach all users.</p>
           </div>
         ) : (
-          notifications.map((n, idx) => (
-            <div key={`${n.id || 'notif'}_${idx}`} className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`w-2 h-2 rounded-full ${n.type === 'alert' ? 'bg-red-500' : n.type === 'warning' ? 'bg-orange-500' : n.type === 'success' ? 'bg-green-500' : 'bg-blue-500'}`}></span>
-                  <h4 className="font-bold text-slate-900">{n.title}</h4>
-                </div>
-                <p className="text-sm text-slate-600">{n.message}</p>
-                <p className="text-xs text-slate-400 mt-2">{new Date(n.created_at).toLocaleString()}</p>
-              </div>
-              <button onClick={() => handleDelete(n.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                <Trash2 size={16} />
-              </button>
-            </div>
-          ))
+          <div className="space-y-3">
+            <AnimatePresence>
+              {notifications.map((n, idx) => (
+                <motion.div
+                  key={`${n.id || 'notif'}_${idx}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 flex items-start justify-between gap-4 shadow-2xs hover:shadow-sm transition-all"
+                >
+                  <div className="flex items-start gap-3.5">
+                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                      n.type === 'alert'
+                        ? 'bg-rose-50 text-rose-600 border border-rose-200/80'
+                        : n.type === 'warning'
+                        ? 'bg-amber-50 text-amber-600 border border-amber-200/80'
+                        : n.type === 'success'
+                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/80'
+                        : 'bg-sky-50 text-sky-600 border border-sky-200/80'
+                    }`}>
+                      {n.type === 'alert' && <AlertCircle className="h-4 w-4" />}
+                      {n.type === 'warning' && <AlertTriangle className="h-4 w-4" />}
+                      {n.type === 'success' && <CheckCircle2 className="h-4 w-4" />}
+                      {n.type === 'info' && <Info className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h4 className="text-xs sm:text-sm font-black text-slate-900">{n.title}</h4>
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                          n.type === 'alert'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200/80'
+                            : n.type === 'warning'
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200/80'
+                            : n.type === 'success'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                            : 'bg-sky-50 text-sky-700 border border-sky-200/80'
+                        }`}>
+                          {n.type}
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">{n.message}</p>
+                      <p className="text-[11px] text-slate-400 font-bold mt-2">
+                        {n.created_at ? new Date(n.created_at).toLocaleString() : 'Just now'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(n.id)}
+                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer shrink-0"
+                    title="Delete Notification"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
         )}
       </div>
     </div>

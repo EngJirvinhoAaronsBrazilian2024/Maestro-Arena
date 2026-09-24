@@ -70,38 +70,41 @@ export function AdminNewsManagement() {
 
   if (isEditing) {
     return (
-      <div className="mx-auto max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <div className="mx-auto max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-300 pb-12">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{currentArticle.id ? 'Edit Article' : 'Compose New Article'}</h1>
-            <p className="text-sm text-slate-500">Fill in the details below to {currentArticle.id ? 'update' : 'publish'} the news piece.</p>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200/80 mb-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-700">Maestro Newsroom</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">{currentArticle.id ? 'Edit Article' : 'Compose New Article'}</h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">Fill in the details below to {currentArticle.id ? 'update' : 'publish'} the news piece.</p>
           </div>
           <button
             onClick={() => { setIsEditing(false); setCurrentArticle({}); }}
-            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+        <div className="space-y-6 rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700">Headline</label>
+              <label className="mb-1.5 block text-xs sm:text-sm font-bold text-slate-700">Headline</label>
               <input
                 type="text"
                 placeholder="Breaking news headline..."
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm font-medium text-slate-900 outline-none focus:border-slate-500 focus:bg-white focus:ring-1 focus:ring-slate-500 transition-all"
+                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-medium text-slate-900 outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
                 value={currentArticle.title || ''}
                 onChange={(e) => setCurrentArticle({ ...currentArticle, title: e.target.value })}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700">Summary (Excerpt)</label>
+              <label className="mb-1.5 block text-xs sm:text-sm font-bold text-slate-700">Summary (Excerpt)</label>
               <textarea
                 placeholder="A brief summary for the news feed..."
-                className="w-full resize-none rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm text-slate-900 outline-none focus:border-slate-500 focus:bg-white focus:ring-1 focus:ring-slate-500 transition-all"
+                className="w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-900 outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
                 rows={2}
                 value={currentArticle.summary || ''}
                 onChange={(e) => setCurrentArticle({ ...currentArticle, summary: e.target.value })}
@@ -110,17 +113,17 @@ export function AdminNewsManagement() {
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Category</label>
+                <label className="mb-1.5 block text-xs sm:text-sm font-bold text-slate-700">Category</label>
                 <input
                   type="text"
                   placeholder="e.g., Transfers, Match Report..."
-                  className="w-full rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm text-slate-900 outline-none focus:border-slate-500 focus:bg-white focus:ring-1 focus:ring-slate-500 transition-all"
+                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-900 outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
                   value={currentArticle.category || ''}
                   onChange={(e) => setCurrentArticle({ ...currentArticle, category: e.target.value })}
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Cover Image</label>
+                <label className="mb-1.5 block text-xs sm:text-sm font-bold text-slate-700">Cover Image</label>
                 <ImageInput 
                   value={currentArticle.imageUrl || ''} 
                   onChange={(url) => setCurrentArticle({ ...currentArticle, imageUrl: url })}
@@ -129,33 +132,33 @@ export function AdminNewsManagement() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700">Full Content</label>
+              <label className="mb-1.5 block text-xs sm:text-sm font-bold text-slate-700">Full Content</label>
               <textarea
                 placeholder="Write the full article content here..."
-                className="w-full min-h-[300px] rounded-lg border border-slate-300 bg-slate-50 p-4 text-sm text-slate-900 outline-none focus:border-slate-500 focus:bg-white focus:ring-1 focus:ring-slate-500 transition-all"
+                className="w-full min-h-[300px] rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-900 outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
                 value={currentArticle.content || ''}
                 onChange={(e) => setCurrentArticle({ ...currentArticle, content: e.target.value })}
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
+          <div className="flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-slate-100">
             <button
               onClick={() => { setIsEditing(false); setCurrentArticle({}); }}
-              className="rounded-lg px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+              className="rounded-xl px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={() => handleSave('draft')}
-              className="flex items-center gap-2 rounded-lg bg-slate-800 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-900 transition-colors shadow-sm"
+              className="flex items-center gap-2 rounded-xl bg-slate-100 border border-slate-200 px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-200 transition-colors shadow-2xs cursor-pointer"
             >
               <Clock className="h-4 w-4" />
               Save as Draft
             </button>
             <button
               onClick={() => handleSave('published')}
-              className="flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700 transition-colors shadow-sm"
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 px-6 py-2.5 text-xs sm:text-sm font-black text-white transition-all shadow-md shadow-rose-600/25 cursor-pointer"
             >
               <CheckCircle className="h-4 w-4" />
               Publish Now
@@ -167,29 +170,32 @@ export function AdminNewsManagement() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300 pb-12">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">News Management</h1>
-          <p className="text-sm text-slate-500">Manage and publish articles to the news feed.</p>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200/80 mb-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-rose-700">Maestro Newsroom</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">News Management</h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium">Manage and publish articles to the news feed.</p>
         </div>
         <button
           onClick={() => { setCurrentArticle({}); setIsEditing(true); }}
-          className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 shadow-sm transition-colors"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 px-5 py-2.5 text-xs sm:text-sm font-black text-white shadow-md shadow-rose-600/25 transition-all hover:-translate-y-0.5 cursor-pointer"
         >
           <Plus className="h-4 w-4" />
           Compose Article
         </button>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="flex flex-col gap-4 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between bg-slate-50">
-          <div className="flex rounded-lg bg-slate-200 p-1">
+      <div className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+        <div className="flex flex-col gap-4 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between bg-slate-50/70">
+          <div className="flex rounded-xl bg-slate-200/80 p-1">
             <button
               onClick={() => setActiveTab('published')}
               className={cn(
-                "rounded-md px-4 py-1.5 text-sm font-medium transition-all",
-                activeTab === 'published' ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                "rounded-lg px-4 py-1.5 text-xs sm:text-sm font-bold transition-all cursor-pointer",
+                activeTab === 'published' ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
               )}
             >
               Published ({publishedArticles?.length || 0})
@@ -197,8 +203,8 @@ export function AdminNewsManagement() {
             <button
               onClick={() => setActiveTab('draft')}
               className={cn(
-                "rounded-md px-4 py-1.5 text-sm font-medium transition-all",
-                activeTab === 'draft' ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                "rounded-lg px-4 py-1.5 text-xs sm:text-sm font-bold transition-all cursor-pointer",
+                activeTab === 'draft' ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
               )}
             >
               Drafts ({draftArticles?.length || 0})
@@ -212,19 +218,19 @@ export function AdminNewsManagement() {
               placeholder="Search articles..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-4 text-sm outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition-all"
+              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-4 text-xs sm:text-sm outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
             />
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200">
+          <table className="w-full text-left text-sm text-slate-600 min-w-[600px]">
+            <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-500 font-black border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4 font-semibold">Article</th>
-                <th className="px-6 py-4 font-semibold">Category</th>
-                <th className="px-6 py-4 font-semibold">Author</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                <th className="px-6 py-4">Article</th>
+                <th className="px-6 py-4">Category</th>
+                <th className="px-6 py-4">Author</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -235,29 +241,31 @@ export function AdminNewsManagement() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="hover:bg-slate-50 transition-colors"
+                    className="hover:bg-rose-50/20 transition-colors"
                   >
                     <td className="px-6 py-4">
-                      <div className="font-semibold text-slate-900">{article.title}</div>
-                      <div className="text-xs text-slate-500 mt-1">{new Date(article.publishedAt).toLocaleString()}</div>
+                      <div className="font-bold text-slate-900 text-sm">{article.title}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{new Date(article.publishedAt).toLocaleString()}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800">
+                      <span className="inline-flex rounded-md bg-rose-50 border border-rose-200/80 px-2.5 py-0.5 text-xs font-black text-rose-700">
                         {article.category}
                       </span>
                     </td>
-                    <td className="px-6 py-4">{article.authorName}</td>
+                    <td className="px-6 py-4 font-semibold text-slate-700 text-xs sm:text-sm">{article.authorName}</td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => { setCurrentArticle(article); setIsEditing(true); }}
-                          className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                          className="rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
+                          title="Edit Article"
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(article.id)}
-                          className="rounded-md p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          className="rounded-xl p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
+                          title="Delete Article"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -270,7 +278,7 @@ export function AdminNewsManagement() {
           </table>
           
           {(!filteredArticles || filteredArticles.length === 0) && (
-            <div className="p-12 text-center text-slate-500">
+            <div className="p-12 text-center text-slate-500 font-medium text-sm">
               No articles found.
             </div>
           )}

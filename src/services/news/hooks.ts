@@ -4,7 +4,12 @@ import { getArticles, getArticleById, getBookmarks } from '../newsService';
 export function useArticles(status: 'draft' | 'published' = 'published') {
   const { data, error, isLoading, mutate } = useSWR(
     `articles_${status}`,
-    () => getArticles(status)
+    () => getArticles(status),
+    {
+      revalidateOnFocus: true,
+      refreshInterval: 30000,
+      dedupingInterval: 2000
+    }
   );
   return { articles: data, isLoading, isError: error, mutate };
 }
@@ -12,7 +17,10 @@ export function useArticles(status: 'draft' | 'published' = 'published') {
 export function useArticle(id: string) {
   const { data, error, isLoading, mutate } = useSWR(
     id ? `article_${id}` : null,
-    () => getArticleById(id)
+    () => getArticleById(id),
+    {
+      revalidateOnFocus: true
+    }
   );
   return { article: data, isLoading, isError: error, mutate };
 }
@@ -20,7 +28,10 @@ export function useArticle(id: string) {
 export function useBookmarks(userId?: string) {
   const { data, error, isLoading, mutate } = useSWR(
     userId ? `bookmarks_${userId}` : null,
-    () => getBookmarks(userId!)
+    () => getBookmarks(userId!),
+    {
+      revalidateOnFocus: true
+    }
   );
   return { bookmarks: data || [], isLoading, isError: error, mutate };
 }

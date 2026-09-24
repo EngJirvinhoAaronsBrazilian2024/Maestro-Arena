@@ -24,15 +24,24 @@ function saveFallbackTips(tips: any[]) {
   } catch (e) {}
 }
 
+function normalizeCategory(cat: string | undefined): 'single' | 'maestro2+' | 'odd4+' {
+  if (!cat) return 'single';
+  const clean = String(cat).toLowerCase().trim().replace(/[\s_-]+/g, '');
+  if (clean.includes('maestro') || clean.includes('2+')) return 'maestro2+';
+  if (clean.includes('odd') || clean.includes('4+')) return 'odd4+';
+  return 'single';
+}
+
 function normalizeTipFromDb(t: any) {
   return {
     id: t.id,
-    category: t.category,
+    category: normalizeCategory(t.category),
     matches: typeof t.matches === 'string' ? JSON.parse(t.matches) : (t.matches || []),
-    odds: t.odds,
-    analysis: t.analysis,
-    status: t.status,
+    odds: t.odds ? Number(t.odds) : undefined,
+    analysis: t.analysis || '',
+    status: t.status || 'pending',
     bookingCode: t.booking_code || t.bookingCode || '',
+    imageUrl: t.image_url || t.imageUrl || '',
     publishDate: Number(t.publish_date || t.publishDate || Date.now()),
     createdAt: Number(t.created_at || t.createdAt || Date.now())
   };
@@ -59,26 +68,41 @@ router.get('/', async (req, res) => {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (category) {
-      query = query.eq('category', String(category));
+    // Category filter
+    if (category && category !== 'all') {
+      const normCat = normalizeCategory(String(category));
+      query = query.or(`category.eq.${normCat},category.eq.${category}`);
     }
-    if (status) {
+
+    if (status && status !== 'all') {
       query = query.eq('status', String(status));
     }
 
     const { data, error } = await query;
     if (error) {
-      console.warn('InsForge tips query error, falling back to local file:', error);
-      let local = getFallbackTips();
-      if (category) local = local.filter((t: any) => t.category === category);
-      if (status) local = local.filter((t: any) => t.status === status);
-      if (date) local = local.filter((t: any) => isSameDayBackend(t.publishDate, Number(date)));
+      console.warn('InsForge tips query error, checking local fallback:', error);
+      let local = getFallbackTips().map(normalizeTipFromDb);
+      if (category && category !== 'all') {
+        const norm = normalizeCategory(String(category));
+        local = local.filter((t: any) => t.category === norm);
+      }
+      if (status && status !== 'all') {
+        local = local.filter((t: any) => t.status === status);
+      }
+      if (date && date !== 'all') {
+        local = local.filter((t: any) => isSameDayBackend(t.publishDate, Number(date)));
+      }
       return res.json(local);
     }
 
     let tips = (data || []).map(normalizeTipFromDb);
 
-    if (date) {
+    if (category && category !== 'all') {
+      const norm = normalizeCategory(String(category));
+      tips = tips.filter((t: any) => t.category === norm);
+    }
+
+    if (date && date !== 'all') {
       tips = tips.filter((t: any) => isSameDayBackend(t.publishDate, Number(date)));
     }
 
@@ -96,14 +120,17 @@ router.post('/', async (req, res) => {
     const now = Date.now();
     const admin = getInsforgeAdmin();
 
+    const normalizedCategory = normalizeCategory(tipData.category || 'single');
+
     const dbPayload = {
       id: newId,
-      category: tipData.category || 'single',
+      category: normalizedCategory,
       matches: tipData.matches || [],
       odds: tipData.odds ? Number(tipData.odds) : null,
       analysis: tipData.analysis || '',
       status: tipData.status || 'pending',
       booking_code: tipData.bookingCode || null,
+      image_url: tipData.imageUrl || tipData.image_url || null,
       publish_date: tipData.publishDate ? Number(tipData.publishDate) : now,
       created_at: now
     };
@@ -118,12 +145,12 @@ router.post('/', async (req, res) => {
       // fallback to file
       const tips = getFallbackTips();
       const localTip = { id: newId, ...tipData, createdAt: now };
-      tips.push(localTip);
+      tips.unshift(localTip);
       saveFallbackTips(tips);
-      return res.json(localTip);
+      return res.json(normalizeTipFromDb(localTip));
     }
 
-    const created = data?.[0] ? normalizeTipFromDb(data[0]) : { id: newId, ...tipData, createdAt: now };
+    const created = data?.[0] ? normalizeTipFromDb(data[0]) : normalizeTipFromDb(dbPayload);
     res.json(created);
   } catch (error: any) {
     console.error('Error in POST /api/tips:', error);
@@ -138,12 +165,15 @@ router.put('/:id', async (req, res) => {
     const admin = getInsforgeAdmin();
 
     const dbUpdates: any = {};
-    if (updateData.category !== undefined) dbUpdates.category = updateData.category;
+    if (updateData.category !== undefined) dbUpdates.category = normalizeCategory(updateData.category);
     if (updateData.matches !== undefined) dbUpdates.matches = updateData.matches;
     if (updateData.odds !== undefined) dbUpdates.odds = updateData.odds ? Number(updateData.odds) : null;
     if (updateData.analysis !== undefined) dbUpdates.analysis = updateData.analysis;
     if (updateData.status !== undefined) dbUpdates.status = updateData.status;
     if (updateData.bookingCode !== undefined) dbUpdates.booking_code = updateData.bookingCode;
+    if (updateData.imageUrl !== undefined || updateData.image_url !== undefined) {
+      dbUpdates.image_url = updateData.imageUrl || updateData.image_url || null;
+    }
     if (updateData.publishDate !== undefined) dbUpdates.publish_date = Number(updateData.publishDate);
 
     const { error } = await admin.database

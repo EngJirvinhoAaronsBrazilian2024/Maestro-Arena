@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getTips } from '../services/tipsService';
-import { Tip, TipCategory } from '../types/tips';
+import { Tip, TipCategory, normalizeCategory } from '../types/tips';
 import { Card, CardContent } from '../components/ui/Card';
 import { isSameDay } from '../lib/dateUtils';
-import { Calendar, AlertCircle, Info, RefreshCw, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { Calendar, AlertCircle, Info, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import manUtdTipsBg from '../assets/images/manutd_pl_tips_1790183435495.jpg';
@@ -31,8 +31,8 @@ export function Tips() {
   const [category, setCategory] = useState<TipCategory>('single');
   const [activeSlide, setActiveSlide] = useState(0);
   
-  // Date selection
-  const [selectedDate, setSelectedDate] = useState<number>(() => Date.now());
+  // Date filtering: null means "All Upcoming / Available Matchdays"
+  const [dateFilter, setDateFilter] = useState<number | null>(null);
 
   // Auto-scroll hero images every 3 seconds with smooth crossfade
   useEffect(() => {
@@ -46,7 +46,8 @@ export function Tips() {
     setLoading(true);
     setError(false);
     try {
-      const data = await getTips(selectedDate);
+      // Fetch all tips from InsForge database so client has complete catalog
+      const data = await getTips();
       setTips(data);
     } catch (e) {
       console.error("Error loading tips:", e);
@@ -58,32 +59,74 @@ export function Tips() {
 
   useEffect(() => {
     fetchTips();
-  }, [selectedDate]);
 
-  const filteredTips = useMemo(() => tips.filter(t => t.category === category), [tips, category]);
+    // Auto-refresh tips every 30 seconds so new admin uploads appear promptly
+    const pollInterval = setInterval(() => {
+      getTips().then(data => {
+        if (data && data.length > 0) {
+          setTips(data);
+        }
+      }).catch(() => {});
+    }, 30000);
 
-  // Count tips in each category for the selected date
+    return () => clearInterval(pollInterval);
+  }, []);
+
+  // Filtered tips strictly by selected category, then by date (if set)
+  const filteredTips = useMemo(() => {
+    return tips.filter(t => {
+      // Category filter
+      const norm = normalizeCategory(t.category);
+      if (norm !== category) return false;
+
+      // Date filter (if set)
+      if (dateFilter !== null) {
+        if (!isSameDay(t.publishDate, dateFilter)) return false;
+      }
+      return true;
+    });
+  }, [tips, category, dateFilter]);
+
+  // Count tips in each category across the active date scope
   const categoryCounts = useMemo(() => {
     const counts: Record<TipCategory, number> = {
-      'single': 0,
+      single: 0,
       'maestro2+': 0,
       'odd4+': 0
     };
+
     tips.forEach(t => {
-      if (counts[t.category] !== undefined) {
-        counts[t.category]++;
+      if (dateFilter !== null && !isSameDay(t.publishDate, dateFilter)) {
+        return;
+      }
+      const norm = normalizeCategory(t.category);
+      if (counts[norm] !== undefined) {
+        counts[norm]++;
       }
     });
+
     return counts;
-  }, [tips]);
+  }, [tips, dateFilter]);
 
-  const handlePrevDay = () => setSelectedDate(prev => prev - 86400000);
-  const handleNextDay = () => setSelectedDate(prev => prev + 86400000);
-  const handleToday = () => setSelectedDate(Date.now());
+  const handlePrevDay = () => {
+    const base = dateFilter || Date.now();
+    setDateFilter(base - 86400000);
+  };
 
-  const isToday = isSameDay(selectedDate, Date.now());
-  const maxFutureDate = Date.now() + 7 * 86400000;
-  const isMaxFuture = selectedDate > maxFutureDate;
+  const handleNextDay = () => {
+    const base = dateFilter || Date.now();
+    setDateFilter(base + 86400000);
+  };
+
+  const handleToday = () => {
+    setDateFilter(Date.now());
+  };
+
+  const handleAllDates = () => {
+    setDateFilter(null);
+  };
+
+  const isToday = dateFilter !== null && isSameDay(dateFilter, Date.now());
   
   const statusColor = (status: string) => {
     switch (status) {
@@ -112,31 +155,43 @@ export function Tips() {
     }
   };
 
-  const getCategoryCardBorder = (cat: TipCategory) => {
-    switch (cat) {
+  const getCategoryCardBorder = (cat: string) => {
+    const norm = normalizeCategory(cat);
+    switch (norm) {
       case 'single': return 'border-l-4 border-rose-600';
       case 'maestro2+': return 'border-l-4 border-cyan-500';
       case 'odd4+': return 'border-l-4 border-amber-500';
+      default: return 'border-l-4 border-slate-400';
     }
   };
 
-  const getCategoryPredictionBox = (cat: TipCategory) => {
-    switch (cat) {
+  const getCategoryPredictionBox = (cat: string) => {
+    const norm = normalizeCategory(cat);
+    switch (norm) {
       case 'single': return 'bg-rose-50/80 border border-rose-200 text-rose-950';
       case 'maestro2+': return 'bg-cyan-50/80 border border-cyan-200 text-cyan-950';
       case 'odd4+': return 'bg-amber-50/80 border border-amber-200 text-amber-950';
+      default: return 'bg-slate-50 border border-slate-200 text-slate-950';
+    }
+  };
+
+  const getCategoryDisplayLabel = (cat: string) => {
+    const norm = normalizeCategory(cat);
+    switch (norm) {
+      case 'single': return 'SINGLE';
+      case 'maestro2+': return 'MAESTRO 2+';
+      case 'odd4+': return 'ODD 4+';
+      default: return String(cat).toUpperCase();
     }
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16">
       
-      {/* MAESTRO ARENA TIPS HERO - FULLY RESPONSIVE WITHOUT CUTTING OFF PLAYERS ON MOBILE */}
+      {/* MAESTRO ARENA TIPS HERO */}
       <div className="relative w-full overflow-hidden rounded-[24px] shadow-sm border border-slate-200 flex flex-col md:min-h-[460px] group mb-6 bg-white">
         
-        {/* Full Image Container:
-            - On Mobile (< md): Displays in true 16:9 widescreen so ALL players are 100% visible without being cut off
-            - On Desktop (md:): Spans the full card background with soft bottom-left fade */}
+        {/* Full Image Container */}
         <div className="relative w-full aspect-[16/9] sm:aspect-[16/9] md:aspect-auto md:absolute md:inset-0 z-0 bg-slate-900 overflow-hidden">
           {TIPS_SLIDES.map((slide, idx) => (
             <img 
@@ -151,17 +206,15 @@ export function Tips() {
             />
           ))}
           
-          {/* Desktop Gradients: Smooth fade in bottom-left corner targeting only where text sits */}
+          {/* Desktop Gradients */}
           <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/70 to-transparent h-[65%] top-auto bottom-0 hidden md:block pointer-events-none"></div>
           <div className="absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-white/95 via-white/40 to-transparent hidden md:block pointer-events-none"></div>
           
-          {/* Mobile Bottom Blend: Clean gradient transition into the controls below */}
+          {/* Mobile Bottom Blend */}
           <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent md:hidden pointer-events-none"></div>
         </div>
 
-        {/* Content Box:
-            - On Mobile: Placed neatly below the image with comfortable padding so players remain completely unobstructed
-            - On Desktop: Overlays smoothly at bottom-left */}
+        {/* Content Box */}
         <div className="relative z-10 w-full md:w-[65%] lg:w-[60%] flex flex-col items-start justify-end p-5 sm:p-7 md:p-10 md:mt-auto">
           
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-50/90 backdrop-blur-md border border-rose-200/80 mb-3 w-max shadow-2xs">
@@ -170,7 +223,7 @@ export function Tips() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
             </span>
             <span className="text-xs font-black uppercase tracking-wider text-rose-700">
-              Premier League Analysis
+              Maestro Tips Feed
             </span>
           </div>
           
@@ -183,66 +236,64 @@ export function Tips() {
           </h1>
           
           <p className="text-xs sm:text-sm md:text-base text-slate-600 font-medium mb-5 max-w-lg leading-relaxed">
-            Verified football predictions, market odds, and expert matchday breakdowns.
+            Verified football predictions, match odds, and booking codes.
           </p>
 
-          {/* Date Selector & Controls */}
+          {/* Date Selector & Scope Controls */}
           <div className="flex flex-wrap items-center gap-2 text-sm font-semibold w-full sm:w-auto">
             <button 
               onClick={handlePrevDay} 
-              className="p-2 sm:p-2.5 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer"
+              className="p-2 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer"
               title="Previous Day"
             >
-              <ChevronLeft size={18}/>
+              <ChevronLeft size={16}/>
             </button>
             
-            <div className="bg-rose-50/95 text-rose-700 px-3.5 sm:px-5 py-2 rounded-full border border-rose-200/90 flex-1 sm:flex-initial text-center font-black shadow-2xs text-xs sm:text-sm">
-              {isToday ? "TODAY" : new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
-            </div>
+            <button
+              onClick={handleToday}
+              className={cn(
+                "px-3.5 py-1.5 rounded-full border text-xs sm:text-sm font-black transition-all cursor-pointer shadow-2xs",
+                isToday 
+                  ? "bg-rose-600 text-white border-rose-600" 
+                  : "bg-rose-50/95 text-rose-700 border-rose-200/90 hover:bg-rose-100"
+              )}
+            >
+              {dateFilter === null ? "TODAY" : isToday ? "TODAY" : new Date(dateFilter).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+            </button>
 
             <button 
               onClick={handleNextDay} 
-              className="p-2 sm:p-2.5 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer" 
-              disabled={isMaxFuture}
+              className="p-2 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer"
               title="Next Day"
             >
-              <ChevronRight size={18}/>
+              <ChevronRight size={16}/>
             </button>
-
-            {!isToday && (
-              <button
-                onClick={handleToday}
-                className="text-xs bg-rose-600 hover:bg-rose-700 text-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full transition-colors font-bold shadow-xs cursor-pointer"
-              >
-                Back to Today
-              </button>
-            )}
 
             <button
               onClick={fetchTips}
-              className="p-2 sm:p-2.5 bg-white/90 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer ml-auto sm:ml-0"
+              className="p-2 bg-white/90 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer ml-auto sm:ml-0"
               title="Refresh Tips"
             >
-              <RefreshCw size={16} className={loading ? "animate-spin text-rose-600" : ""} />
+              <RefreshCw size={15} className={loading ? "animate-spin text-rose-600" : ""} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* TABS WITH COHESIVE PALETTE ACCENTS */}
+      {/* CATEGORY TABS - ONLY SPECIFIC CATEGORIES: SINGLE, MAESTRO 2+, ODD 4+ */}
       <div className="flex bg-white/80 backdrop-blur-md rounded-2xl shadow-2xs p-1.5 border border-white/90 gap-1.5 overflow-x-auto hide-scrollbar">
         {CATEGORIES.map(c => {
-          const count = categoryCounts[c.id];
+          const count = categoryCounts[c.id] || 0;
           const isActive = category === c.id;
           return (
             <button
               key={c.id}
               onClick={() => setCategory(c.id)}
-              className={`flex-1 py-3 px-4 rounded-xl font-black text-sm whitespace-nowrap transition-all flex items-center justify-center gap-2 cursor-pointer ${getCategoryStyles(c.id, isActive)}`}
+              className={`flex-1 py-3 px-3.5 sm:px-4 rounded-xl font-black text-xs sm:text-sm whitespace-nowrap transition-all flex items-center justify-center gap-2 cursor-pointer ${getCategoryStyles(c.id, isActive)}`}
             >
               <span>{c.label}</span>
               {count > 0 && (
-                <span className={`text-xs px-2 py-0.5 rounded-full font-black ${
+                <span className={`text-[11px] px-2 py-0.5 rounded-full font-black ${
                   isActive ? 'bg-black/15 text-current' : 'bg-slate-100 text-slate-700'
                 }`}>
                   {count}
@@ -253,7 +304,22 @@ export function Tips() {
         })}
       </div>
 
-      {/* CONTENT */}
+      {/* ACTIVE SCOPE BANNER IF FILTERED */}
+      {dateFilter !== null && (
+        <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-600">
+          <span>
+            Filtering tips for <strong>{new Date(dateFilter).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</strong>
+          </span>
+          <button
+            onClick={handleAllDates}
+            className="text-rose-600 font-bold hover:underline cursor-pointer"
+          >
+            Clear Date Filter
+          </button>
+        </div>
+      )}
+
+      {/* CONTENT FEED */}
       <div>
         {loading ? (
           <div className="space-y-4">
@@ -268,7 +334,7 @@ export function Tips() {
         ) : error ? (
           <div className="bg-rose-50 text-rose-700 p-8 rounded-2xl text-center border border-rose-200 font-medium">
             <AlertCircle className="mx-auto h-8 w-8 mb-3" />
-            <p className="font-bold mb-4">Unable to load tips from the server.</p>
+            <p className="font-bold mb-4">Unable to load tips from the InsForge database.</p>
             <button onClick={fetchTips} className="px-4 py-2 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition-colors flex items-center justify-center gap-2 mx-auto cursor-pointer">
               <RefreshCw size={16} /> Retry
             </button>
@@ -278,14 +344,14 @@ export function Tips() {
             <Calendar className="mx-auto h-12 w-12 text-slate-300 mb-4" />
             <h3 className="text-lg font-black text-slate-900 mb-2">NO TIPS AVAILABLE</h3>
             <p className="text-slate-600 mb-4 text-sm font-medium">
-              There are no {CATEGORIES.find(c => c.id === category)?.label} tips available for this date.
+              There are no {CATEGORIES.find(c => c.id === category)?.label} tips available for this selection.
             </p>
 
-            {/* If tips exist in another category on this date, guide the user */}
+            {/* Guide user to other categories if tips exist */}
             {tips.length > 0 && (
-              <div className="inline-flex flex-wrap items-center justify-center gap-2 pt-3 border-t border-slate-100 mt-2">
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-3 border-t border-slate-100 mt-2">
                 <span className="text-xs text-slate-500 font-semibold">Tips available in other categories:</span>
-                {CATEGORIES.filter(c => c.id !== category && categoryCounts[c.id] > 0).map(c => (
+                {CATEGORIES.filter(c => c.id !== category && (categoryCounts[c.id] || 0) > 0).map(c => (
                   <button
                     key={c.id}
                     onClick={() => setCategory(c.id)}
@@ -298,15 +364,24 @@ export function Tips() {
             )}
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-6">
             {filteredTips.map((tip, tipIdx) => (
-              <Card key={`${tip.id || 'tip'}_${tipIdx}`} className={`overflow-hidden hover:shadow-lg transition-all border-slate-200/90 bg-white/85 ${getCategoryCardBorder(tip.category)}`}>
-                <div className="bg-slate-50/70 px-5 py-3 border-b border-slate-100 flex justify-between items-center text-sm font-bold text-slate-700">
-                  <span className="uppercase tracking-wider font-extrabold">{CATEGORIES.find(cat => cat.id === tip.category)?.label || tip.category}</span>
+              <Card key={`${tip.id || 'tip'}_${tipIdx}`} className={`overflow-hidden hover:shadow-lg transition-all border-slate-200/90 bg-white/95 ${getCategoryCardBorder(tip.category)}`}>
+                <div className="bg-slate-50/80 px-5 py-3 border-b border-slate-100 flex justify-between items-center text-sm font-bold text-slate-700">
+                  <div className="flex items-center gap-2">
+                    <span className="uppercase tracking-wider font-extrabold text-xs sm:text-sm">
+                      {getCategoryDisplayLabel(tip.category)}
+                    </span>
+                    <span className="text-xs text-slate-400 font-medium">•</span>
+                    <span className="text-xs text-slate-500 font-medium">
+                      {new Date(tip.publishDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
                   <span className={`px-2.5 py-0.5 rounded-full border text-xs font-black uppercase tracking-wide ${statusColor(tip.status)}`}>
                     {tip.status}
                   </span>
                 </div>
+
                 <CardContent className="p-0">
                   <div className="divide-y divide-slate-100">
                     {tip.matches.map((match, idx) => (
@@ -337,12 +412,13 @@ export function Tips() {
                       </div>
                     ))}
                   </div>
+
                   {(tip.odds || tip.analysis || tip.bookingCode) && (
                     <div className="bg-slate-50/80 p-4 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-3">
                       {tip.analysis && <p className="text-sm text-slate-600 italic max-w-lg">"{tip.analysis}"</p>}
-                      <div className="ml-auto flex items-center gap-3">
+                      <div className="ml-auto flex items-center gap-3 flex-wrap">
                         {tip.bookingCode && (
-                          <div className="flex items-center gap-2 bg-cyan-50 text-cyan-950 px-3 py-1.5 rounded-xl font-bold shadow-2xs border border-cyan-200">
+                          <div className="flex items-center gap-2 bg-cyan-50 text-cyan-950 px-3.5 py-1.5 rounded-xl font-bold shadow-2xs border border-cyan-200">
                             <span className="text-xs uppercase font-black text-cyan-700">Booking Code:</span>
                             <span className="font-mono tracking-wider font-extrabold">{tip.bookingCode}</span>
                             <button 
@@ -371,7 +447,7 @@ export function Tips() {
           </div>
         )}
       </div>
-      
+
       {/* DISCLAIMER */}
       <div className="mt-12 bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3 text-sm text-slate-500">
         <Info className="flex-shrink-0 mt-0.5 text-slate-400" size={18} />
