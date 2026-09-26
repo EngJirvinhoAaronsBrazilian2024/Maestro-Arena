@@ -9,6 +9,14 @@ import tipsRoutes from "./src/server/routes/tipsRoutes.js";
 import adminRoutes from "./src/server/routes/adminRoutes.js";
 import storageRoutes from "./src/server/routes/storageRoutes.js";
 
+// Clean up tsx injected relative globals which break Vite ESM plugins (like vite-plugin-pwa)
+if (typeof (globalThis as any).__dirname !== "undefined") {
+  delete (globalThis as any).__dirname;
+}
+if (typeof (globalThis as any).__filename !== "undefined") {
+  delete (globalThis as any).__filename;
+}
+
 const app = express();
 
 app.use(cors());

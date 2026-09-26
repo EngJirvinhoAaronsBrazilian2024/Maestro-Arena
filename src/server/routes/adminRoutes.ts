@@ -20,35 +20,55 @@ router.get('/overview', async (req, res) => {
       articlesRes,
       feedbackRes,
       pollsRes,
-      notifsRes
+      notifsRes,
+      seasonsRes
     ] = await Promise.all([
       admin.database.from('users').select('id, role'),
-      admin.database.from('tips').select('id'),
+      admin.database.from('tips').select('id, status, category'),
       admin.database.from('quiz_questions').select('id'),
-      admin.database.from('articles').select('id'),
+      admin.database.from('articles').select('id, status'),
       admin.database.from('feedback').select('id, status'),
       admin.database.from('polls').select('id, status'),
-      admin.database.from('app_notifications').select('id')
+      admin.database.from('app_notifications').select('id'),
+      admin.database.from('quiz_seasons').select('id, is_active')
     ]);
 
     const users = usersRes.data || [];
     const adminsCount = users.filter((u: any) => u.role === 'admin').length;
+    const tips = tipsRes.data || [];
+    const wonTipsCount = tips.filter((t: any) => t.status === 'won').length;
+    const lostTipsCount = tips.filter((t: any) => t.status === 'lost').length;
+    const pendingTipsCount = tips.filter((t: any) => t.status === 'pending').length;
+    const articles = articlesRes.data || [];
+    const publishedArticlesCount = articles.filter((a: any) => a.status === 'published').length;
+    const draftArticlesCount = articles.filter((a: any) => a.status === 'draft').length;
     const feedbacks = feedbackRes.data || [];
     const openFeedbackCount = feedbacks.filter((f: any) => f.status === 'open').length;
+    const resolvedFeedbackCount = feedbacks.filter((f: any) => f.status === 'resolved').length;
     const polls = pollsRes.data || [];
     const activePollsCount = polls.filter((p: any) => p.status === 'active').length;
+    const seasons = seasonsRes.data || [];
+    const activeSeasonsCount = seasons.filter((s: any) => s.is_active).length;
 
     res.json({
       totalUsers: users.length,
       totalAdmins: adminsCount,
-      totalTips: (tipsRes.data || []).length,
+      totalTips: tips.length,
+      wonTipsCount,
+      lostTipsCount,
+      pendingTipsCount,
       totalQuestions: (quizRes.data || []).length,
-      totalArticles: (articlesRes.data || []).length,
+      totalArticles: articles.length,
+      publishedArticlesCount,
+      draftArticlesCount,
       totalFeedback: feedbacks.length,
       openFeedbackCount,
+      resolvedFeedbackCount,
       totalPolls: polls.length,
       activePollsCount,
-      totalNotifications: (notifsRes.data || []).length
+      totalNotifications: (notifsRes.data || []).length,
+      totalSeasons: seasons.length,
+      activeSeasonsCount
     });
   } catch (err: any) {
     console.error('Error fetching admin overview:', err);
@@ -360,12 +380,29 @@ router.delete('/seasons/:id', async (req, res) => {
 router.get('/feedback', async (req, res) => {
   try {
     const admin = getInsforgeAdmin();
-    const { data, error } = await admin.database
-      .from('feedback')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    res.json(data || []);
+    const [fbRes, usersRes] = await Promise.all([
+      admin.database.from('feedback').select('*').order('created_at', { ascending: false }),
+      admin.database.from('users').select('id, display_name, email')
+    ]);
+
+    if (fbRes.error) throw fbRes.error;
+    const feedbacks = fbRes.data || [];
+    const users = usersRes.data || [];
+    const userMap = new Map<string, { displayName: string; email: string }>();
+    users.forEach((u: any) => {
+      userMap.set(u.id, { displayName: u.display_name, email: u.email });
+    });
+
+    const enriched = feedbacks.map((f: any) => {
+      const u = f.user_id ? userMap.get(f.user_id) : null;
+      return {
+        ...f,
+        user_name: u?.displayName || 'User',
+        user_email: u?.email || ''
+      };
+    });
+
+    res.json(enriched);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -650,33 +687,48 @@ router.get('/articles', async (req, res) => {
 
 router.post('/articles', async (req, res) => {
   try {
-    const { title, content, summary, category, imageUrl, authorId, authorName, status, publishedAt } = req.body;
-    if (!title || !content) {
-      return res.status(400).json({ error: 'Title and content are required' });
+    const { title, content, summary, category, imageUrl, image_url, authorId, author_id, authorName, author_name, status, publishedAt, published_at } = req.body;
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: 'Headline is required' });
+    }
+    const finalContent = (content || summary || '').trim();
+    if (!finalContent) {
+      return res.status(400).json({ error: 'Article content or summary is required' });
     }
     const admin = getInsforgeAdmin();
-    let validAuthorId = authorId;
-    if (!validAuthorId) {
-      validAuthorId = SPECIAL_ADMIN_ID;
-    } else {
+    
+    // Resolve author
+    let validAuthorId = authorId || author_id;
+    if (validAuthorId) {
       const { data: author } = await admin.database.from('users').select('id').eq('id', validAuthorId).single();
-      if (!author) validAuthorId = SPECIAL_ADMIN_ID;
+      if (!author) validAuthorId = null;
+    }
+    if (!validAuthorId) {
+      const { data: anyAdmin } = await admin.database.from('users').select('id').eq('role', 'admin').limit(1);
+      validAuthorId = anyAdmin?.[0]?.id || SPECIAL_ADMIN_ID;
     }
 
+    const finalImageUrl = imageUrl || image_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2';
+    const finalSummary = summary || (finalContent ? finalContent.slice(0, 180) + '...' : '');
+    const finalPublishedAt = Number(publishedAt || published_at || Date.now());
+
     const newArticle = {
-      title,
-      content,
-      summary: summary || (content ? content.slice(0, 180) + '...' : ''),
-      image_url: imageUrl || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2',
+      title: title.trim(),
+      content: finalContent,
+      summary: finalSummary,
+      image_url: finalImageUrl,
       author_id: validAuthorId,
-      author_name: authorName || 'Maestro Editor',
+      author_name: authorName || author_name || 'Maestro Editor',
       status: status || 'published',
-      category: category || 'general',
-      published_at: publishedAt || Date.now()
+      category: category || 'General',
+      published_at: finalPublishedAt
     };
 
     const { data, error } = await admin.database.from('articles').insert([newArticle]).select('*');
-    if (error) throw error;
+    if (error) {
+      console.error('Error inserting article in InsForge:', error);
+      return res.status(500).json({ error: error.message || 'Failed to save article to database' });
+    }
 
     const created = data?.[0] ? {
       id: data[0].id,
@@ -693,30 +745,41 @@ router.post('/articles', async (req, res) => {
 
     res.json(created);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('Error in POST /api/admin/articles:', err);
+    res.status(500).json({ error: err.message || 'Failed to create article' });
   }
 });
 
 router.put('/articles/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content, summary, category, imageUrl, authorName, status, publishedAt } = req.body;
+    const { title, content, summary, category, imageUrl, image_url, authorName, author_name, status, publishedAt, published_at } = req.body;
     const admin = getInsforgeAdmin();
     const updates: any = {};
     if (title !== undefined) updates.title = title;
     if (content !== undefined) updates.content = content;
     if (summary !== undefined) updates.summary = summary;
-    if (imageUrl !== undefined) updates.image_url = imageUrl;
-    if (authorName !== undefined) updates.author_name = authorName;
+    if (imageUrl !== undefined || image_url !== undefined) {
+      updates.image_url = imageUrl !== undefined ? imageUrl : image_url;
+    }
+    if (authorName !== undefined || author_name !== undefined) {
+      updates.author_name = authorName !== undefined ? authorName : author_name;
+    }
     if (status !== undefined) updates.status = status;
     if (category !== undefined) updates.category = category;
-    if (publishedAt !== undefined) updates.published_at = Number(publishedAt);
+    if (publishedAt !== undefined || published_at !== undefined) {
+      updates.published_at = Number(publishedAt !== undefined ? publishedAt : published_at);
+    }
 
     const { error } = await admin.database.from('articles').update(updates).eq('id', id);
-    if (error) throw error;
+    if (error) {
+      console.error('Error updating article in InsForge:', error);
+      return res.status(500).json({ error: error.message || 'Failed to update article' });
+    }
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('Error in PUT /api/admin/articles:', err);
+    res.status(500).json({ error: err.message || 'Failed to update article' });
   }
 });
 
@@ -724,11 +787,21 @@ router.delete('/articles/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const admin = getInsforgeAdmin();
+    // Delete bookmarks referencing this article first to avoid foreign key errors
+    try {
+      await admin.database.from('bookmarks').delete().eq('article_id', id);
+    } catch (bkErr) {
+      console.warn('Bookmarks cleanup notice:', bkErr);
+    }
     const { error } = await admin.database.from('articles').delete().eq('id', id);
-    if (error) throw error;
+    if (error) {
+      console.error('Error deleting article in InsForge:', error);
+      return res.status(500).json({ error: error.message || 'Failed to delete article' });
+    }
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('Error in DELETE /api/admin/articles:', err);
+    res.status(500).json({ error: err.message || 'Failed to delete article' });
   }
 });
 

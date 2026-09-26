@@ -46,23 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetchSessionAndUser();
     });
 
-    
-  const updateUserData = async (updates: Partial<UserData>) => {
-    if (!user) return;
-    try {
-      const { error } = await insforge.database
-        .from('users')
-        .update(updates)
-        .eq('id', user.id);
-      if (!error && userData) {
-        setUserData({ ...userData, ...updates });
-      }
-    } catch (e) {
-      console.error('Failed to update user data', e);
-    }
-  };
-
-  return () => {
+    return () => {
       if (typeof unsubscribe === 'function') {
         unsubscribe();
       }

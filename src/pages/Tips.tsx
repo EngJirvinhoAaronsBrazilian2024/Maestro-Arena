@@ -413,6 +413,16 @@ export function Tips() {
                     ))}
                   </div>
 
+                  {tip.imageUrl && (
+                    <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-center">
+                      <img 
+                        src={tip.imageUrl} 
+                        alt="Prediction Slip / Visual" 
+                        className="max-h-64 rounded-xl object-contain border border-slate-200 shadow-2xs" 
+                      />
+                    </div>
+                  )}
+
                   {(tip.odds || tip.analysis || tip.bookingCode) && (
                     <div className="bg-slate-50/80 p-4 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-3">
                       {tip.analysis && <p className="text-sm text-slate-600 italic max-w-lg">"{tip.analysis}"</p>}

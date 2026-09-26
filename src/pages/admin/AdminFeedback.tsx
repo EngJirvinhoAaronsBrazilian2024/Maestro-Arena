@@ -123,9 +123,10 @@ export function AdminFeedback() {
                   </p>
 
                   <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
-                    <div className="flex items-center gap-2 text-slate-400 text-xs font-mono">
+                    <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
                       <User className="h-3.5 w-3.5 text-slate-400" />
-                      <span className="truncate max-w-[200px]">User: {f.user_id || 'Anonymous'}</span>
+                      <span className="font-bold text-slate-800">{f.user_name || 'Fan'}</span>
+                      {f.user_email && <span className="text-slate-400 text-[11px] font-mono">({f.user_email})</span>}
                     </div>
                     {f.status !== 'resolved' && (
                       <button

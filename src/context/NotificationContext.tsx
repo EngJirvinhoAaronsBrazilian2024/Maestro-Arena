@@ -163,13 +163,27 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         const incomingNotifs: AppNotification[] = [];
 
         // 1. Admin Broadcasts (app_notifications)
-        const { data: broadcastData, error: broadcastErr } = await insforge.database
-          .from('app_notifications')
-          .select('id, title, message, type, created_at')
-          .order('created_at', { ascending: false })
-          .limit(3);
+        let broadcastData: any[] = [];
+        try {
+          const { data, error } = await insforge.database
+            .from('app_notifications')
+            .select('id, title, message, type, created_at')
+            .order('created_at', { ascending: false })
+            .limit(3);
+          if (!error && data) broadcastData = data;
+        } catch (e) {}
 
-        if (!broadcastErr && broadcastData) {
+        if (broadcastData.length === 0) {
+          try {
+            const res = await fetch('/api/admin/notifications');
+            if (res.ok) {
+              const apiData = await res.json();
+              if (Array.isArray(apiData)) broadcastData = apiData.slice(0, 3);
+            }
+          } catch (e) {}
+        }
+
+        if (broadcastData && broadcastData.length > 0) {
           for (const item of broadcastData) {
             const notifId = item.id.startsWith('broadcast_') ? item.id : `broadcast_${item.id}`;
             if (deletedIdsRef.current.has(notifId) || incomingNotifs.some(n => n.id === notifId)) continue;

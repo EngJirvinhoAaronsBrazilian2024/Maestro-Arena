@@ -412,7 +412,7 @@ export const AdminQuizManagement: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="font-bold text-emerald-700 truncate block max-w-[150px] text-xs sm:text-sm">{q.correct_answer}</span>
+                          <span className="font-bold text-emerald-700 truncate block max-w-[150px] text-xs sm:text-sm">{q.correctAnswer || q.correct_answer}</span>
                         </td>
                       </tr>
                     ))}

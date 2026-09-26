@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getAllUsers, updateUserRole, deleteUserRecord, UserData } from '../services/userService';
-import { Users, Shield, Trash2, ShieldAlert, AlertCircle, Activity, Database, Star, RefreshCw, HelpCircle, FileText, Target, Search } from 'lucide-react';
+import { Users, Shield, Trash2, ShieldAlert, AlertCircle, Activity, Database, Star, RefreshCw, HelpCircle, FileText, Target, Search, Bell, Award, ChevronRight, Brain } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Card, CardContent } from '../components/ui/Card';
 import { toast } from 'sonner';
@@ -150,48 +151,124 @@ export function AdminDashboard() {
               Total Users
             </div>
             <div className="text-4xl font-black tracking-tight">{stats.totalUsers || users.length}</div>
-            <p className="text-[11px] font-medium text-rose-100 mt-1">Registered members</p>
+            <p className="text-[11px] font-medium text-rose-100 mt-1">
+              {stats.totalAdmins || users.filter(u => u.role === 'admin').length} Admins • {users.length} in DB
+            </p>
           </CardContent>
         </Card>
         
         <Card className="rounded-2xl shadow-2xs bg-white border border-slate-200/80">
           <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-3 text-slate-500 font-extrabold uppercase tracking-wider text-xs">
-              <Shield size={16} className="text-purple-600" />
-              Administrators
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-slate-500 font-extrabold uppercase tracking-wider text-xs">
+                <Target size={16} className="text-emerald-600" />
+                Predictions (Tips)
+              </div>
+              <Link to="/admin/tips" className="text-xs font-bold text-rose-600 hover:underline">Manage</Link>
             </div>
-            <div className="text-4xl font-black text-slate-900 tracking-tight">{stats.totalAdmins || users.filter(u => u.role === 'admin').length}</div>
-            <p className="text-[11px] font-medium text-slate-500 mt-1">Staff with full access</p>
+            <div className="text-4xl font-black text-slate-900 tracking-tight">{stats.totalTips || 0}</div>
+            <p className="text-[11px] font-medium text-slate-500 mt-1">
+              <span className="text-emerald-600 font-bold">{stats.wonTipsCount || 0} Won</span> • <span className="text-blue-600 font-bold">{stats.pendingTipsCount || 0} Pending</span>
+            </p>
           </CardContent>
         </Card>
 
         <Card className="rounded-2xl shadow-2xs bg-white border border-slate-200/80">
           <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-3 text-slate-500 font-extrabold uppercase tracking-wider text-xs">
-              <Target size={16} className="text-emerald-600" />
-              Active Predictions
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-slate-500 font-extrabold uppercase tracking-wider text-xs">
+                <FileText size={16} className="text-blue-600" />
+                Newsroom
+              </div>
+              <Link to="/admin/news" className="text-xs font-bold text-rose-600 hover:underline">Manage</Link>
             </div>
-            <div className="flex items-baseline gap-2">
-              <div className="text-4xl font-black text-slate-900 tracking-tight">{stats.totalTips || 0}</div>
-              <span className="text-xs text-slate-500 font-medium">Tips published</span>
-            </div>
-            <p className="text-[11px] font-medium text-slate-500 mt-1">Matchday insights</p>
+            <div className="text-4xl font-black text-slate-900 tracking-tight">{stats.totalArticles || 0}</div>
+            <p className="text-[11px] font-medium text-slate-500 mt-1">
+              <span className="text-emerald-600 font-bold">{stats.publishedArticlesCount || 0} Published</span> • <span className="text-amber-600 font-bold">{stats.draftArticlesCount || 0} Drafts</span>
+            </p>
           </CardContent>
         </Card>
         
         <Card className="rounded-2xl shadow-2xs bg-white border border-slate-200/80">
           <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-3 text-slate-500 font-extrabold uppercase tracking-wider text-xs">
-              <Activity size={16} className="text-rose-600" />
-              Database Engine
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-slate-500 font-extrabold uppercase tracking-wider text-xs">
+                <Brain size={16} className="text-purple-600" />
+                Trivia & Quiz
+              </div>
+              <Link to="/admin/quiz" className="text-xs font-bold text-rose-600 hover:underline">Manage</Link>
             </div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
-              <div className="text-lg font-black text-slate-900">InsForge Live</div>
-            </div>
-            <p className="text-[11px] font-medium text-slate-500 mt-1">PostgreSQL & Auth online</p>
+            <div className="text-4xl font-black text-slate-900 tracking-tight">{stats.totalQuestions || 0}</div>
+            <p className="text-[11px] font-medium text-slate-500 mt-1">
+              {stats.totalSeasons || 0} Seasons • {stats.activePollsCount || 0} Active Polls
+            </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* QUICK ACTIONS NAVIGATION */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        <Link to="/admin/news" className="p-3.5 bg-white rounded-2xl border border-slate-200/80 hover:border-rose-300 hover:shadow-xs transition-all flex flex-col items-center text-center group cursor-pointer">
+          <div className="p-2 rounded-xl bg-blue-50 text-blue-600 group-hover:scale-110 transition-transform mb-2">
+            <FileText size={18} />
+          </div>
+          <span className="text-xs font-black text-slate-900">Newsroom</span>
+          <span className="text-[10px] text-slate-400 font-semibold">{stats.totalArticles || 0} Articles</span>
+        </Link>
+
+        <Link to="/admin/tips" className="p-3.5 bg-white rounded-2xl border border-slate-200/80 hover:border-rose-300 hover:shadow-xs transition-all flex flex-col items-center text-center group cursor-pointer">
+          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 group-hover:scale-110 transition-transform mb-2">
+            <Target size={18} />
+          </div>
+          <span className="text-xs font-black text-slate-900">Predictions</span>
+          <span className="text-[10px] text-slate-400 font-semibold">{stats.totalTips || 0} Tips</span>
+        </Link>
+
+        <Link to="/admin/quiz" className="p-3.5 bg-white rounded-2xl border border-slate-200/80 hover:border-rose-300 hover:shadow-xs transition-all flex flex-col items-center text-center group cursor-pointer">
+          <div className="p-2 rounded-xl bg-purple-50 text-purple-600 group-hover:scale-110 transition-transform mb-2">
+            <Brain size={18} />
+          </div>
+          <span className="text-xs font-black text-slate-900">Trivia Vault</span>
+          <span className="text-[10px] text-slate-400 font-semibold">{stats.totalQuestions || 0} Qs</span>
+        </Link>
+
+        <Link to="/admin/polls" className="p-3.5 bg-white rounded-2xl border border-slate-200/80 hover:border-rose-300 hover:shadow-xs transition-all flex flex-col items-center text-center group cursor-pointer">
+          <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:scale-110 transition-transform mb-2">
+            <Star size={18} />
+          </div>
+          <span className="text-xs font-black text-slate-900">Live Polls</span>
+          <span className="text-[10px] text-slate-400 font-semibold">{stats.totalPolls || 0} Polls</span>
+        </Link>
+
+        <Link to="/admin/seasons" className="p-3.5 bg-white rounded-2xl border border-slate-200/80 hover:border-rose-300 hover:shadow-xs transition-all flex flex-col items-center text-center group cursor-pointer">
+          <div className="p-2 rounded-xl bg-rose-50 text-rose-600 group-hover:scale-110 transition-transform mb-2">
+            <Award size={18} />
+          </div>
+          <span className="text-xs font-black text-slate-900">Seasons</span>
+          <span className="text-[10px] text-slate-400 font-semibold">{stats.totalSeasons || 0} Cycles</span>
+        </Link>
+
+        <Link to="/admin/notifications" className="p-3.5 bg-white rounded-2xl border border-slate-200/80 hover:border-rose-300 hover:shadow-xs transition-all flex flex-col items-center text-center group cursor-pointer">
+          <div className="p-2 rounded-xl bg-cyan-50 text-cyan-600 group-hover:scale-110 transition-transform mb-2">
+            <Bell size={18} />
+          </div>
+          <span className="text-xs font-black text-slate-900">Broadcasts</span>
+          <span className="text-[10px] text-slate-400 font-semibold">{stats.totalNotifications || 0} Alerts</span>
+        </Link>
+
+        <Link to="/admin/feedback" className="p-3.5 bg-white rounded-2xl border border-slate-200/80 hover:border-rose-300 hover:shadow-xs transition-all flex flex-col items-center text-center group cursor-pointer">
+          <div className="p-2 rounded-xl bg-slate-100 text-slate-600 group-hover:scale-110 transition-transform mb-2">
+            <HelpCircle size={18} />
+          </div>
+          <span className="text-xs font-black text-slate-900">Feedback</span>
+          <span className="text-[10px] text-slate-400 font-semibold">
+            {stats.openFeedbackCount > 0 ? (
+              <span className="text-rose-600 font-bold">{stats.openFeedbackCount} New</span>
+            ) : (
+              'All clear'
+            )}
+          </span>
+        </Link>
       </div>
 
       <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200/80 overflow-hidden">

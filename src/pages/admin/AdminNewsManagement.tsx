@@ -4,7 +4,7 @@ import { useArticles } from '../../services/news/hooks';
 import { createArticle, updateArticle, deleteArticle } from '../../services/newsService';
 import { Article } from '../../types/sports';
 import { ImageInput } from '../../components/ui/ImageInput';
-import { Plus, Edit2, Trash2, Search, X, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { toast } from 'sonner';
@@ -14,41 +14,60 @@ export function AdminNewsManagement() {
   const { articles: publishedArticles, mutate: mutatePublished } = useArticles('published');
   const { articles: draftArticles, mutate: mutateDrafts } = useArticles('draft');
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [currentArticle, setCurrentArticle] = useState<Partial<Article>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'published' | 'draft'>('published');
 
   const handleSave = async (status: 'draft' | 'published') => {
+    if (!currentArticle.title || !currentArticle.title.trim()) {
+      toast.error("Please enter a headline for the article.");
+      return;
+    }
+    const content = currentArticle.content?.trim() || currentArticle.summary?.trim();
+    if (!content) {
+      toast.error("Please enter the article content or summary.");
+      return;
+    }
+
+    setIsSaving(true);
     try {
       const validAuthorId = user?.id || (user as any)?.uid || '2886ae6d-b563-44a3-b4b8-ae932cc188ad';
+      const authorName = profile?.displayName || user?.email?.split('@')[0] || 'Maestro Editor';
+      
       if (currentArticle.id) {
         await updateArticle(currentArticle.id, {
           ...currentArticle,
+          title: currentArticle.title.trim(),
+          content: currentArticle.content || content,
+          summary: currentArticle.summary || (content.length > 180 ? content.slice(0, 180) + '...' : content),
           status,
           publishedAt: currentArticle.publishedAt || Date.now()
         });
         toast.success(`Article ${status === 'published' ? 'published' : 'saved as draft'}!`);
       } else {
         await createArticle({
-          title: currentArticle.title || 'Untitled',
-          content: currentArticle.content || '',
-          summary: currentArticle.summary || '',
-          category: currentArticle.category || 'News',
+          title: currentArticle.title.trim(),
+          content: currentArticle.content || content,
+          summary: currentArticle.summary || (content.length > 180 ? content.slice(0, 180) + '...' : content),
+          category: currentArticle.category || 'World Football',
           imageUrl: currentArticle.imageUrl || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2',
           authorId: validAuthorId,
-          authorName: profile?.displayName || user?.email || 'Admin Editor',
+          authorName,
           status,
           publishedAt: Date.now()
         });
-        toast.success(`New article ${status === 'published' ? 'published' : 'created as draft'}!`);
+        toast.success(`Article ${status === 'published' ? 'published to news feed' : 'saved as draft'}!`);
       }
       setIsEditing(false);
       setCurrentArticle({});
-      mutatePublished();
-      mutateDrafts();
+      await mutatePublished();
+      await mutateDrafts();
     } catch (error: any) {
       console.error("Error saving article:", error);
       toast.error(error.message || "Failed to save article.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -150,18 +169,22 @@ export function AdminNewsManagement() {
               Cancel
             </button>
             <button
+              type="button"
+              disabled={isSaving}
               onClick={() => handleSave('draft')}
-              className="flex items-center gap-2 rounded-xl bg-slate-100 border border-slate-200 px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-200 transition-colors shadow-2xs cursor-pointer"
+              className="flex items-center gap-2 rounded-xl bg-slate-100 border border-slate-200 px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-200 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
             >
-              <Clock className="h-4 w-4" />
-              Save as Draft
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" /> : <Clock className="h-4 w-4" />}
+              {isSaving ? 'Saving...' : 'Save as Draft'}
             </button>
             <button
+              type="button"
+              disabled={isSaving}
               onClick={() => handleSave('published')}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 px-6 py-2.5 text-xs sm:text-sm font-black text-white transition-all shadow-md shadow-rose-600/25 cursor-pointer"
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 px-6 py-2.5 text-xs sm:text-sm font-black text-white transition-all shadow-md shadow-rose-600/25 cursor-pointer disabled:opacity-50"
             >
-              <CheckCircle className="h-4 w-4" />
-              Publish Now
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <CheckCircle className="h-4 w-4" />}
+              {isSaving ? 'Publishing...' : 'Publish Now'}
             </button>
           </div>
         </div>

@@ -11,12 +11,13 @@ export function ArticlePage() {
   const { id } = useParams<{ id: string }>();
   const { article, isLoading } = useArticle(id || '');
   const { user } = useAuth();
-  const { bookmarks, mutate: mutateBookmarks } = useBookmarks(user?.uid);
+  const userId = user?.id || (user as any)?.uid;
+  const { bookmarks, mutate: mutateBookmarks } = useBookmarks(userId);
 
   const isBookmarked = bookmarks.includes(id || '');
 
   const handleBookmark = async () => {
-    if (!user || !id) return;
+    if (!userId || !id) return;
     
     // Optimistic update
     const newBookmarks = isBookmarked 
@@ -24,7 +25,7 @@ export function ArticlePage() {
       : [...bookmarks, id];
     mutateBookmarks(newBookmarks, false);
 
-    await toggleBookmark(user.id || user.uid, id, isBookmarked);
+    await toggleBookmark(userId, id, isBookmarked);
     mutateBookmarks();
   };
 

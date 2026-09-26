@@ -142,12 +142,7 @@ router.post('/', async (req, res) => {
 
     if (error) {
       console.error('InsForge tips insert error:', error);
-      // fallback to file
-      const tips = getFallbackTips();
-      const localTip = { id: newId, ...tipData, createdAt: now };
-      tips.unshift(localTip);
-      saveFallbackTips(tips);
-      return res.json(normalizeTipFromDb(localTip));
+      return res.status(500).json({ error: error.message || 'Failed to insert tip into database' });
     }
 
     const created = data?.[0] ? normalizeTipFromDb(data[0]) : normalizeTipFromDb(dbPayload);
@@ -170,11 +165,15 @@ router.put('/:id', async (req, res) => {
     if (updateData.odds !== undefined) dbUpdates.odds = updateData.odds ? Number(updateData.odds) : null;
     if (updateData.analysis !== undefined) dbUpdates.analysis = updateData.analysis;
     if (updateData.status !== undefined) dbUpdates.status = updateData.status;
-    if (updateData.bookingCode !== undefined) dbUpdates.booking_code = updateData.bookingCode;
+    if (updateData.bookingCode !== undefined || updateData.booking_code !== undefined) {
+      dbUpdates.booking_code = updateData.bookingCode !== undefined ? updateData.bookingCode : updateData.booking_code;
+    }
     if (updateData.imageUrl !== undefined || updateData.image_url !== undefined) {
       dbUpdates.image_url = updateData.imageUrl || updateData.image_url || null;
     }
-    if (updateData.publishDate !== undefined) dbUpdates.publish_date = Number(updateData.publishDate);
+    if (updateData.publishDate !== undefined || updateData.publish_date !== undefined) {
+      dbUpdates.publish_date = Number(updateData.publishDate || updateData.publish_date);
+    }
 
     const { error } = await admin.database
       .from('tips')
@@ -183,12 +182,7 @@ router.put('/:id', async (req, res) => {
 
     if (error) {
       console.error('InsForge tips update error:', error);
-      const tips = getFallbackTips();
-      const index = tips.findIndex((t: any) => t.id === id);
-      if (index !== -1) {
-        tips[index] = { ...tips[index], ...updateData, id };
-        saveFallbackTips(tips);
-      }
+      return res.status(500).json({ error: error.message || 'Failed to update tip in database' });
     }
 
     res.json({ success: true });
@@ -204,9 +198,7 @@ router.delete('/:id', async (req, res) => {
     const { error } = await admin.database.from('tips').delete().eq('id', id);
     if (error) {
       console.error('InsForge tips delete error:', error);
-      let tips = getFallbackTips();
-      tips = tips.filter((t: any) => t.id !== id);
-      saveFallbackTips(tips);
+      return res.status(500).json({ error: error.message || 'Failed to delete tip from database' });
     }
     res.json({ success: true });
   } catch (error: any) {

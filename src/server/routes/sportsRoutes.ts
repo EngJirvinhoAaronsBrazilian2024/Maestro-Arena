@@ -161,8 +161,6 @@ router.get("/competitions/:id/statistics", async (req, res) => {
 
 
 
-export default router;
-
 router.get("/favorites/fixtures", async (req, res) => {
   try {
     const teamsStr = req.query.teams as string;
@@ -187,3 +185,5 @@ router.get("/search", async (req, res) => {
     res.status(500).json({ error: "Failed to search" });
   }
 });
+
+export default router;

@@ -108,7 +108,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
 }
 
 export async function createArticle(article: Omit<Article, 'id'>): Promise<string> {
-  // 1. Try backend route
+  // 1. Try backend route (uses service role admin client)
   try {
     const res = await fetch('/api/admin/articles', {
       method: 'POST',
@@ -119,7 +119,13 @@ export async function createArticle(article: Omit<Article, 'id'>): Promise<strin
       const data = await res.json();
       return data.id || 'ok';
     }
-  } catch (e) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Server responded with ${res.status}`);
+  } catch (e: any) {
+    // If it's a validation error or known server error from response, throw immediately
+    if (e.message && !e.message.includes('Failed to fetch') && !e.message.includes('NetworkError')) {
+      throw e;
+    }
     console.warn('POST /api/admin/articles failed, trying direct insert:', e);
   }
 
@@ -142,7 +148,7 @@ export async function createArticle(article: Omit<Article, 'id'>): Promise<strin
     
   if (error) {
     console.error('Direct InsForge insert error for article:', error);
-    throw error;
+    throw new Error(error.message || 'Failed to create article in database');
   }
   return data.id;
 }
@@ -156,7 +162,12 @@ export async function updateArticle(id: string, updates: Partial<Article>): Prom
       body: JSON.stringify(updates)
     });
     if (res.ok) return;
-  } catch (e) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Server responded with ${res.status}`);
+  } catch (e: any) {
+    if (e.message && !e.message.includes('Failed to fetch') && !e.message.includes('NetworkError')) {
+      throw e;
+    }
     console.warn(`PUT /api/admin/articles/${id} failed, trying direct update:`, e);
   }
 
@@ -179,7 +190,7 @@ export async function updateArticle(id: string, updates: Partial<Article>): Prom
     
   if (error) {
     console.error('Direct InsForge update error for article:', error);
-    throw error;
+    throw new Error(error.message || 'Failed to update article in database');
   }
 }
 
@@ -188,11 +199,20 @@ export async function deleteArticle(id: string): Promise<void> {
   try {
     const res = await fetch(`/api/admin/articles/${id}`, { method: 'DELETE' });
     if (res.ok) return;
-  } catch (e) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Server responded with ${res.status}`);
+  } catch (e: any) {
+    if (e.message && !e.message.includes('Failed to fetch') && !e.message.includes('NetworkError')) {
+      throw e;
+    }
     console.warn(`DELETE /api/admin/articles/${id} failed, trying direct delete:`, e);
   }
 
   // 2. Direct delete fallback
+  try {
+    await insforge.database.from('bookmarks').delete().eq('article_id', id);
+  } catch (bkErr) {}
+  
   const { error } = await insforge.database
     .from('articles')
     .delete()
@@ -200,7 +220,7 @@ export async function deleteArticle(id: string): Promise<void> {
     
   if (error) {
     console.error('Direct InsForge delete error for article:', error);
-    throw error;
+    throw new Error(error.message || 'Failed to delete article from database');
   }
 }
 
