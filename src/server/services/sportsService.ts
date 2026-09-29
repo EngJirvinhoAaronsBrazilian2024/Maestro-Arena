@@ -23,6 +23,23 @@ function getStaleCache<T>(key: string): T | null {
 }
 
 
+
+let isApiKeySuspended = true;
+let lastSuspensionCheck = Date.now();
+
+export function getEffectiveSportsApiKey(): string | undefined {
+  const apiKey = process.env.SPORTS_API_KEY;
+  if (!apiKey || apiKey.trim() === '') return undefined;
+  if (apiKey.includes('278254bf84a897c55de3a7f518d15f2e') || isApiKeySuspended) {
+    if (Date.now() - lastSuspensionCheck > 60 * 60 * 1000) {
+      isApiKeySuspended = false;
+    } else {
+      return undefined;
+    }
+  }
+  return apiKey;
+}
+
 function setCache(key: string, data: any, ttlMs: number) {
   cache.set(key, { expiry: Date.now() + ttlMs, data });
 }
@@ -93,7 +110,7 @@ export async function getMatchDetails(id: string): Promise<MatchDetail | null> {
   const cached = getCached<MatchDetail>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   // Mock implementation
@@ -177,7 +194,7 @@ export async function getTeamDetails(id: string): Promise<TeamDetail | null> {
   const cached = getCached<TeamDetail>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
@@ -236,7 +253,7 @@ export async function getPlayerDetails(id: string): Promise<PlayerDetail | null>
   const cached = getCached<PlayerDetail>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
@@ -293,7 +310,7 @@ export async function getLiveMatches(): Promise<Match[]> {
   const cached = getCached<Match[]>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
@@ -359,7 +376,7 @@ export async function getUpcomingMatches(): Promise<Match[]> {
   const cached = getCached<Match[]>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
@@ -425,19 +442,20 @@ export async function getCompetitions(): Promise<Competition[]> {
   const cached = getCached<Competition[]>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   const TOP_LEAGUES = [39, 140, 135, 78, 61, 2, 3, 848, 94, 88];
 
+  const mockCompetitions: Competition[] = [
+    { id: "39", name: "Premier League", country: "England", logoUrl: "https://media.api-sports.io/football/leagues/39.png", countryFlag: "https://media.api-sports.io/flags/gb.svg", type: "League" },
+    { id: "140", name: "La Liga", country: "Spain", logoUrl: "https://media.api-sports.io/football/leagues/140.png", countryFlag: "https://media.api-sports.io/flags/es.svg", type: "League" },
+    { id: "135", name: "Serie A", country: "Italy", logoUrl: "https://media.api-sports.io/football/leagues/135.png", countryFlag: "https://media.api-sports.io/flags/it.svg", type: "League" },
+    { id: "78", name: "Bundesliga", country: "Germany", logoUrl: "https://media.api-sports.io/football/leagues/78.png", countryFlag: "https://media.api-sports.io/flags/de.svg", type: "League" },
+    { id: "61", name: "Ligue 1", country: "France", logoUrl: "https://media.api-sports.io/football/leagues/61.png", countryFlag: "https://media.api-sports.io/flags/fr.svg", type: "League" }
+  ];
+
   if (!apiKey) {
-    const mockCompetitions: Competition[] = [
-      { id: "39", name: "Premier League", country: "England", logoUrl: "https://media.api-sports.io/football/leagues/39.png", countryFlag: "https://media.api-sports.io/flags/gb.svg", type: "League" },
-      { id: "140", name: "La Liga", country: "Spain", logoUrl: "https://media.api-sports.io/football/leagues/140.png", countryFlag: "https://media.api-sports.io/flags/es.svg", type: "League" },
-      { id: "135", name: "Serie A", country: "Italy", logoUrl: "https://media.api-sports.io/football/leagues/135.png", countryFlag: "https://media.api-sports.io/flags/it.svg", type: "League" },
-      { id: "78", name: "Bundesliga", country: "Germany", logoUrl: "https://media.api-sports.io/football/leagues/78.png", countryFlag: "https://media.api-sports.io/flags/de.svg", type: "League" },
-      { id: "61", name: "Ligue 1", country: "France", logoUrl: "https://media.api-sports.io/football/leagues/61.png", countryFlag: "https://media.api-sports.io/flags/fr.svg", type: "League" }
-    ];
     setCache(cacheKey, mockCompetitions, CACHE_TTL_LONG);
     return mockCompetitions;
   }
@@ -476,8 +494,7 @@ export async function getCompetitions(): Promise<Competition[]> {
   } catch (error) {
     console.warn("Competitions API unavailable, using mock data.");
     const stale = getStaleCache<any>(cacheKey);
-    if (stale) return stale;
-    throw error;
+    return stale || mockCompetitions;
   }
 }
 
@@ -486,7 +503,7 @@ export async function getStandings(competitionId: string): Promise<Standing[]> {
   const cached = getCached<Standing[]>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
@@ -537,7 +554,7 @@ export async function getTransfers(): Promise<Transfer[]> {
   const cached = getCached<Transfer[]>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
@@ -587,7 +604,7 @@ export async function getCompetitionResults(competitionId: string): Promise<Matc
   const cached = getCached<Match[]>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
@@ -649,7 +666,7 @@ export async function getCompetitionFixtures(competitionId: string): Promise<Mat
   const cached = getCached<Match[]>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
@@ -711,7 +728,7 @@ export async function getCompetitionTopScorers(competitionId: string): Promise<a
   const cached = getCached<any[]>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
@@ -802,7 +819,7 @@ export async function getRecentMatches(): Promise<Match[]> {
   const cached = getCached<Match[]>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
@@ -908,7 +925,7 @@ export async function searchTeams(query: string): Promise<any[]> {
   const cached = getCached<any[]>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
@@ -958,7 +975,7 @@ export async function getFavoriteFixtures(teamIds: string[]): Promise<Match[]> {
   const cached = getCached<Match[]>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
@@ -1023,7 +1040,7 @@ export async function searchAll(query: string): Promise<any> {
   const cached = getCached<any>(cacheKey);
   if (cached) return cached;
 
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) { 

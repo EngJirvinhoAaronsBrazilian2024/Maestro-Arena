@@ -31,8 +31,8 @@ export function Tips() {
   const [category, setCategory] = useState<TipCategory>('single');
   const [activeSlide, setActiveSlide] = useState(0);
   
-  // Date filtering: null means "All Upcoming / Available Matchdays"
-  const [dateFilter, setDateFilter] = useState<number | null>(null);
+  // Date filtering: defaults to Today (Date.now()) so user instantly knows the tips are for that day
+  const [dateFilter, setDateFilter] = useState<number | null>(() => Date.now());
 
   // Auto-scroll hero images every 3 seconds with smooth crossfade
   useEffect(() => {
@@ -243,29 +243,32 @@ export function Tips() {
           <div className="flex flex-wrap items-center gap-2 text-sm font-semibold w-full sm:w-auto">
             <button 
               onClick={handlePrevDay} 
-              className="p-2 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer"
-              title="Previous Day"
+              className="p-2 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer flex items-center gap-1"
+              title="Navigate backwards for previous tips"
             >
               <ChevronLeft size={16}/>
+              <span className="text-xs font-bold hidden sm:inline">Previous Day</span>
             </button>
             
             <button
               onClick={handleToday}
               className={cn(
-                "px-3.5 py-1.5 rounded-full border text-xs sm:text-sm font-black transition-all cursor-pointer shadow-2xs",
+                "px-4 py-2 rounded-full border text-xs sm:text-sm font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1.5",
                 isToday 
-                  ? "bg-rose-600 text-white border-rose-600" 
-                  : "bg-rose-50/95 text-rose-700 border-rose-200/90 hover:bg-rose-100"
+                  ? "bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-600/20" 
+                  : "bg-white text-slate-800 border-slate-300 hover:bg-rose-50 hover:text-rose-600"
               )}
             >
-              {dateFilter === null ? "TODAY" : isToday ? "TODAY" : new Date(dateFilter).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+              <Calendar className="w-3.5 h-3.5" />
+              <span>{isToday ? "TODAY" : new Date(dateFilter || Date.now()).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
             </button>
 
             <button 
               onClick={handleNextDay} 
-              className="p-2 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer"
+              className="p-2 bg-white/90 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 rounded-full transition-colors shadow-2xs cursor-pointer flex items-center gap-1"
               title="Next Day"
             >
+              <span className="text-xs font-bold hidden sm:inline">Next Day</span>
               <ChevronRight size={16}/>
             </button>
 
@@ -304,20 +307,49 @@ export function Tips() {
         })}
       </div>
 
-      {/* ACTIVE SCOPE BANNER IF FILTERED */}
-      {dateFilter !== null && (
-        <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-600">
-          <span>
-            Filtering tips for <strong>{new Date(dateFilter).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</strong>
+      {/* ACTIVE DATE SCOPE BANNER */}
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl px-4 sm:px-5 py-3 text-xs sm:text-sm shadow-2xs">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-rose-600 shrink-0" />
+          <span className="text-slate-600">
+            Showing tips for:{' '}
+            <strong className="text-slate-900 font-black">
+              {isToday 
+                ? `Today (${new Date(dateFilter || Date.now()).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })})` 
+                : new Date(dateFilter || Date.now()).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
+            </strong>
           </span>
-          <button
-            onClick={handleAllDates}
-            className="text-rose-600 font-bold hover:underline cursor-pointer"
-          >
-            Clear Date Filter
-          </button>
+          {isToday && (
+            <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-emerald-200/80">
+              Live Today
+            </span>
+          )}
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrevDay}
+            className="text-xs font-bold text-slate-600 hover:text-rose-600 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1 cursor-pointer"
+            title="Navigate backwards for previous tips"
+          >
+            <ChevronLeft size={14} /> Previous Day
+          </button>
+          {!isToday ? (
+            <button
+              onClick={handleToday}
+              className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer"
+            >
+              Back to Today
+            </button>
+          ) : (
+            <button
+              onClick={handleAllDates}
+              className="text-xs font-bold text-slate-500 hover:text-slate-800 hover:underline cursor-pointer"
+            >
+              View All Dates
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* CONTENT FEED */}
       <div>
@@ -342,20 +374,41 @@ export function Tips() {
         ) : filteredTips.length === 0 ? (
           <div className="bg-white/80 backdrop-blur-md p-10 rounded-2xl text-center border border-white/90 shadow-2xs">
             <Calendar className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-            <h3 className="text-lg font-black text-slate-900 mb-2">NO TIPS AVAILABLE</h3>
-            <p className="text-slate-600 mb-4 text-sm font-medium">
-              There are no {CATEGORIES.find(c => c.id === category)?.label} tips available for this selection.
+            <h3 className="text-lg font-black text-slate-900 mb-2">NO TIPS POSTED FOR THIS DATE</h3>
+            <p className="text-slate-600 mb-4 text-sm font-medium max-w-md mx-auto leading-relaxed">
+              There are no {CATEGORIES.find(c => c.id === category)?.label} tips posted for{' '}
+              <strong className="text-slate-900">
+                {isToday ? 'Today' : new Date(dateFilter || Date.now()).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+              </strong>
+              . You can navigate backwards to browse previous tips or view all available tips.
             </p>
+
+            {/* Backwards navigation and View All buttons */}
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
+              <button
+                onClick={handlePrevDay}
+                className="px-4 py-2.5 bg-white border border-slate-200 hover:border-rose-300 text-slate-800 hover:text-rose-600 font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                title="View tips from the previous day"
+              >
+                <ChevronLeft size={16} /> Browse Previous Day
+              </button>
+              <button
+                onClick={handleAllDates}
+                className="px-4 py-2.5 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-xs sm:text-sm rounded-xl border border-rose-200 transition-colors cursor-pointer"
+              >
+                View All Available Tips
+              </button>
+            </div>
 
             {/* Guide user to other categories if tips exist */}
             {tips.length > 0 && (
-              <div className="flex flex-wrap items-center justify-center gap-2 pt-3 border-t border-slate-100 mt-2">
-                <span className="text-xs text-slate-500 font-semibold">Tips available in other categories:</span>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-4 border-t border-slate-100 mt-2">
+                <span className="text-xs text-slate-500 font-semibold">Tips in other categories:</span>
                 {CATEGORIES.filter(c => c.id !== category && (categoryCounts[c.id] || 0) > 0).map(c => (
                   <button
                     key={c.id}
                     onClick={() => setCategory(c.id)}
-                    className="text-xs bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 px-3 py-1 rounded-full font-bold transition-colors cursor-pointer"
+                    className="text-xs bg-slate-100 text-slate-700 border border-slate-200 hover:bg-rose-50 hover:text-rose-700 px-3 py-1 rounded-full font-bold transition-colors cursor-pointer"
                   >
                     View {c.label} ({categoryCounts[c.id]})
                   </button>

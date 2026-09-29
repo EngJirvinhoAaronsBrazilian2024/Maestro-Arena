@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { insforge } from '../../lib/insforge';
-import { HelpCircle, CheckCircle, MessageSquare, Clock, User, ShieldCheck } from 'lucide-react';
+import { HelpCircle, CheckCircle, MessageSquare, Clock, User, ShieldCheck, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import { UserAvatar } from '../../components/ui/UserAvatar';
 
 export function AdminFeedback() {
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
@@ -123,10 +124,22 @@ export function AdminFeedback() {
                   </p>
 
                   <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
-                    <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
-                      <User className="h-3.5 w-3.5 text-slate-400" />
-                      <span className="font-bold text-slate-800">{f.user_name || 'Fan'}</span>
-                      {f.user_email && <span className="text-slate-400 text-[11px] font-mono">({f.user_email})</span>}
+                    <div className="flex items-center gap-3">
+                      <UserAvatar 
+                        name={f.user_name} 
+                        email={f.user_email} 
+                        avatarUrl={f.user_avatar}
+                        size="sm"
+                      />
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                        <span className="font-bold text-sm text-slate-900">{f.user_name || 'SportsHub User'}</span>
+                        {f.user_email && (
+                          <span className="inline-flex items-center gap-1 text-slate-500 text-xs font-mono bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/80">
+                            <Mail className="w-3 h-3 text-slate-400" />
+                            {f.user_email}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {f.status !== 'resolved' && (
                       <button

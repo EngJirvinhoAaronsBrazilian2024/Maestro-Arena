@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, User, LogOut, ChevronLeft, Bell, Settings, Check, X, Trash2, BellOff, CheckCheck, Megaphone, Newspaper, Target } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
+import { UserAvatar } from '../ui/UserAvatar';
 import { useNotificationSystem, AppNotification } from '../../hooks/useNotificationSystem';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useSearchAll } from '../../services/sports/hooks';
@@ -475,16 +476,27 @@ export function Header() {
                     className="px-2 flex items-center gap-2"
                     onClick={() => { setDropdownOpen(!dropdownOpen); setNotifOpen(false); }}
                   >
-                    <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-rose-600 to-red-700 flex items-center justify-center text-xs font-black text-white shadow-sm border border-white">
-                      {(userData?.displayName || user?.email || 'User').charAt(0).toUpperCase()}
-                    </div>
+                    <UserAvatar
+                      name={userData?.displayName}
+                      email={user?.email}
+                      size="sm"
+                      className="h-7 w-7 border border-white"
+                    />
                   </Button>
                   
                   {dropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-48 rounded-xl border border-slate-200 bg-white py-1 shadow-lg z-50">
-                      <div className="px-4 py-3 border-b border-slate-100">
-                        <p className="text-sm font-bold text-slate-900 truncate">{userData?.displayName || 'User'}</p>
-                        <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                    <div className="absolute right-0 mt-2 w-52 rounded-2xl border border-slate-200 bg-white py-1 shadow-xl z-50">
+                      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-3">
+                        <UserAvatar
+                          name={userData?.displayName}
+                          email={user?.email}
+                          size="md"
+                          className="h-9 w-9"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-900 truncate">{userData?.displayName || 'User'}</p>
+                          <p className="text-xs text-slate-500 font-mono truncate">{user.email}</p>
+                        </div>
                       </div>
                       <div className="py-1">
                         <Link to="/profile" className="block px-4 py-2 text-sm font-medium text-slate-700 hover:bg-rose-50 hover:text-rose-600" onClick={() => setDropdownOpen(false)}>

@@ -382,23 +382,58 @@ router.get('/feedback', async (req, res) => {
     const admin = getInsforgeAdmin();
     const [fbRes, usersRes] = await Promise.all([
       admin.database.from('feedback').select('*').order('created_at', { ascending: false }),
-      admin.database.from('users').select('id, display_name, email')
+      admin.database.from('users').select('*')
     ]);
 
     if (fbRes.error) throw fbRes.error;
     const feedbacks = fbRes.data || [];
     const users = usersRes.data || [];
-    const userMap = new Map<string, { displayName: string; email: string }>();
+    const userMap = new Map<string, { displayName: string; email: string; avatarUrl: string }>();
+
     users.forEach((u: any) => {
-      userMap.set(u.id, { displayName: u.display_name, email: u.email });
+      userMap.set(u.id, { 
+        displayName: u.display_name || u.displayName || u.email?.split('@')[0] || 'User', 
+        email: u.email || '',
+        avatarUrl: u.avatar_url || u.avatarUrl || ''
+      });
     });
+
+    // Also attempt to get auth users for any missing user details
+    try {
+      const baseUrl = process.env.INSFORGE_BASE_URL || 'https://gci83gu5.us-east.insforge.app';
+      const apiKey = process.env.INSFORGE_API_KEY || '';
+      const authRes = await fetch(`${baseUrl}/api/auth/users`, {
+        headers: { 'x-api-key': apiKey, 'apikey': apiKey }
+      });
+      if (authRes.ok) {
+        const raw = await authRes.json();
+        const authUsers = Array.isArray(raw) ? raw : (raw?.data || []);
+        authUsers.forEach((au: any) => {
+          const existing = userMap.get(au.id);
+          const name = au.profile?.name || au.user_metadata?.display_name || au.displayName || au.name || au.email?.split('@')[0] || 'User';
+          const avatar = au.profile?.avatar_url || au.user_metadata?.avatar_url || au.avatar_url || '';
+          if (!existing) {
+            userMap.set(au.id, { displayName: name, email: au.email || '', avatarUrl: avatar });
+          } else {
+            if (!existing.displayName || existing.displayName === 'User') existing.displayName = name;
+            if (!existing.avatarUrl && avatar) existing.avatarUrl = avatar;
+          }
+        });
+      }
+    } catch (e) {
+      // Non-blocking fallback
+    }
 
     const enriched = feedbacks.map((f: any) => {
       const u = f.user_id ? userMap.get(f.user_id) : null;
+      const userName = f.user_name || u?.displayName || (f.user_email ? f.user_email.split('@')[0] : 'SportsHub Fan');
+      const userEmail = f.user_email || u?.email || '';
+      const userAvatar = f.user_avatar || u?.avatarUrl || '';
       return {
         ...f,
-        user_name: u?.displayName || 'User',
-        user_email: u?.email || ''
+        user_name: userName,
+        user_email: userEmail,
+        user_avatar: userAvatar
       };
     });
 

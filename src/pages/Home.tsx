@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Trophy, Clock, Star, AlertCircle, ArrowRight, X, Check, ChevronDown, ChevronUp, Search, Calendar, History, Activity } from 'lucide-react';
+import { Trophy, Clock, Star, AlertCircle, ArrowRight, X, Check, ChevronDown, ChevronUp, Search, Calendar, History, Activity, Radio, RotateCw, Tv } from 'lucide-react';
 import { MatchCard } from '../components/sports/MatchCard';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../hooks/useFavorites';
@@ -322,6 +322,14 @@ export function Home() {
 
   const topNews = articles?.slice(0, 4) || [];
 
+  const [isHomeIframeLoading, setIsHomeIframeLoading] = useState<boolean>(true);
+  const [homeIframeKey, setHomeIframeKey] = useState<number>(0);
+
+  const handleHomeRefresh = () => {
+    setIsHomeIframeLoading(true);
+    setHomeIframeKey((prev) => prev + 1);
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
                   {/* Premium Hero Section - Fully Responsive Across All Devices */}
@@ -454,45 +462,70 @@ export function Home() {
         {/* Left Column (Main Content: Feed & Live) */}
         <div className="space-y-6 w-full">
           
-          {/* General Live & Upcoming */}
-          <Card className="border border-white/80 bg-white/70 backdrop-blur-xl">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-slate-100">
-              <CardTitle className="text-lg font-black text-slate-950 flex items-center gap-2">
-                <Clock className="h-5 w-5 text-rose-600" />
-                World Football
-              </CardTitle>
-              <Link to="/livescore" className="text-sm font-bold text-rose-600 hover:text-rose-700 hover:underline">
-                View All
-              </Link>
+          {/* Real-Time Live Matches & Upcoming Highlights from ScoreBat */}
+          <Card className="border border-white/80 bg-white/70 backdrop-blur-xl overflow-hidden shadow-sm">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-2.5 w-2.5 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                </span>
+                <CardTitle className="text-lg font-black text-slate-950 flex items-center gap-2">
+                  World Football
+                </CardTitle>
+                <span className="text-xs font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-md border border-cyan-200">
+                  Real-time
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleHomeRefresh}
+                  title="Reload Live Feed"
+                  className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 shadow-2xs transition-colors cursor-pointer"
+                >
+                  <RotateCw className={`w-3.5 h-3.5 ${isHomeIframeLoading ? 'animate-spin text-cyan-600' : ''}`} />
+                </button>
+
+                <Link to="/livescore" className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline ml-1">
+                  View All →
+                </Link>
+              </div>
             </CardHeader>
-            <CardContent>
-              {featuredLive.length > 0 ? (
-                <div className="grid gap-3 sm:grid-cols-2 pt-2">
-                  {featuredLive.map((match) => (
-                    <MatchCard key={match.id} match={match} />
-                  ))}
-                </div>
-              ) : (
-                <div className="py-6 text-center text-sm text-slate-500 border-b border-slate-100">
-                  <p>No featured live matches right now.</p>
-                </div>
-              )}
-              
-              <div className="mt-6">
-                <h3 className="mb-3 text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-cyan-600" /> Upcoming Highlights
-                </h3>
-                {isLoadingUpcoming ? (
-                  <div className="grid gap-3 sm:grid-cols-2"><div className="h-20 animate-pulse rounded-lg bg-slate-100"></div></div>
-                ) : upcomingMatches && upcomingMatches.length > 0 ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {upcomingMatches.slice(0, 4).map((match) => (
-                      <MatchCard key={match.id} match={match} />
-                    ))}
+
+            <CardContent className="p-0">
+              <div className="relative w-full overflow-hidden bg-white" style={{ height: '620px' }}>
+                {isHomeIframeLoading && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/95 backdrop-blur-xs">
+                    <div className="relative flex items-center justify-center">
+                      <div className="h-10 w-10 rounded-full border-4 border-slate-200"></div>
+                      <div className="absolute h-10 w-10 rounded-full border-4 border-cyan-500 border-t-transparent animate-spin"></div>
+                    </div>
+                    <p className="mt-3 text-xs font-bold text-slate-700">Loading real-time matches...</p>
                   </div>
-                ) : (
-                  <p className="text-sm text-slate-500">No upcoming matches today.</p>
                 )}
+
+                <iframe
+                  key={homeIframeKey}
+                  src="https://www.scorebat.com/embed/livescore/"
+                  title="Real-Time World Football Matches"
+                  frameBorder="0"
+                  width="100%"
+                  allowFullScreen
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                  onLoad={() => setIsHomeIframeLoading(false)}
+                  className="w-full border-0 block"
+                  style={{
+                    width: '100%',
+                    marginTop: '-51px',
+                    height: 'calc(100% + 51px)',
+                    border: 'none',
+                    display: 'block',
+                    opacity: isHomeIframeLoading ? 0 : 1,
+                    transition: 'opacity 0.25s ease-in-out',
+                  }}
+                />
               </div>
             </CardContent>
           </Card>

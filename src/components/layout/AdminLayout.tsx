@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Users, Brain, FileText, LogOut, LayoutDashboard, ChevronLeft, Menu, X, ShieldCheck, Target, Bell, Star, Award, HelpCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
+import { UserAvatar } from '../ui/UserAvatar';
 
 const adminNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
@@ -83,9 +84,12 @@ export function AdminLayout() {
 
         <div className="px-5 py-5">
           <div className="rounded-2xl bg-slate-50/70 p-3.5 border border-slate-200/80 flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-rose-600 to-red-600 text-white font-black shadow-sm shadow-rose-600/25">
-              {(userData?.displayName || userData?.email || 'A').charAt(0).toUpperCase()}
-            </div>
+            <UserAvatar 
+              name={userData?.displayName}
+              email={userData?.email}
+              size="md"
+              className="rounded-2xl shadow-sm"
+            />
             <div className="overflow-hidden">
               <p className="truncate text-xs font-black text-slate-900">{userData?.displayName || 'Administrator'}</p>
               <p className="truncate text-[11px] text-slate-500 font-medium">{userData?.email || ''}</p>

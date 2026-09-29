@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Monitor, Bell, Shield, MessageSquare, Send, Smartphone } from 'lucide-react';
 import { insforge } from '../lib/insforge';
 import { toast } from 'sonner';
+import { UserAvatar } from '../components/ui/UserAvatar';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -11,7 +12,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function Settings() {
-    const { user } = useAuth();
+    const { user, userData } = useAuth();
     const [feedback, setFeedback] = useState('');
     const [submitting, setSubmitting] = useState(false);
     
@@ -46,9 +47,30 @@ export function Settings() {
     const handleFeedbackSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!user) return toast.error('Please login to send feedback');
+      if (!feedback.trim()) return toast.error('Please enter a feedback message');
       setSubmitting(true);
       try {
-        await insforge.database.from('feedback').insert([{ user_id: user.id, message: feedback }]);
+        const senderName = userData?.displayName || user.profile?.name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'SportsHub User';
+        const senderEmail = user.email || '';
+        const senderAvatar = user.profile?.avatar_url || user.user_metadata?.avatar_url || '';
+
+        // Attempt insert with rich sender details
+        const { error } = await insforge.database.from('feedback').insert([{ 
+          user_id: user.id, 
+          user_name: senderName,
+          user_email: senderEmail,
+          user_avatar: senderAvatar,
+          message: feedback.trim() 
+        }]);
+
+        if (error) {
+          // Fallback if table only accepts base schema
+          await insforge.database.from('feedback').insert([{ 
+            user_id: user.id, 
+            message: feedback.trim() 
+          }]);
+        }
+
         toast.success('Feedback sent successfully! Thank you.');
         setFeedback('');
       } catch (err) {
@@ -193,9 +215,17 @@ export function Settings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <p className="font-medium">Email Address</p>
-            <p className="text-sm text-slate-500">{user?.email || 'Not logged in'}</p>
+          <div className="flex items-center gap-3.5">
+            <UserAvatar 
+              name={userData?.displayName || user?.profile?.name || user?.email?.split('@')[0]}
+              email={user?.email}
+              avatarUrl={user?.profile?.avatar_url || user?.user_metadata?.avatar_url}
+              size="md"
+            />
+            <div>
+              <p className="font-bold text-slate-900">{userData?.displayName || user?.profile?.name || 'Your Account'}</p>
+              <p className="text-xs text-slate-500 font-mono">{user?.email || 'Not logged in'}</p>
+            </div>
           </div>
           <div className="pt-4 border-t border-slate-200">
             <button className="text-sm font-medium text-blue-600 hover:underline">

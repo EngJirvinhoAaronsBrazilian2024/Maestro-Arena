@@ -1,133 +1,267 @@
-import { insforge } from '../lib/insforge';
-import { H2HMatch, H2HPlayer } from '../types/h2h';
-import { QuizCategory, QuizDifficulty } from '../types/quiz';
-import { getQuizQuestions } from './quizService';
+import { H2HMatch, H2HMatchSettings, H2HHistoryItem } from '../types/h2h';
 
-export async function findOrCreateMatch(
-  uid: string, 
-  displayName: string, 
-  category: QuizCategory | 'All', 
-  difficulty: QuizDifficulty
-): Promise<string> {
-  // Try to find a waiting match
-  const { data: waitingMatches } = await insforge.database
-    .from('h2h_matches')
-    .select('*')
-    .eq('status', 'waiting')
-    .eq('category', category)
-    .eq('difficulty', difficulty)
-    .order('created_at', { ascending: true })
-    .limit(1);
-
-  if (waitingMatches && waitingMatches.length > 0) {
-    const matchDoc = waitingMatches[0];
-    const matchData = { id: matchDoc.id, ...matchDoc } as any;
-    
-    // Don't join own match
-    if (matchData.player1.uid !== uid) {
-      const { error } = await insforge.database
-        .from('h2h_matches')
-        .update({
-          status: 'starting',
-          player2: {
-            uid,
-            displayName,
-            score: 0,
-            currentQuestionIndex: 0,
-            isReady: true,
-            hasFinished: false,
-            answers: []
-          }
-        })
-        .eq('id', matchDoc.id);
-      
-      if (!error) return matchDoc.id;
-    }
-  }
-
-  // Create new match if none found or only own match found
-  const questions = await getQuizQuestions(category, difficulty, 5); // 5 questions for fast H2H
-
-  const { data: newDoc, error } = await insforge.database
-    .from('h2h_matches')
-    .insert([{
-      status: 'waiting',
-      category,
-      difficulty,
-      questions,
-      created_at: Date.now(),
-      player1: {
-        uid,
-        displayName,
-        score: 0,
-        currentQuestionIndex: 0,
-        isReady: true,
-        hasFinished: false,
-        answers: []
-      }
-    }])
-    .select()
-    .single();
-
-  if (error) throw error;
-  return newDoc.id;
+export interface H2HUser {
+  id: string;
+  displayName: string;
+  avatarUrl?: string;
 }
 
-export function subscribeToMatch(matchId: string, callback: (match: H2HMatch) => void) {
-  const channelName = `match:${matchId}`;
-  
-  // Connect and subscribe
-  insforge.realtime.connect().then(() => {
-    insforge.realtime.subscribe(channelName).catch(console.error);
+/**
+ * Create a new multiplayer match room
+ */
+export async function createH2HMatch(
+  user: H2HUser,
+  settings: Partial<H2HMatchSettings>
+): Promise<H2HMatch> {
+  const res = await fetch('/api/h2h/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userId: user.id,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      settings
+    })
   });
 
-  const handler = (payload: any) => {
-    if (payload && payload.id) {
-      // payload represents the updated row data
-      callback({ id: payload.id, ...payload } as H2HMatch);
-    }
-  };
-
-  insforge.realtime.on('match_updated', handler);
-    
-  return () => {
-    insforge.realtime.off('match_updated', handler);
-    insforge.realtime.unsubscribe(channelName);
-  };
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to create match');
+  }
+  return data.match;
 }
 
-export async function updatePlayerProgress(
-  matchId: string, 
-  playerNum: 1 | 2, 
-  updates: Partial<H2HPlayer>
-) {
-  // First we need to get the current state because of JSONB
-  const { data } = await insforge.database
-    .from('h2h_matches')
-    .select(`player${playerNum}`)
-    .eq('id', matchId)
-    .single();
-    
-  if (data) {
-    const playerKey = `player${playerNum}`;
-    const currentPlayer = data[playerKey] || {};
-    
-    await insforge.database
-      .from('h2h_matches')
-      .update({
-        [playerKey]: { ...currentPlayer, ...updates }
-      })
-      .eq('id', matchId);
+/**
+ * Join an existing match room by room code or ID
+ */
+export async function joinH2HMatch(
+  user: H2HUser,
+  roomCode: string
+): Promise<H2HMatch> {
+  const res = await fetch('/api/h2h/join', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userId: user.id,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      roomCode: roomCode.trim()
+    })
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to join match');
+  }
+  return data.match;
+}
+
+/**
+ * Quick Matchmaking / Public Lobby
+ */
+export async function quickMatchmake(
+  user: H2HUser,
+  category?: string,
+  difficulty?: string
+): Promise<{ match: H2HMatch; joinedExisting: boolean }> {
+  const res = await fetch('/api/h2h/quick-match', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userId: user.id,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      category,
+      difficulty
+    })
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Quick match failed');
+  }
+  return data;
+}
+
+/**
+ * Toggle readiness status in the waiting lobby
+ */
+export async function setH2HReady(
+  userId: string,
+  matchId: string,
+  isReady: boolean
+): Promise<H2HMatch> {
+  const res = await fetch('/api/h2h/ready', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, matchId, isReady })
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to update ready state');
+  }
+  return data.match;
+}
+
+/**
+ * Start the match (Host only)
+ */
+export async function startH2HMatch(
+  userId: string,
+  matchId: string
+): Promise<H2HMatch> {
+  const res = await fetch('/api/h2h/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, matchId })
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to start match');
+  }
+  return data.match;
+}
+
+/**
+ * Submit answer for the active round
+ */
+export async function submitH2HAnswer(
+  userId: string,
+  matchId: string,
+  roundIndex: number,
+  selectedOption: string
+): Promise<{ success: boolean; match: H2HMatch }> {
+  const res = await fetch('/api/h2h/answer', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, matchId, roundIndex, selectedOption })
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to submit answer');
+  }
+  return data;
+}
+
+/**
+ * Leave or cancel match
+ */
+export async function leaveH2HMatch(
+  userId: string,
+  matchId: string
+): Promise<void> {
+  try {
+    await fetch('/api/h2h/leave', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, matchId })
+    });
+  } catch (e) {
+    console.warn('Error leaving match:', e);
   }
 }
 
-export async function updateMatchStatus(matchId: string, status: H2HMatch['status'], winnerUid?: string | null) {
-  const updates: any = { status };
-  if (winnerUid !== undefined) updates.winner_uid = winnerUid;
-  
-  await insforge.database.from('h2h_matches').update(updates).eq('id', matchId);
+/**
+ * Fetch the latest authoritative match state
+ */
+export async function fetchH2HMatchState(
+  matchId: string,
+  userId?: string
+): Promise<{ match: H2HMatch; serverTime: number }> {
+  const res = await fetch(`/api/h2h/match/${matchId}${userId ? `?userId=${userId}` : ''}`);
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to fetch match');
+  }
+  return data;
 }
 
-export async function cancelMatch(matchId: string) {
-  await insforge.database.from('h2h_matches').delete().eq('id', matchId);
+/**
+ * Fetch open public matches
+ */
+export async function fetchPublicMatches(): Promise<H2HMatch[]> {
+  try {
+    const res = await fetch('/api/h2h/public');
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Fetch user's previous multiplayer match history
+ */
+export async function fetchUserH2HHistory(userId: string): Promise<H2HHistoryItem[]> {
+  try {
+    const res = await fetch(`/api/h2h/history/${userId}`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Real-time subscription with WebSocket + polling failover
+ */
+export function subscribeToH2HMatch(
+  matchId: string,
+  userId: string,
+  onEvent: (event: string, data: any) => void
+): () => void {
+  let ws: WebSocket | null = null;
+  let isClosed = false;
+  let pollTimer: any = null;
+
+  // 1. Setup WebSocket connection
+  try {
+    const isHttps = window.location.protocol === 'https:';
+    const wsProto = isHttps ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProto}//${window.location.host}/ws/h2h?matchId=${encodeURIComponent(matchId)}&userId=${encodeURIComponent(userId)}`;
+    
+    ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      if (isClosed) return;
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed.event) {
+          onEvent(parsed.event, parsed.data);
+        }
+      } catch (err) {
+        console.warn('WebSocket message parse error:', err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      // Silently fall back to polling if WebSocket fails
+      console.log('H2H WebSocket connecting via polling fallback');
+    };
+  } catch (err) {
+    console.warn('WebSocket init exception:', err);
+  }
+
+  // 2. Intelligent HTTP polling fallback (every 2.5s) to guarantee synchronization
+  pollTimer = setInterval(async () => {
+    if (isClosed) return;
+    try {
+      const { match, serverTime } = await fetchH2HMatchState(matchId, userId);
+      onEvent('poll_sync', { match, serverTime });
+    } catch (e) {
+      // Ignore transient errors
+    }
+  }, 2500);
+
+  // Return unsubscribe cleanup function
+  return () => {
+    isClosed = true;
+    if (pollTimer) clearInterval(pollTimer);
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      ws.close();
+    }
+  };
 }

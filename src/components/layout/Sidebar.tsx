@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { Home, Calendar, Newspaper, Trophy, Settings, HelpCircle, Edit3, Shield, LogOut, Star, Award, Target } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
+import { UserAvatar } from '../ui/UserAvatar';
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/' },
@@ -28,9 +29,12 @@ export function Sidebar() {
       {userData && (
         <div className="p-4 border-b border-slate-100 bg-slate-50/60 mb-2">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-rose-600 to-red-700 text-white font-black shadow-sm shadow-rose-600/25">
-              {(userData?.displayName || userData?.email || 'Fan').charAt(0).toUpperCase()}
-            </div>
+            <UserAvatar 
+              name={userData.displayName}
+              email={userData.email}
+              size="md"
+              className="rounded-2xl shadow-sm"
+            />
             <div className="overflow-hidden">
               <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Welcome,</p>
               <p className="truncate text-sm font-bold text-slate-900">{userData.displayName || (userData.email ? userData.email.split('@')[0] : 'Fan')}</p>

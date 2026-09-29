@@ -2,102 +2,224 @@ import { QuizQuestion, QuizCategory, QuizDifficulty, QuizResult, QuizUserStats }
 import { insforge } from '../lib/insforge';
 import { MOCK_QUESTIONS } from './mockQuestions';
 
-export async function getQuizQuestions(category: QuizCategory | 'All', difficulty: QuizDifficulty, limitCount: number = 10): Promise<QuizQuestion[]> {
-  try {
-    let exactSnapshot: any[] = [];
-    if (category !== 'All') {
-      const { data } = await insforge.database
-        .from('quiz_questions')
-        .select('*')
-        .eq('status', 'PUBLISHED')
-        .eq('category', category)
-        .eq('difficulty', difficulty);
-      exactSnapshot = data || [];
-    } else {
-      const { data } = await insforge.database
-        .from('quiz_questions')
-        .select('*')
-        .eq('status', 'PUBLISHED')
-        .eq('difficulty', difficulty);
-      exactSnapshot = data || [];
-    }
-    
-    let questions = exactSnapshot.map(doc => ({
-      id: doc.id,
-      ...doc,
-      correctAnswer: doc.correctanswer || doc.correctAnswer || doc.correct_answer
-    } as QuizQuestion));
+// In-memory set to track recently played questions in the current session so players don't get repetitive questions
+const sessionPlayedQuestionKeys = new Set<string>();
 
-    // 2. Add from MOCK_QUESTIONS (Exact Match)
-    let mockExact = MOCK_QUESTIONS.filter(q => q.difficulty === difficulty && (category === 'All' || q.category === category));
-    
-    // Merge unique by question text to avoid duplication
-    let merged = [...questions];
-    const seen = new Set(merged.map(q => q.question));
-    for (const mq of mockExact) {
-      if (!seen.has(mq.question)) {
-        merged.push(mq);
-        seen.add(mq.question);
+const normalizeQKey = (text: string) => (text || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+
+export function clearQuizSessionHistory(): void {
+  sessionPlayedQuestionKeys.clear();
+  try {
+    sessionStorage.removeItem('sportshub_played_quiz_keys');
+  } catch (e) {}
+}
+
+function loadSessionPlayedKeys(): Set<string> {
+  try {
+    const raw = sessionStorage.getItem('sportshub_played_quiz_keys');
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        arr.forEach(k => sessionPlayedQuestionKeys.add(k));
       }
     }
+  } catch (e) {}
+  return sessionPlayedQuestionKeys;
+}
 
-    // 3. Pad with ANY difficulty for the SAME category if we don't have enough
-    if (merged.length < limitCount) {
-      // From database
-      let catSnapshot: any[] = [];
+function markQuestionsPlayedInSession(questions: QuizQuestion[]): void {
+  for (const q of questions) {
+    sessionPlayedQuestionKeys.add(normalizeQKey(q.question));
+  }
+  try {
+    sessionStorage.setItem('sportshub_played_quiz_keys', JSON.stringify(Array.from(sessionPlayedQuestionKeys)));
+  } catch (e) {}
+}
+
+export async function getQuizQuestions(
+  category: QuizCategory | 'All',
+  difficulty: QuizDifficulty,
+  limitCount: number = 10
+): Promise<QuizQuestion[]> {
+  loadSessionPlayedKeys();
+
+  try {
+    // 1. Fetch from InsForge database (primary source of truth)
+    let dbExactQuestions: QuizQuestion[] = [];
+    let dbSameCategoryQuestions: QuizQuestion[] = [];
+    let dbGeneralQuestions: QuizQuestion[] = [];
+
+    try {
+      let query = insforge.database
+        .from('quiz_questions')
+        .select('*')
+        .eq('status', 'PUBLISHED');
+
       if (category !== 'All') {
-        const { data } = await insforge.database
+        query = query.eq('category', category);
+      }
+
+      const { data, error } = await query;
+      if (!error && data) {
+        const mapped = data.map((doc: any) => ({
+          id: doc.id,
+          ...doc,
+          correctAnswer: doc.correctanswer || doc.correctAnswer || doc.correct_answer
+        } as QuizQuestion));
+
+        mapped.forEach((q: QuizQuestion) => {
+          if (q.difficulty === difficulty) {
+            dbExactQuestions.push(q);
+          } else {
+            dbSameCategoryQuestions.push(q);
+          }
+        });
+      }
+
+      // If we need more questions, also fetch general DB questions
+      if (dbExactQuestions.length + dbSameCategoryQuestions.length < limitCount) {
+        const { data: generalData } = await insforge.database
           .from('quiz_questions')
           .select('*')
           .eq('status', 'PUBLISHED')
-          .eq('category', category);
-        catSnapshot = data || [];
+          .limit(50);
+        if (generalData) {
+          dbGeneralQuestions = generalData.map((doc: any) => ({
+            id: doc.id,
+            ...doc,
+            correctAnswer: doc.correctanswer || doc.correctAnswer || doc.correct_answer
+          } as QuizQuestion));
+        }
+      }
+    } catch (dbErr) {
+      console.warn('InsForge database query warning:', dbErr);
+    }
+
+    // 2. Filter Mock Questions by Category & Difficulty
+    const mockExact = MOCK_QUESTIONS.filter(q => {
+      const catMatch = category === 'All' || q.category === category;
+      const diffMatch = q.difficulty === difficulty;
+      return catMatch && diffMatch;
+    });
+
+    // 3. Assemble pool with strict deduplication
+    const seenTexts = new Set<string>();
+    const seenIds = new Set<string>();
+    const uniqueCandidates: QuizQuestion[] = [];
+
+    const addCandidate = (q: QuizQuestion) => {
+      if (!q || !q.question || !q.correctAnswer || !q.options || q.options.length < 2) return;
+      const key = normalizeQKey(q.question);
+      if (!seenTexts.has(key) && !seenIds.has(q.id)) {
+        seenTexts.add(key);
+        seenIds.add(q.id);
+        uniqueCandidates.push(q);
+      }
+    };
+
+    // Priority 1: Exact matches from InsForge DB
+    dbExactQuestions.forEach(addCandidate);
+
+    // Priority 2: Same category other difficulty from InsForge DB
+    dbSameCategoryQuestions.forEach(addCandidate);
+
+    // Priority 3: Exact matches from static fallbacks
+    mockExact.forEach(addCandidate);
+
+    // Priority 4: Other database questions from InsForge
+    dbGeneralQuestions.forEach(addCandidate);
+
+    // Priority 5: Fallback mock questions
+    if (uniqueCandidates.length < limitCount) {
+      const mockSameCatOtherDiff = MOCK_QUESTIONS.filter(q => {
+        const catMatch = category === 'All' || q.category === category;
+        return catMatch;
+      });
+      mockSameCatOtherDiff.forEach(addCandidate);
+    }
+
+    // 5. If STILL fewer than requested, pad from general pool across related categories
+    if (uniqueCandidates.length < limitCount) {
+      const mockOther = MOCK_QUESTIONS.filter(q => q.difficulty === difficulty);
+      mockOther.forEach(addCandidate);
+    }
+
+    // 6. Final safety net: all available mock questions
+    if (uniqueCandidates.length < limitCount) {
+      MOCK_QUESTIONS.forEach(addCandidate);
+    }
+
+    // 7. Separate candidates into UNSEEN vs PREVIOUSLY SEEN in this session
+    const unseenList: QuizQuestion[] = [];
+    const seenList: QuizQuestion[] = [];
+
+    for (const q of uniqueCandidates) {
+      const key = normalizeQKey(q.question);
+      if (sessionPlayedQuestionKeys.has(key)) {
+        seenList.push(q);
       } else {
-        const { data } = await insforge.database
-          .from('quiz_questions')
-          .select('*')
-          .eq('status', 'PUBLISHED');
-        catSnapshot = data || [];
-      }
-      const catQuestions = catSnapshot.map(doc => ({
-        id: doc.id,
-        ...doc,
-        correctAnswer: doc.correctanswer || doc.correctAnswer || doc.correct_answer
-      } as QuizQuestion));
-      for (const q of catQuestions) {
-        if (!seen.has(q.question)) {
-          merged.push(q);
-          seen.add(q.question);
-        }
-      }
-      
-      // From Mock
-      const mockCat = category !== 'All' ? MOCK_QUESTIONS.filter(q => q.category === category) : MOCK_QUESTIONS;
-      for (const mq of mockCat) {
-        if (!seen.has(mq.question)) {
-          merged.push(mq);
-          seen.add(mq.question);
-        }
+        unseenList.push(q);
       }
     }
 
-    // Randomize questions
-    const randomized = [...merged].sort(() => 0.5 - Math.random());
-    
-    // Process options to ensure they are shuffled
-    return randomized.slice(0, Math.min(limitCount, randomized.length)).map(q => ({
-      ...q,
-      options: [...q.options].sort(() => 0.5 - Math.random())
-    }));
+    // Shuffle both subsets
+    const shuffleArray = <T>(arr: T[]): T[] => [...arr].sort(() => 0.5 - Math.random());
+    const shuffledUnseen = shuffleArray(unseenList);
+    const shuffledSeen = shuffleArray(seenList);
+
+    // Prioritize unseen questions; if needed, pull from seen questions to meet limitCount
+    const prioritizedSelection = [...shuffledUnseen, ...shuffledSeen];
+
+    // Guarantee absolute non-repetition in the current game:
+    const gameSelectedQuestions: QuizQuestion[] = [];
+    const inGameSeen = new Set<string>();
+
+    for (const q of prioritizedSelection) {
+      const key = normalizeQKey(q.question);
+      if (!inGameSeen.has(key)) {
+        inGameSeen.add(key);
+
+        // Ensure options contain the correct answer and are shuffled
+        const rawOptions = Array.from(new Set(q.options || []));
+        if (!rawOptions.includes(q.correctAnswer)) {
+          rawOptions.push(q.correctAnswer);
+        }
+
+        gameSelectedQuestions.push({
+          ...q,
+          options: shuffleArray(rawOptions)
+        });
+      }
+
+      if (gameSelectedQuestions.length >= limitCount) {
+        break;
+      }
+    }
+
+    // Mark selected questions as played in this session
+    markQuestionsPlayedInSession(gameSelectedQuestions);
+
+    return gameSelectedQuestions;
   } catch (err) {
     console.error('Error fetching questions:', err);
-    // Ultimate Fallback: Just grab mock questions of this difficulty
-    const mockDiff = MOCK_QUESTIONS.filter(q => q.difficulty === difficulty);
-    const randomized = [...mockDiff].sort(() => 0.5 - Math.random());
-    return randomized.slice(0, Math.min(limitCount, randomized.length)).map(q => ({
-      ...q,
-      options: [...q.options].sort(() => 0.5 - Math.random())
-    }));
+    // Safe ultimate fallback: strictly unique slice from MOCK_QUESTIONS
+    const seen = new Set<string>();
+    const safeResult: QuizQuestion[] = [];
+    const shuffled = [...MOCK_QUESTIONS].sort(() => 0.5 - Math.random());
+
+    for (const q of shuffled) {
+      const key = normalizeQKey(q.question);
+      if (!seen.has(key)) {
+        seen.add(key);
+        safeResult.push({
+          ...q,
+          options: [...q.options].sort(() => 0.5 - Math.random())
+        });
+      }
+      if (safeResult.length >= limitCount) break;
+    }
+
+    return safeResult;
   }
 }
 

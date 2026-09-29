@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { insforge } from '../lib/insforge';
 
-interface UserData {
+export interface UserData {
+  id?: string;
   email: string;
   displayName: string;
   role: 'user' | 'editor' | 'moderator' | 'admin';
@@ -9,9 +10,10 @@ interface UserData {
   favoriteTeams?: string[];
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: any | null; // using any for generic InsForge User type for now
   userData: UserData | null;
+  profile: UserData | null;
   loading: boolean;
   logout: () => Promise<void>;
   updateUserData: (data: Partial<UserData>) => Promise<void>;
@@ -71,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         const mappedData: UserData = {
+          id: data.id || currentUser.id,
           email: data.email,
           displayName: data.display_name,
           role: data.role as any,
@@ -97,6 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         setUserData({
+          id: newUserData.id,
           email: newUserData.email,
           displayName: newUserData.display_name,
           role: role as any,
@@ -139,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userData, loading, logout, updateUserData }}>
+    <AuthContext.Provider value={{ user, userData, profile: userData, loading, logout, updateUserData }}>
       {!loading && children}
     </AuthContext.Provider>
   );

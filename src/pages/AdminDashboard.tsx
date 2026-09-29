@@ -6,6 +6,7 @@ import { Users, Shield, Trash2, ShieldAlert, AlertCircle, Activity, Database, St
 import { cn } from '../lib/utils';
 import { Card, CardContent } from '../components/ui/Card';
 import { toast } from 'sonner';
+import { UserAvatar } from '../components/ui/UserAvatar';
 
 export function AdminDashboard() {
   const { user, userData } = useAuth();
@@ -328,12 +329,16 @@ export function AdminDashboard() {
                   <tr key={u.id} className="hover:bg-rose-50/20 transition-colors group">
                     <td className="p-4 sm:p-5">
                       <div className="flex items-center gap-3.5">
-                        <div className={cn(
-                          "h-10 w-10 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-2xs shrink-0",
-                          u.role === 'admin' ? "bg-gradient-to-tr from-rose-600 to-red-500" : "bg-slate-800"
-                        )}>
-                          {(u.displayName || u.email || 'U').charAt(0).toUpperCase()}
-                        </div>
+                        <UserAvatar 
+                          name={u.displayName}
+                          email={u.email}
+                          avatarUrl={(u as any).avatarUrl || (u as any).avatar_url}
+                          size="md"
+                          className={cn(
+                            "h-10 w-10 rounded-xl",
+                            u.role === 'admin' ? "ring-2 ring-rose-500/40" : ""
+                          )}
+                        />
                         <div className="min-w-0">
                           <div className="font-bold text-sm text-slate-900 truncate">{u.displayName || 'Unnamed User'}</div>
                           <div className="text-xs text-slate-500 font-mono truncate">{u.email}</div>

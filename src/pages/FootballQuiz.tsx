@@ -98,7 +98,7 @@ const DIFFICULTY_TIMES: Record<QuizDifficulty, number> = {
   'Expert': 15
 };
 
-const NUM_QUESTIONS_OPTIONS = [5, 10, 15, 20];
+const NUM_QUESTIONS_OPTIONS = [5, 10, 15, 20, 25, 50];
 
 type GameState = 'landing' | 'loading' | 'playing' | 'results' | 'review';
 type CategoryGroupFilter = 'all' | 'leagues' | 'tournaments' | 'players' | 'history';
@@ -453,7 +453,7 @@ export function FootballQuiz() {
                       >
                         {NUM_QUESTIONS_OPTIONS.map(num => (
                           <option key={num} value={num}>
-                            {num} Questions {num === 5 ? '(Quick Match)' : num === 10 ? '(Standard Match)' : num === 15 ? '(Championship)' : '(Marathon)'}
+                            {num} Questions {num === 5 ? '(Quick Match)' : num === 10 ? '(Standard Match)' : num === 15 ? '(Championship)' : num === 20 ? '(Marathon)' : num === 25 ? '(Super Cup)' : '(Grand Master)'}
                           </option>
                         ))}
                       </select>
