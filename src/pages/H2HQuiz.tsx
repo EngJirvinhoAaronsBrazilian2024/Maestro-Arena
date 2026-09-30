@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -99,8 +99,27 @@ export function H2HQuiz() {
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const timerIntervalRef = useRef<any>(null);
 
-  const currentUserId = user?.id || (user as any)?.uid;
-  const currentUserDisplayName = userData?.displayName || user?.email?.split('@')[0] || 'Player';
+  const currentUserId = useMemo(() => {
+    if (user?.id) return user.id;
+    if ((user as any)?.uid) return (user as any).uid;
+    if (userData?.id) return userData.id;
+    let stored = localStorage.getItem('maestro_h2h_uid');
+    if (!stored) {
+      stored = 'player_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+      localStorage.setItem('maestro_h2h_uid', stored);
+    }
+    return stored;
+  }, [user, userData]);
+
+  const currentUserDisplayName = useMemo(() => {
+    return (
+      userData?.displayName ||
+      user?.displayName ||
+      user?.email?.split('@')[0] ||
+      localStorage.getItem('maestro_player_name') ||
+      'Trivia Maestro'
+    );
+  }, [userData, user]);
 
   // 1. Check for Room Code in URL query (e.g. ?room=ABCD12 or ?join=ABCD12)
   useEffect(() => {

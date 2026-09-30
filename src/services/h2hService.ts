@@ -24,10 +24,18 @@ export async function createH2HMatch(
     })
   });
 
-  const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.error || 'Failed to create match');
+    let errMessage = 'Failed to create match';
+    try {
+      const data = await res.json();
+      errMessage = data.error || errMessage;
+    } catch {
+      errMessage = `Server returned status ${res.status}`;
+    }
+    throw new Error(errMessage);
   }
+
+  const data = await res.json();
   return data.match;
 }
 
@@ -45,14 +53,22 @@ export async function joinH2HMatch(
       userId: user.id,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
-      roomCode: roomCode.trim()
+      roomCode: roomCode.trim().toUpperCase()
     })
   });
 
-  const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.error || 'Failed to join match');
+    let errMessage = 'Failed to join match';
+    try {
+      const data = await res.json();
+      errMessage = data.error || errMessage;
+    } catch {
+      errMessage = `Server returned status ${res.status}`;
+    }
+    throw new Error(errMessage);
   }
+
+  const data = await res.json();
   return data.match;
 }
 

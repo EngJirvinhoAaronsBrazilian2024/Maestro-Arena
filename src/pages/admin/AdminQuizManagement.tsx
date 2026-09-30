@@ -1,21 +1,32 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
 import { insforge } from '../../lib/insforge';
 import { useAuth } from '../../context/AuthContext';
 import { createQuizQuestion, updateQuizQuestion, deleteQuizQuestion, getAllQuizQuestions } from '../../services/quizService';
-import { Brain, Search, Edit2, Plus, Trash2, X, CheckCircle, Clock, Upload, Download, FileText, AlertCircle, Sparkles } from 'lucide-react';
+import { Brain, Search, Edit2, Plus, Trash2, X, CheckCircle, Clock, Upload, Download, FileText, AlertCircle, Sparkles, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { QuizQuestion, QuizCategory, QuizDifficulty } from '../../types/quiz';
 import { ImageInput } from '../../components/ui/ImageInput';
 import { toast } from 'sonner';
 
+const ALL_CATEGORIES: QuizCategory[] = [
+  'World Football', 'Premier League', 'La Liga', 'Serie A', 'Bundesliga', 
+  'UEFA Champions League', 'UEFA Europa League', 'FIFA World Cup', 
+  'African Football', 'African Cup of Nations', 'Football Players', 
+  'Football Clubs', 'Football History', 'Football Records', 'Football Rules', 'Famous Managers'
+];
+
 export const AdminQuizManagement: React.FC = () => {
   const { userData } = useAuth();
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const pageSize = 50;
   
   const [isEditing, setIsEditing] = useState(false);
   const [currentQ, setCurrentQ] = useState<Partial<QuizQuestion>>({});
@@ -188,7 +199,23 @@ export const AdminQuizManagement: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const filteredQs = questions.filter(q => q.question?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredQs = useMemo(() => {
+    return questions.filter(q => {
+      const qText = (q.question || '').toLowerCase();
+      const expText = (q.explanation || '').toLowerCase();
+      const s = searchTerm.toLowerCase().trim();
+      const matchSearch = !s || qText.includes(s) || expText.includes(s);
+      const matchCategory = selectedCategory === 'All' || q.category === selectedCategory;
+      const matchDiff = selectedDifficulty === 'All' || q.difficulty === selectedDifficulty;
+      return matchSearch && matchCategory && matchDiff;
+    });
+  }, [questions, searchTerm, selectedCategory, selectedDifficulty]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredQs.length / pageSize));
+  const paginatedQs = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredQs.slice(start, start + pageSize);
+  }, [filteredQs, currentPage, pageSize]);
 
   if (isEditing) {
     return (
@@ -435,9 +462,19 @@ export const AdminQuizManagement: React.FC = () => {
     <div className="mx-auto w-full max-w-6xl space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300 pb-12">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200/80 mb-2">
-            <Brain className="w-3.5 h-3.5 text-rose-600" />
-            <span className="text-[10px] font-black uppercase tracking-wider text-rose-700">Maestro Trivia Vault</span>
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200/80">
+              <Brain className="w-3.5 h-3.5 text-rose-600" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-700">Maestro Trivia Vault</span>
+            </div>
+            {questions.length > 0 && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80">
+                <CheckCircle className="w-3 h-3 text-emerald-600" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">
+                  {questions.length.toLocaleString()} Questions Active
+                </span>
+              </div>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Quiz Management</h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium">Manage trivia questions for the football quizzes.</p>
@@ -472,19 +509,62 @@ export const AdminQuizManagement: React.FC = () => {
       </div>
 
       <div className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-        <div className="flex border-b border-slate-100 p-4 bg-slate-50/70 items-center">
+        {/* Search & Filters Bar */}
+        <div className="flex flex-col md:flex-row border-b border-slate-100 p-4 bg-slate-50/70 items-stretch md:items-center justify-between gap-3">
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search questions..."
+              placeholder="Search in questions or explanations..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-4 text-xs sm:text-sm outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
             />
           </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Category Dropdown */}
+            <select
+              value={selectedCategory}
+              onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-rose-500 cursor-pointer shadow-2xs"
+            >
+              <option value="All">All Categories ({questions.length.toLocaleString()})</option>
+              {ALL_CATEGORIES.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+
+            {/* Difficulty Dropdown */}
+            <select
+              value={selectedDifficulty}
+              onChange={(e) => { setSelectedDifficulty(e.target.value); setCurrentPage(1); }}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-rose-500 cursor-pointer shadow-2xs"
+            >
+              <option value="All">All Difficulties</option>
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+              <option value="Expert">Expert</option>
+            </select>
+
+            {(searchTerm || selectedCategory !== 'All' || selectedDifficulty !== 'All') && (
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedCategory('All');
+                  setSelectedDifficulty('All');
+                  setCurrentPage(1);
+                }}
+                className="text-xs font-bold text-rose-600 hover:text-rose-700 px-2 py-1"
+              >
+                Reset
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* Question Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600 min-w-[600px]">
             <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-500 font-black border-b border-slate-100">
@@ -497,7 +577,7 @@ export const AdminQuizManagement: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               <AnimatePresence>
-                {filteredQs.map(q => (
+                {paginatedQs.map(q => (
                   <motion.tr 
                     key={q.id}
                     initial={{ opacity: 0 }}
@@ -507,6 +587,9 @@ export const AdminQuizManagement: React.FC = () => {
                   >
                     <td className="px-6 py-4">
                       <div className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-2">{q.question}</div>
+                      {q.explanation && (
+                        <p className="text-2xs text-slate-400 mt-0.5 line-clamp-1">{q.explanation}</p>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-800 whitespace-nowrap">
@@ -549,10 +632,49 @@ export const AdminQuizManagement: React.FC = () => {
           
           {filteredQs.length === 0 && (
             <div className="p-12 text-center text-slate-500 font-medium text-sm">
-              No questions found. {questions.length === 0 && !loading ? 'Your quiz database is empty.' : ''}
+              {loading ? (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-rose-500 border-t-transparent" />
+                  <span>Loading full question vault...</span>
+                </div>
+              ) : (
+                <span>No questions found matching your filter criteria.</span>
+              )}
             </div>
           )}
         </div>
+
+        {/* Pagination Bar */}
+        {filteredQs.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 bg-slate-50/70 border-t border-slate-100 gap-3 text-xs">
+            <span className="font-bold text-slate-600">
+              Showing <span className="text-slate-900">{((currentPage - 1) * pageSize) + 1}</span> to <span className="text-slate-900">{Math.min(currentPage * pageSize, filteredQs.length)}</span> of <span className="text-slate-900">{filteredQs.length.toLocaleString()}</span> questions
+              {filteredQs.length !== questions.length && ` (filtered from ${questions.length.toLocaleString()} total)`}
+            </span>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition cursor-pointer flex items-center gap-1 shadow-2xs"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> Prev
+              </button>
+
+              <span className="font-mono font-bold text-slate-700 px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition cursor-pointer flex items-center gap-1 shadow-2xs"
+              >
+                Next <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

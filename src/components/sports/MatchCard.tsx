@@ -10,9 +10,11 @@ interface MatchCardProps {
   match: Match;
   className?: string;
   key?: string | number;
+  onSelectMatch?: (match: Match) => void;
+  isSelected?: boolean;
 }
 
-export function MatchCard({ match, className }: MatchCardProps) {
+export function MatchCard({ match, className, onSelectMatch, isSelected }: MatchCardProps) {
   const { toggleFavorite, isFavorite } = useFavorites();
 
   const handleFavoriteClick = (e: React.MouseEvent, type: 'team' | 'competition' | 'match', id: string | number, name: string, logo?: string) => {
@@ -26,19 +28,23 @@ export function MatchCard({ match, className }: MatchCardProps) {
   const awayId = `team_${match.awayTeam.id}`;
   const matchFavoriteId = `match_${match.id}`;
 
+  const cardClasses = cn(
+    "flex flex-col relative rounded-[28px] border bg-white/80 backdrop-blur-xl p-5 shadow-[0_8px_32px_rgba(15,23,42,0.04)] transition-all overflow-hidden group text-left",
+    isSelected
+      ? "border-rose-400 ring-2 ring-rose-600 bg-rose-50/20 shadow-[0_12px_36px_rgba(225,29,72,0.12)]"
+      : "border-slate-200/80 hover:border-rose-200/80 hover:shadow-[0_12px_36px_rgba(225,29,72,0.08)]",
+    className
+  );
 
-  return (
-    <Link 
-      to={`/matches/${match.id}`}
-      className={cn("flex flex-col relative rounded-[28px] border border-white/80 bg-white/70 backdrop-blur-xl p-5 shadow-[0_8px_32px_rgba(15,23,42,0.04)] hover:border-rose-200/80 hover:shadow-[0_12px_36px_rgba(225,29,72,0.08)] transition-all overflow-hidden group", className)}
-    >
+  const cardContent = (
+    <>
       {/* Live Indicator Pill (Centered Top) */}
       <div className="absolute top-3.5 left-1/2 -translate-x-1/2 z-10">
         {match.status === 'live' ? (
-          <div className="flex items-center gap-1.5 rounded-full bg-cyan-50 border border-cyan-200 px-3 py-1 text-[10px] font-black text-cyan-800 shadow-xs">
+          <div className="flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200 px-3 py-1 text-[10px] font-black text-rose-700 shadow-xs">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
             </span>
             <span className="uppercase tracking-wider">Live {match.matchMinute || ""}</span>
           </div>
@@ -46,7 +52,11 @@ export function MatchCard({ match, className }: MatchCardProps) {
           <div className="flex items-center gap-1 rounded-full bg-white/90 border border-slate-200/80 px-3 py-1 text-[10px] font-bold text-slate-600 shadow-xs">
             {formatTimeEAT(match.startTime)}
           </div>
-        ) : null}
+        ) : (
+          <div className="flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-[10px] font-black uppercase text-slate-700 shadow-xs">
+            Full Time
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between mt-4">
@@ -72,6 +82,11 @@ export function MatchCard({ match, className }: MatchCardProps) {
             <span className="text-base font-semibold text-slate-300">:</span>
             <span className="text-xl font-black text-slate-950">{match.awayScore !== null && match.awayScore !== undefined ? match.awayScore : '-'}</span>
           </div>
+          {onSelectMatch && (
+            <span className="mt-1.5 text-[10px] font-bold text-rose-600 uppercase tracking-wider group-hover:underline">
+              Match Centre
+            </span>
+          )}
         </div>
 
         {/* Away Team */}
@@ -92,7 +107,7 @@ export function MatchCard({ match, className }: MatchCardProps) {
       
       {/* Footer Info */}
       <div className="mt-5 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-medium text-slate-500">
-         <span className="text-slate-600 font-semibold truncate max-w-[140px]">{match.competitionName}</span>
+         <span className="text-slate-700 font-bold truncate max-w-[140px]">{match.competitionName}</span>
          
          <div className="flex items-center gap-1.5">
            <button 
@@ -122,6 +137,34 @@ export function MatchCard({ match, className }: MatchCardProps) {
            </button>
          </div>
       </div>
+    </>
+  );
+
+  if (onSelectMatch) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelectMatch(match)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onSelectMatch(match);
+          }
+        }}
+        className={cn(cardClasses, "cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-500")}
+      >
+        {cardContent}
+      </div>
+    );
+  }
+
+  return (
+    <Link 
+      to={`/matches/${match.id}`}
+      className={cardClasses}
+    >
+      {cardContent}
     </Link>
   );
 }

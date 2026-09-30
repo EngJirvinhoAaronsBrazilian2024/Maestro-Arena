@@ -8,6 +8,7 @@ import userRoutes from "../src/server/routes/userRoutes.js";
 import tipsRoutes from "../src/server/routes/tipsRoutes.js";
 import adminRoutes from "../src/server/routes/adminRoutes.js";
 import storageRoutes from "../src/server/routes/storageRoutes.js";
+import h2hRoutes from "../src/server/routes/h2hRoutes.js";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/tips", tipsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/storage", storageRoutes);
+app.use("/api/h2h", h2hRoutes);
 
 // Export for Vercel Serverless
 export default app;

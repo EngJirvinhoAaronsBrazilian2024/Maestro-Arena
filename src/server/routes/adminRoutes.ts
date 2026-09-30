@@ -25,7 +25,7 @@ router.get('/overview', async (req, res) => {
     ] = await Promise.all([
       admin.database.from('users').select('id, role'),
       admin.database.from('tips').select('id, status, category'),
-      admin.database.from('quiz_questions').select('id'),
+      admin.database.from('quiz_questions').select('*', { count: 'exact', head: true }),
       admin.database.from('articles').select('id, status'),
       admin.database.from('feedback').select('id, status'),
       admin.database.from('polls').select('id, status'),
@@ -57,7 +57,7 @@ router.get('/overview', async (req, res) => {
       wonTipsCount,
       lostTipsCount,
       pendingTipsCount,
-      totalQuestions: (quizRes.data || []).length,
+      totalQuestions: typeof quizRes.count === 'number' ? quizRes.count : ((quizRes as any).data || []).length,
       totalArticles: articles.length,
       publishedArticlesCount,
       draftArticlesCount,
@@ -461,17 +461,46 @@ router.put('/feedback/:id/resolve', async (req, res) => {
 router.get('/quiz', async (req, res) => {
   try {
     const admin = getInsforgeAdmin();
-    const { data, error } = await admin.database
-      .from('quiz_questions')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    
+    const category = req.query.category as string | undefined;
+
+    // Fetch all chunks of questions to bypass PostgREST's 1000-row limit
+    let allQuestions: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = admin.database
+        .from('quiz_questions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (category && category !== 'All') {
+        query = query.eq('category', category);
+      }
+
+      const { data, error } = await query.range(from, from + pageSize - 1);
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        hasMore = false;
+      } else {
+        allQuestions.push(...data);
+        if (data.length < pageSize) {
+          hasMore = false;
+        } else {
+          from += pageSize;
+        }
+      }
+    }
+
     // Normalize correctanswer to correctAnswer
-    const normalized = (data || []).map((q: any) => ({
+    const normalized = allQuestions.map((q: any) => ({
       ...q,
       correctAnswer: q.correctanswer || q.correctAnswer || q.correct_answer
     }));
+
+    res.setHeader('X-Total-Count', allQuestions.length.toString());
     res.json(normalized);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

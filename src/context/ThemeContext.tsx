@@ -36,10 +36,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useTheme() {
+export function useTheme(): ThemeContextType {
   const context = useContext(ThemeContext);
   if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    const isDark = typeof window !== 'undefined' && (
+      document.documentElement.classList.contains('dark') ||
+      localStorage.getItem('theme') === 'dark' ||
+      window.matchMedia?.('(prefers-color-scheme: dark)').matches
+    );
+    const fallbackTheme: Theme = isDark ? 'dark' : 'light';
+    return {
+      theme: fallbackTheme,
+      toggleTheme: () => {
+        if (typeof window !== 'undefined') {
+          const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+          document.documentElement.classList.remove('light', 'dark');
+          document.documentElement.classList.add(next);
+          localStorage.setItem('theme', next);
+        }
+      }
+    };
   }
   return context;
 }

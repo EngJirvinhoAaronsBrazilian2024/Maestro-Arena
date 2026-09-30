@@ -177,6 +177,9 @@ async function fetchQuestionsForMatch(
 
     if (category !== 'All') {
       query = query.eq('category', category);
+    } else {
+      const randomStart = Math.floor(Math.random() * 50) * 100;
+      query = query.range(randomStart, randomStart + 299);
     }
     if (difficulty) {
       query = query.eq('difficulty', difficulty);
@@ -439,27 +442,49 @@ export async function joinMatch(
   user: { id: string; displayName?: string; avatarUrl?: string },
   roomCodeOrId: string
 ): Promise<H2HMatch> {
-  let match = findMatchByCodeOrId(roomCodeOrId);
+  const cleanCode = (roomCodeOrId || '').trim();
+  if (!cleanCode) {
+    throw new Error('Room code is required to join a match.');
+  }
+
+  let match = findMatchByCodeOrId(cleanCode);
 
   // If not in memory, try loading from DB
   if (!match) {
-    const admin = getInsforgeAdmin();
-    const cleanCode = roomCodeOrId.trim();
-    // Query by id or like
-    const { data } = await admin.database
-      .from('h2h_matches')
-      .select('*')
-      .or(`id.eq.${cleanCode},id.ilike.%${cleanCode.toLowerCase()}%`)
-      .limit(1);
+    try {
+      const admin = getInsforgeAdmin();
+      const codeUpper = cleanCode.toUpperCase();
+      const codeLower = cleanCode.toLowerCase();
 
-    if (data && data[0]) {
-      match = mapDbRowToMatch(data[0]);
-      activeMatches.set(match.id, match);
+      // 1. Try matching the match ID ending or containing the room code
+      let { data } = await admin.database
+        .from('h2h_matches')
+        .select('*')
+        .ilike('id', `%${codeLower}%`)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      // 2. If not found, try direct ID match
+      if (!data || data.length === 0) {
+        const directRes = await admin.database
+          .from('h2h_matches')
+          .select('*')
+          .eq('id', cleanCode)
+          .limit(1);
+        data = directRes.data;
+      }
+
+      if (data && data[0]) {
+        match = mapDbRowToMatch(data[0]);
+        activeMatches.set(match.id, match);
+      }
+    } catch (dbErr) {
+      console.warn('Notice querying DB for match room:', dbErr);
     }
   }
 
   if (!match) {
-    throw new Error('Match room not found. Please check the code.');
+    throw new Error(`Match room "${cleanCode.toUpperCase()}" not found. Please verify the 6-letter room code.`);
   }
 
   if (match.status === 'finished' || match.status === 'cancelled') {

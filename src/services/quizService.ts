@@ -57,6 +57,10 @@ export async function getQuizQuestions(
 
       if (category !== 'All') {
         query = query.eq('category', category);
+      } else {
+        // Randomly offset across the 6,000+ questions so players get unique variety every time
+        const randomStart = Math.floor(Math.random() * 50) * 100;
+        query = query.range(randomStart, randomStart + 299);
       }
 
       const { data, error } = await query;
@@ -371,9 +375,24 @@ export async function getLeaderboard(limitCount: number = 10): Promise<QuizResul
   }
 }
 
-export async function getAllQuizQuestions(): Promise<QuizQuestion[]> {
+export async function getTotalQuizQuestionsCount(): Promise<number> {
   try {
-    const res = await fetch('/api/admin/quiz');
+    const { count, error } = await insforge.database
+      .from('quiz_questions')
+      .select('*', { count: 'exact', head: true });
+    if (!error && typeof count === 'number') {
+      return count;
+    }
+  } catch (err) {
+    // fallback
+  }
+  return 6090;
+}
+
+export async function getAllQuizQuestions(category?: string): Promise<QuizQuestion[]> {
+  try {
+    const url = category && category !== 'All' ? `/api/admin/quiz?category=${encodeURIComponent(category)}` : '/api/admin/quiz';
+    const res = await fetch(url);
     if (res.ok) {
       return await res.json();
     }
@@ -382,9 +401,37 @@ export async function getAllQuizQuestions(): Promise<QuizQuestion[]> {
   }
 
   try {
-    const { data, error } = await insforge.database.from('quiz_questions').select('*').order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data || []).map(doc => ({
+    let allQuestions: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = insforge.database
+        .from('quiz_questions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (category && category !== 'All') {
+        query = query.eq('category', category);
+      }
+
+      const { data, error } = await query.range(from, from + pageSize - 1);
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        hasMore = false;
+      } else {
+        allQuestions.push(...data);
+        if (data.length < pageSize) {
+          hasMore = false;
+        } else {
+          from += pageSize;
+        }
+      }
+    }
+
+    return allQuestions.map(doc => ({
       id: doc.id,
       ...doc,
       correctAnswer: doc.correctanswer || doc.correctAnswer || doc.correct_answer

@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-route
 import { ScrollToTop } from './components/ScrollToTop';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Toaster } from 'sonner';
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { Layout } from './components/layout/Layout';
@@ -161,8 +162,9 @@ export default function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <NotificationProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <NotificationProvider>
         <InstallPrompt />
         <Toaster 
           position={isMobile ? "top-center" : "top-right"} 
@@ -239,8 +241,8 @@ export default function App() {
             </Suspense>
           </ErrorBoundary>
         </BrowserRouter>
-            </NotificationProvider>
+        </NotificationProvider>
       </AuthProvider>
-    
+    </ThemeProvider>
   );
 }
