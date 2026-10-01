@@ -379,52 +379,79 @@ router.delete('/seasons/:id', async (req, res) => {
 // -------------------------------------------------------------
 router.get('/feedback', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     const admin = getInsforgeAdmin();
-    const [fbRes, usersRes] = await Promise.all([
-      admin.database.from('feedback').select('*').order('created_at', { ascending: false }),
-      admin.database.from('users').select('*')
-    ]);
-
-    if (fbRes.error) throw fbRes.error;
-    const feedbacks = fbRes.data || [];
-    const users = usersRes.data || [];
-    const userMap = new Map<string, { displayName: string; email: string; avatarUrl: string }>();
-
-    users.forEach((u: any) => {
-      userMap.set(u.id, { 
-        displayName: u.display_name || u.displayName || u.email?.split('@')[0] || 'User', 
-        email: u.email || '',
-        avatarUrl: u.avatar_url || u.avatarUrl || ''
-      });
-    });
-
-    // Also attempt to get auth users for any missing user details
+    let feedbacks: any[] = [];
+    
+    // Resilient query for feedback
     try {
-      const baseUrl = process.env.INSFORGE_BASE_URL || 'https://gci83gu5.us-east.insforge.app';
-      const apiKey = process.env.INSFORGE_API_KEY || '';
-      const authRes = await fetch(`${baseUrl}/api/auth/users`, {
-        headers: { 'x-api-key': apiKey, 'apikey': apiKey }
-      });
-      if (authRes.ok) {
-        const raw = await authRes.json();
-        const authUsers = Array.isArray(raw) ? raw : (raw?.data || []);
-        authUsers.forEach((au: any) => {
-          const existing = userMap.get(au.id);
-          const name = au.profile?.name || au.user_metadata?.display_name || au.displayName || au.name || au.email?.split('@')[0] || 'User';
-          const avatar = au.profile?.avatar_url || au.user_metadata?.avatar_url || au.avatar_url || '';
-          if (!existing) {
-            userMap.set(au.id, { displayName: name, email: au.email || '', avatarUrl: avatar });
-          } else {
-            if (!existing.displayName || existing.displayName === 'User') existing.displayName = name;
-            if (!existing.avatarUrl && avatar) existing.avatarUrl = avatar;
-          }
+      const fbRes = await admin.database.from('feedback').select('*').order('created_at', { ascending: false });
+      if (fbRes.error) {
+        console.warn('Feedback order query error, retrying without order:', fbRes.error);
+        const fallbackRes = await admin.database.from('feedback').select('*');
+        feedbacks = fallbackRes.data || [];
+      } else {
+        feedbacks = fbRes.data || [];
+      }
+    } catch (fbErr: any) {
+      console.warn('Feedback query error, attempting base select:', fbErr.message);
+      const fallbackRes = await admin.database.from('feedback').select('*');
+      feedbacks = fallbackRes.data || [];
+    }
+
+    // Safe user profiles lookup
+    const userMap = new Map<string, { displayName: string; email: string; avatarUrl: string }>();
+    try {
+      const usersRes = await admin.database.from('users').select('*');
+      const users = usersRes.data || [];
+      users.forEach((u: any) => {
+        userMap.set(u.id, { 
+          displayName: u.display_name || u.displayName || u.email?.split('@')[0] || 'User', 
+          email: u.email || '',
+          avatarUrl: u.avatar_url || u.avatarUrl || ''
         });
+      });
+    } catch (usersErr: any) {
+      console.warn('Users lookup non-blocking notice:', usersErr.message);
+    }
+
+    // Attempt auth users lookup with 3s timeout
+    try {
+      const baseUrl = process.env.INSFORGE_BASE_URL || process.env.VITE_INSFORGE_URL || 'https://gci83gu5.us-east.insforge.app';
+      const apiKey = process.env.INSFORGE_API_KEY || '';
+      if (apiKey) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const authRes = await fetch(`${baseUrl}/api/auth/users`, {
+          headers: { 'x-api-key': apiKey, 'apikey': apiKey },
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (authRes.ok) {
+          const raw = await authRes.json();
+          const authUsers = Array.isArray(raw) ? raw : (raw?.data || []);
+          authUsers.forEach((au: any) => {
+            const existing = userMap.get(au.id);
+            const name = au.profile?.name || au.user_metadata?.display_name || au.displayName || au.name || au.email?.split('@')[0] || 'User';
+            const avatar = au.profile?.avatar_url || au.user_metadata?.avatar_url || au.avatar_url || '';
+            if (!existing) {
+              userMap.set(au.id, { displayName: name, email: au.email || '', avatarUrl: avatar });
+            } else {
+              if (!existing.displayName || existing.displayName === 'User') existing.displayName = name;
+              if (!existing.avatarUrl && avatar) existing.avatarUrl = avatar;
+            }
+          });
+        }
       }
     } catch (e) {
       // Non-blocking fallback
     }
 
-    const enriched = feedbacks.map((f: any) => {
+    const enriched = (feedbacks || []).map((f: any) => {
       const u = f.user_id ? userMap.get(f.user_id) : null;
       const userName = f.user_name || u?.displayName || (f.user_email ? f.user_email.split('@')[0] : 'SportsHub Fan');
       const userEmail = f.user_email || u?.email || '';
@@ -439,6 +466,41 @@ router.get('/feedback', async (req, res) => {
 
     res.json(enriched);
   } catch (err: any) {
+    console.error('Feedback route error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch feedback' });
+  }
+});
+
+router.post('/feedback', async (req, res) => {
+  try {
+    const { user_id, user_name, user_email, user_avatar, message } = req.body;
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    const admin = getInsforgeAdmin();
+    
+    // Attempt rich insert first
+    const { data, error } = await admin.database.from('feedback').insert([{
+      user_id: user_id || null,
+      user_name: user_name || 'Fan',
+      user_email: user_email || '',
+      user_avatar: user_avatar || '',
+      message: message.trim(),
+      status: 'open'
+    }]).select();
+
+    if (error) {
+      // Base schema fallback
+      const fallback = await admin.database.from('feedback').insert([{
+        user_id: user_id || null,
+        message: message.trim(),
+        status: 'open'
+      }]).select();
+      if (fallback.error) throw fallback.error;
+      return res.json({ success: true, data: fallback.data });
+    }
+    res.json({ success: true, data });
+  } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -446,10 +508,11 @@ router.get('/feedback', async (req, res) => {
 router.put('/feedback/:id/resolve', async (req, res) => {
   try {
     const { id } = req.params;
+    const newStatus = req.body?.status || 'resolved';
     const admin = getInsforgeAdmin();
-    const { error } = await admin.database.from('feedback').update({ status: 'resolved' }).eq('id', id);
+    const { error } = await admin.database.from('feedback').update({ status: newStatus }).eq('id', id);
     if (error) throw error;
-    res.json({ success: true, status: 'resolved' });
+    res.json({ success: true, status: newStatus });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -738,7 +801,7 @@ router.get('/articles', async (req, res) => {
       summary: a.summary || (a.content ? a.content.slice(0, 180) + '...' : ''),
       imageUrl: a.image_url || a.imageUrl,
       authorId: a.author_id,
-      authorName: a.author_name || 'Maestro Editor',
+      authorName: a.author_name || 'Jirvinho Brazilian sports maestro',
       status: a.status,
       category: a.category || 'general',
       publishedAt: Number(a.published_at || Date.now())
@@ -782,7 +845,7 @@ router.post('/articles', async (req, res) => {
       summary: finalSummary,
       image_url: finalImageUrl,
       author_id: validAuthorId,
-      author_name: authorName || author_name || 'Maestro Editor',
+      author_name: authorName || author_name || 'Jirvinho Brazilian sports maestro',
       status: status || 'published',
       category: category || 'General',
       published_at: finalPublishedAt

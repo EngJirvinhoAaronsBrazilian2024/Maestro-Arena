@@ -23,7 +23,7 @@ export async function getArticles(status: 'draft' | 'published' = 'published'): 
       summary: a.summary || (a.content ? a.content.slice(0, 180) + '...' : ''),
       imageUrl: a.image_url ? getImageUrl(a.image_url) : undefined,
       authorId: a.author_id,
-      authorName: a.author_name || 'Maestro Editor',
+      authorName: a.author_name || 'Jirvinho Brazilian sports maestro',
       status: a.status,
       category: a.category || 'Football',
       publishedAt: Number(a.published_at || Date.now())
@@ -43,7 +43,7 @@ export async function getArticles(status: 'draft' | 'published' = 'published'): 
             summary: a.summary || (a.content ? a.content.slice(0, 180) + '...' : ''),
             imageUrl: a.imageUrl || a.image_url ? getImageUrl(a.imageUrl || a.image_url) : undefined,
             authorId: a.authorId || a.author_id,
-            authorName: a.authorName || a.author_name || 'Maestro Editor',
+            authorName: a.authorName || a.author_name || 'Jirvinho Brazilian sports maestro',
             status: a.status,
             category: a.category || 'Football',
             publishedAt: Number(a.publishedAt || a.published_at || Date.now())
@@ -74,7 +74,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
         summary: data.summary || (data.content ? data.content.slice(0, 180) + '...' : ''),
         imageUrl: data.image_url ? getImageUrl(data.image_url) : undefined,
         authorId: data.author_id,
-        authorName: data.author_name || 'Maestro Editor',
+        authorName: data.author_name || 'Jirvinho Brazilian sports maestro',
         status: data.status,
         category: data.category || 'Football',
         publishedAt: Number(data.published_at || Date.now())
@@ -95,7 +95,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
             summary: found.summary || (found.content ? found.content.slice(0, 180) + '...' : ''),
             imageUrl: found.imageUrl || found.image_url ? getImageUrl(found.imageUrl || found.image_url) : undefined,
             authorId: found.authorId || found.author_id,
-            authorName: found.authorName || found.author_name || 'Maestro Editor',
+            authorName: found.authorName || found.author_name || 'Jirvinho Brazilian sports maestro',
             status: found.status,
             category: found.category || 'Football',
             publishedAt: Number(found.publishedAt || found.published_at || Date.now())
@@ -113,7 +113,10 @@ export async function createArticle(article: Omit<Article, 'id'>): Promise<strin
     const res = await fetch('/api/admin/articles', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(article)
+      body: JSON.stringify({
+        ...article,
+        authorName: article.authorName || 'Jirvinho Brazilian sports maestro'
+      })
     });
     if (res.ok) {
       const data = await res.json();
@@ -138,7 +141,7 @@ export async function createArticle(article: Omit<Article, 'id'>): Promise<strin
       summary: article.summary || (article.content ? article.content.slice(0, 180) + '...' : ''),
       image_url: article.imageUrl,
       author_id: article.authorId || '2886ae6d-b563-44a3-b4b8-ae932cc188ad',
-      author_name: article.authorName || 'Maestro Editor',
+      author_name: article.authorName || 'Jirvinho Brazilian sports maestro',
       status: article.status || 'published',
       category: article.category || 'Football',
       published_at: article.publishedAt || Date.now()

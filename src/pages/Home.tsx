@@ -518,8 +518,8 @@ export function Home() {
                   className="w-full border-0 block"
                   style={{
                     width: '100%',
-                    marginTop: '-51px',
-                    height: 'calc(100% + 51px)',
+                    marginTop: '-54px',
+                    height: 'calc(100% + 54px)',
                     border: 'none',
                     display: 'block',
                     opacity: isHomeIframeLoading ? 0 : 1,
@@ -665,9 +665,14 @@ export function Home() {
                 topNews.map((article, index) => (
                   <React.Fragment key={article.id}>
                     <div className="space-y-1 group">
-                      <p className="text-[10px] text-rose-600 font-black uppercase tracking-wider">
-                        {article.category || 'News'}
-                      </p>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-rose-600 font-black uppercase tracking-wider">
+                          {article.category || 'News'}
+                        </span>
+                        <span className="text-slate-400 font-bold">
+                          By {article.authorName || 'Jirvinho Brazilian sports maestro'}
+                        </span>
+                      </div>
                       <Link to={`/news/${article.id}`}>
                         <h4 className="font-bold text-sm text-slate-900 group-hover:text-rose-600 transition-colors line-clamp-2 leading-snug">
                           {article.title}

@@ -64,7 +64,7 @@ const CATEGORIES: { label: string; value: QuizCategory | 'All' }[] = [
 
 const DIFFICULTIES: QuizDifficulty[] = ['Easy', 'Medium', 'Hard', 'Expert'];
 const QUESTION_COUNTS = [5, 10, 15, 20];
-const TIME_LIMITS = [10, 15, 20, 30];
+const TIME_LIMITS = [15, 30, 45, 60];
 
 export function H2HQuiz() {
   const { user, userData } = useAuth();
@@ -83,18 +83,18 @@ export function H2HQuiz() {
   const [history, setHistory] = useState<H2HHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState<boolean>(false);
 
-  // Create match modal state
+  // Create match modal state (Default time per question is 60s / 1 min)
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
   const [configCategory, setConfigCategory] = useState<QuizCategory | 'All'>('All');
   const [configDifficulty, setConfigDifficulty] = useState<QuizDifficulty>('Medium');
   const [configCount, setConfigCount] = useState<number>(5);
-  const [configTime, setConfigTime] = useState<number>(15);
+  const [configTime, setConfigTime] = useState<number>(60);
   const [configPrivate, setConfigPrivate] = useState<boolean>(true);
 
   // Active round state
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState<boolean>(false);
-  const [timeLeft, setTimeLeft] = useState<number>(15);
+  const [timeLeft, setTimeLeft] = useState<number>(60);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const timerIntervalRef = useRef<any>(null);
@@ -466,13 +466,30 @@ export function H2HQuiz() {
             </div>
 
             {/* authoritative countdown */}
-            <div className={cn(
-              "flex items-center gap-1.5 px-3 py-1 rounded-full font-black text-xs transition-colors",
-              timeLeft <= 5 ? "bg-red-50 text-red-600 animate-pulse border border-red-200" : "bg-slate-100 text-slate-700"
-            )}>
-              <Timer size={14} />
-              <span>{timeLeft}s</span>
+            <div className="flex flex-col items-end gap-1">
+              <div className={cn(
+                "flex items-center gap-1.5 px-3 py-1 rounded-full font-black text-xs transition-colors",
+                timeLeft <= 10 ? "bg-red-50 text-red-600 animate-pulse border border-red-200" :
+                timeLeft <= 25 ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                "bg-slate-100 text-slate-700"
+              )}>
+                <Timer size={14} className={timeLeft <= 10 ? "animate-spin text-red-600" : ""} />
+                <span>{timeLeft >= 60 ? `${Math.floor(timeLeft / 60)}m ${timeLeft % 60}s` : `${timeLeft}s`}</span>
+              </div>
             </div>
+          </div>
+
+          {/* Visual Timer Progress Bar */}
+          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-4">
+            <div
+              className={cn(
+                "h-full transition-all duration-300 rounded-full",
+                timeLeft <= 10 ? "bg-red-500" : timeLeft <= 25 ? "bg-amber-500" : "bg-rose-600"
+              )}
+              style={{
+                width: `${Math.min(100, Math.max(0, (timeLeft / (match.settings.timePerQuestion || 60)) * 100))}%`
+              }}
+            />
           </div>
 
           {/* 1v1 LIVE SCORE STRIP */}
@@ -871,7 +888,9 @@ export function H2HQuiz() {
           </div>
           <div>
             <span className="text-[10px] font-bold uppercase text-slate-400">Time / Round</span>
-            <div className="text-xs font-black text-slate-800">{match.settings.timePerQuestion}s</div>
+            <div className="text-xs font-black text-slate-800">
+              {match.settings.timePerQuestion >= 60 ? '1 min (60s)' : `${match.settings.timePerQuestion}s`}
+            </div>
           </div>
         </div>
 
@@ -1218,7 +1237,10 @@ export function H2HQuiz() {
 
                 {/* Time Limit */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Time per Question</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700">Time per Question</label>
+                    <span className="text-[11px] font-semibold text-rose-600">Max 1 minute (60s)</span>
+                  </div>
                   <div className="grid grid-cols-4 gap-2">
                     {TIME_LIMITS.map((sec) => (
                       <button
@@ -1232,10 +1254,15 @@ export function H2HQuiz() {
                             : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
                         )}
                       >
-                        {sec}s
+                        {sec === 60 ? '1 min (60s)' : `${sec}s`}
                       </button>
                     ))}
                   </div>
+                  <p className="text-[11px] text-slate-500 mt-1.5 font-medium">
+                    {configTime === 60
+                      ? 'Questions remain active for up to 1 full minute to allow ample time to think before expiring.'
+                      : `Questions remain active for up to ${configTime} seconds before timing out.`}
+                  </p>
                 </div>
 
                 {/* Privacy */}

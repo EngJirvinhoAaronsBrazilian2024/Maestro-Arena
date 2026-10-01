@@ -115,8 +115,9 @@ export function NewsList() {
                 </div>
                 <CardContent className="p-6 flex-1 flex flex-col justify-between">
                   <div>
-                    <div className="mb-2 text-xs font-medium text-slate-400">
-                      {new Date(article.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    <div className="mb-2 flex items-center justify-between text-xs font-medium text-slate-400">
+                      <span>{new Date(article.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      <span className="font-bold text-slate-600 truncate max-w-[200px]">By {article.authorName || 'Jirvinho Brazilian sports maestro'}</span>
                     </div>
                     <h3 className="mb-2.5 text-lg sm:text-xl font-black text-slate-950 leading-tight group-hover:text-rose-600 transition-colors line-clamp-2">
                       {article.title}

@@ -10,6 +10,7 @@ import tipsRoutes from '../../src/server/routes/tipsRoutes.js';
 import adminRoutes from '../../src/server/routes/adminRoutes.js';
 import storageRoutes from '../../src/server/routes/storageRoutes.js';
 import h2hRoutes from '../../src/server/routes/h2hRoutes.js';
+import scorebatRoutes from '../../src/server/routes/scorebatRoutes.js';
 
 const app = express();
 app.use(cors());
@@ -24,5 +25,6 @@ app.use("/api/tips", tipsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/storage", storageRoutes);
 app.use("/api/h2h", h2hRoutes);
+app.use("/api/scorebat", scorebatRoutes);
 
 export const handler = serverless(app);

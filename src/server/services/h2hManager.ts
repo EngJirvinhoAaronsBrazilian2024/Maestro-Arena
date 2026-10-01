@@ -310,7 +310,7 @@ export function mapDbRowToMatch(row: any): H2HMatch {
     category: (row.category || 'All') as any,
     difficulty: (row.difficulty || 'Medium') as any,
     questionCount: questionsList.length || 5,
-    timePerQuestion: 15
+    timePerQuestion: 60
   };
 
   const player1: H2HPlayer = qMeta.player1 || {
@@ -394,7 +394,9 @@ export async function createMatch(
   settings: Partial<H2HMatchSettings>
 ): Promise<H2HMatch> {
   const questionCount = settings.questionCount || 5;
-  const timePerQuestion = settings.timePerQuestion || 15;
+  // Maximum time to play is 1 minute (60s) per question with default 60s
+  const rawTime = Number(settings.timePerQuestion) || 60;
+  const timePerQuestion = Math.min(60, Math.max(10, rawTime));
   const category = settings.category || 'All';
   const difficulty = settings.difficulty || 'Medium';
   const isPrivate = settings.isPrivate !== false;
@@ -581,7 +583,7 @@ export async function startMatch(
 
   // Start round 0
   const now = Date.now();
-  const timeLimit = (match.settings.timePerQuestion || 15) * 1000;
+  const timeLimit = (match.settings.timePerQuestion || 60) * 1000;
 
   match.status = 'playing';
   match.currentRound = 0;
@@ -626,8 +628,8 @@ export async function submitAnswer(
   const timeTakenSec = Math.max(0.1, Number(((now - startedAt) / 1000).toFixed(1)));
   const isCorrect = selectedOption.trim().toLowerCase() === currentQ.correctAnswer.trim().toLowerCase();
 
-  // Scoring: 1000 base + speed bonus up to 500 (proportional to remaining time)
-  const maxTime = match.settings.timePerQuestion || 15;
+  // Scoring: 1000 base + speed bonus up to 500 (proportional to remaining time out of 60s)
+  const maxTime = match.settings.timePerQuestion || 60;
   let pointsAwarded = 0;
   if (isCorrect) {
     const remainingFraction = Math.max(0, (maxTime - timeTakenSec) / maxTime);
@@ -742,7 +744,7 @@ async function completeRound(matchId: string, roundIndex: number) {
       selectedOption: '',
       isCorrect: false,
       pointsAwarded: 0,
-      timeTakenSeconds: match.settings.timePerQuestion || 15,
+      timeTakenSeconds: match.settings.timePerQuestion || 60,
       submittedAt: Date.now()
     };
     match.player1.answers.push(false);
@@ -753,7 +755,7 @@ async function completeRound(matchId: string, roundIndex: number) {
       selectedOption: '',
       isCorrect: false,
       pointsAwarded: 0,
-      timeTakenSeconds: match.settings.timePerQuestion || 15,
+      timeTakenSeconds: match.settings.timePerQuestion || 60,
       submittedAt: Date.now()
     };
     match.player2.answers.push(false);
@@ -772,7 +774,7 @@ async function completeRound(matchId: string, roundIndex: number) {
     match: sanitizeMatchForUser(match)
   });
 
-  // Wait 3.5 seconds in review mode then proceed to next round or finish
+  // Delay transition for 4.5 seconds in review mode so players can read the explanation
   setTimeout(async () => {
     const nextRound = roundIndex + 1;
     if (nextRound >= match.questions.length) {
@@ -781,7 +783,7 @@ async function completeRound(matchId: string, roundIndex: number) {
     } else {
       // Advance to next round
       const now = Date.now();
-      const timeLimit = (match.settings.timePerQuestion || 15) * 1000;
+      const timeLimit = (match.settings.timePerQuestion || 60) * 1000;
 
       match.status = 'playing';
       match.currentRound = nextRound;
@@ -798,7 +800,7 @@ async function completeRound(matchId: string, roundIndex: number) {
 
       scheduleRoundDeadline(match.id, nextRound, timeLimit);
     }
-  }, 3500);
+  }, 4500);
 }
 
 // Complete the entire match and calculate winner

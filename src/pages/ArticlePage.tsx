@@ -87,10 +87,10 @@ export function ArticlePage() {
         <div className="flex items-center justify-between pt-4 border-t border-slate-200">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-50 text-rose-600 border border-rose-200 font-black">
-              {(article.authorName || 'Maestro Editor').charAt(0)}
+              {(article.authorName || 'Jirvinho Brazilian sports maestro').charAt(0)}
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900">{article.authorName || 'Maestro Editor'}</p>
+              <p className="text-sm font-bold text-slate-900">{article.authorName || 'Jirvinho Brazilian sports maestro'}</p>
               <p className="text-xs text-slate-400 font-medium">Author</p>
             </div>
           </div>

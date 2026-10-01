@@ -155,19 +155,22 @@ export function AdminLayout() {
 
       {/* Main Content Area */}
       <main className="flex-1 w-full flex flex-col min-w-0 pt-16 md:pt-0">
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-10 w-full max-w-7xl mx-auto">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="h-full"
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
+        <div className="flex-1 overflow-y-auto px-1.5 sm:px-3 md:px-4 py-2 sm:py-3 w-full max-w-7xl mx-auto">
+          {/* Big bold red border with increased weight and shading */}
+          <div className="border-[5px] sm:border-[6px] border-rose-600 rounded-2xl sm:rounded-3xl p-1.5 sm:p-2.5 md:p-3.5 shadow-xl shadow-rose-600/20 bg-white/10 min-w-0 h-full">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="h-full"
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </main>
     </div>

@@ -33,7 +33,7 @@ export function AdminNewsManagement() {
     setIsSaving(true);
     try {
       const validAuthorId = user?.id || (user as any)?.uid || '2886ae6d-b563-44a3-b4b8-ae932cc188ad';
-      const authorName = profile?.displayName || user?.email?.split('@')[0] || 'Maestro Editor';
+      const authorName = (currentArticle.authorName || '').trim() || 'Jirvinho Brazilian sports maestro';
       
       if (currentArticle.id) {
         await updateArticle(currentArticle.id, {
@@ -41,6 +41,7 @@ export function AdminNewsManagement() {
           title: currentArticle.title.trim(),
           content: currentArticle.content || content,
           summary: currentArticle.summary || (content.length > 180 ? content.slice(0, 180) + '...' : content),
+          authorName,
           status,
           publishedAt: currentArticle.publishedAt || Date.now()
         });
@@ -130,7 +131,17 @@ export function AdminNewsManagement() {
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div>
+                <label className="mb-1.5 block text-xs sm:text-sm font-bold text-slate-700">Author</label>
+                <input
+                  type="text"
+                  placeholder="Jirvinho Brazilian sports maestro"
+                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-900 outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all font-semibold"
+                  value={currentArticle.authorName ?? 'Jirvinho Brazilian sports maestro'}
+                  onChange={(e) => setCurrentArticle({ ...currentArticle, authorName: e.target.value })}
+                />
+              </div>
               <div>
                 <label className="mb-1.5 block text-xs sm:text-sm font-bold text-slate-700">Category</label>
                 <input

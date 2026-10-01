@@ -54,21 +54,43 @@ export function Settings() {
         const senderEmail = user.email || '';
         const senderAvatar = user.profile?.avatar_url || user.user_metadata?.avatar_url || '';
 
-        // Attempt insert with rich sender details
-        const { error } = await insforge.database.from('feedback').insert([{ 
-          user_id: user.id, 
-          user_name: senderName,
-          user_email: senderEmail,
-          user_avatar: senderAvatar,
-          message: feedback.trim() 
-        }]);
+        let submitted = false;
+        try {
+          const apiRes = await fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: user.id,
+              user_name: senderName,
+              user_email: senderEmail,
+              user_avatar: senderAvatar,
+              message: feedback.trim()
+            })
+          });
+          if (apiRes.ok) {
+            submitted = true;
+          }
+        } catch (apiErr) {
+          console.warn('API feedback submit fallback:', apiErr);
+        }
 
-        if (error) {
-          // Fallback if table only accepts base schema
-          await insforge.database.from('feedback').insert([{ 
+        if (!submitted) {
+          // Direct client fallback
+          const { error } = await insforge.database.from('feedback').insert([{ 
             user_id: user.id, 
+            user_name: senderName,
+            user_email: senderEmail,
+            user_avatar: senderAvatar,
             message: feedback.trim() 
           }]);
+
+          if (error) {
+            // Base schema fallback
+            await insforge.database.from('feedback').insert([{ 
+              user_id: user.id, 
+              message: feedback.trim() 
+            }]);
+          }
         }
 
         toast.success('Feedback sent successfully! Thank you.');

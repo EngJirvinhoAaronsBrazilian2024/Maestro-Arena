@@ -81,7 +81,7 @@ router.post('/quick-match', async (req, res) => {
         difficulty: difficulty || 'Medium',
         isPrivate: false,
         questionCount: 5,
-        timePerQuestion: 15
+        timePerQuestion: 60
       }
     );
     res.json({ success: true, match: sanitizeMatchForUser(newMatch, userId), joinedExisting: false });

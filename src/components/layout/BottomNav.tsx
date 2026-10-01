@@ -14,8 +14,8 @@ const navItems = [
 export function BottomNav() {
   const location = useLocation();
   return (
-    <div className="md:hidden fixed bottom-4 left-4 right-4 z-50 rounded-full border border-white/90 bg-white/90 backdrop-blur-xl shadow-[0_12px_36px_rgba(15,23,42,0.12)] safe-area-bottom">
-      <nav className="flex h-16 items-center justify-around px-3">
+    <div className="md:hidden sticky bottom-0 left-0 right-0 z-40 w-full border-t border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-[0_-6px_25px_rgba(15,23,42,0.08)] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <nav className="flex h-16 items-center justify-around px-2 sm:px-4 max-w-lg mx-auto">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
@@ -23,7 +23,7 @@ export function BottomNav() {
             className={() => {
               const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
               return cn(
-                'relative flex flex-col items-center justify-center w-13 h-13 rounded-2xl transition-all duration-200',
+                'relative flex flex-col items-center justify-center w-13 h-12 rounded-xl transition-all duration-200',
                 isActive
                   ? 'bg-gradient-to-br from-rose-600 via-rose-600 to-red-700 text-white shadow-md shadow-rose-600/30 scale-105'
                   : 'text-slate-600 hover:text-rose-600 hover:bg-rose-50/60 bg-transparent'
@@ -45,3 +45,5 @@ export function BottomNav() {
     </div>
   );
 }
+
+export default BottomNav;
