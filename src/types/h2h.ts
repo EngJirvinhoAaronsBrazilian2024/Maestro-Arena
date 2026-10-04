@@ -44,6 +44,7 @@ export interface H2HMatch {
   player1: H2HPlayer;
   player2?: H2HPlayer;
   currentRound: number;
+  countdownDeadline?: number;
   roundStartedAt?: number;
   roundDeadline?: number;
   questions: QuizQuestion[];

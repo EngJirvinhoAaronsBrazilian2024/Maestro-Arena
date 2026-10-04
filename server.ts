@@ -12,6 +12,8 @@ import adminRoutes from "./src/server/routes/adminRoutes.js";
 import storageRoutes from "./src/server/routes/storageRoutes.js";
 import h2hRoutes from "./src/server/routes/h2hRoutes.js";
 import scorebatRoutes from "./src/server/routes/scorebatRoutes.js";
+import fotmobRoutes from "./src/server/routes/fotmobRoutes.js";
+import besoccerRoutes from "./src/server/routes/besoccerRoutes.js";
 import { registerMatchSocket } from "./src/server/services/h2hManager.js";
 
 // Clean up tsx injected relative globals which break Vite ESM plugins (like vite-plugin-pwa)
@@ -50,6 +52,8 @@ app.use("/api/feedback", (req, res, next) => {
 app.use("/api/storage", storageRoutes);
 app.use("/api/h2h", h2hRoutes);
 app.use("/api/scorebat", scorebatRoutes);
+app.use("/api/fotmob", fotmobRoutes);
+app.use("/api/besoccer", besoccerRoutes);
 
 async function startServer() {
   let PORT = 3000;
@@ -75,8 +79,9 @@ async function startServer() {
     try {
       const url = new URL(req.url || "", `http://${req.headers.host || 'localhost'}`);
       const matchId = url.searchParams.get("matchId");
+      const userId = url.searchParams.get("userId") || undefined;
       if (matchId) {
-        registerMatchSocket(matchId, ws);
+        registerMatchSocket(matchId, ws, userId);
       }
     } catch (e) {
       console.warn("WebSocket connection parse notice:", e);

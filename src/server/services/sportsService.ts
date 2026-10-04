@@ -113,26 +113,28 @@ export async function getMatchDetails(id: string): Promise<MatchDetail | null> {
   const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
-  // Mock implementation
+  // Fallback to normalized match provider
   if (!apiKey) {
     const mockLive = getMockLiveMatches().find(m => m.id === id);
     const mockUpcoming = getMockUpcomingMatches().find(m => m.id === id);
     const baseMatch = mockLive || mockUpcoming;
-    if (!baseMatch) return null;
-    
-    const mockDetail: MatchDetail = {
-      ...baseMatch,
-      events: [
-        { time: { elapsed: 15 }, team: baseMatch.homeTeam, player: { id: "p1", name: "Striker 9" }, type: "Goal", detail: "Normal Goal" },
-        { time: { elapsed: 45 }, team: baseMatch.awayTeam, player: { id: "p2", name: "Defender 4" }, type: "Card", detail: "Yellow Card" }
-      ],
-      statistics: [
-        { team: baseMatch.homeTeam, statistics: [{ type: "Ball Possession", value: "60%" }, { type: "Total Shots", value: 12 }] },
-        { team: baseMatch.awayTeam, statistics: [{ type: "Ball Possession", value: "40%" }, { type: "Total Shots", value: 5 }] }
-      ]
-    };
-    setCache(cacheKey, mockDetail, CACHE_TTL_LIVE);
-    return mockDetail;
+    if (baseMatch) {
+      const mockDetail: MatchDetail = {
+        ...baseMatch,
+        events: [
+          { time: { elapsed: 15 }, team: baseMatch.homeTeam, player: { id: "p1", name: "Striker 9" }, type: "Goal", detail: "Normal Goal" },
+          { time: { elapsed: 45 }, team: baseMatch.awayTeam, player: { id: "p2", name: "Defender 4" }, type: "Card", detail: "Yellow Card" }
+        ],
+        statistics: [
+          { team: baseMatch.homeTeam, statistics: [{ type: "Ball Possession", value: "60%" }, { type: "Total Shots", value: 12 }] },
+          { team: baseMatch.awayTeam, statistics: [{ type: "Ball Possession", value: "40%" }, { type: "Total Shots", value: 5 }] }
+        ]
+      };
+      setCache(cacheKey, mockDetail, CACHE_TTL_LIVE);
+      return mockDetail;
+    }
+
+    return null;
   }
 
   try {

@@ -581,24 +581,54 @@ export async function startMatch(
     throw new Error('Cannot start match without an opponent. Wait for someone to join!');
   }
 
-  // Start round 0
+  // 1. Synchronized Countdown Phase (3000ms)
+  // Both players see the 3.. 2.. 1.. countdown at the exact same millisecond
   const now = Date.now();
-  const timeLimit = (match.settings.timePerQuestion || 60) * 1000;
+  const COUNTDOWN_MS = 3000;
+  const countdownDeadline = now + COUNTDOWN_MS;
 
-  match.status = 'playing';
+  match.status = 'starting';
   match.currentRound = 0;
-  match.roundStartedAt = now;
-  match.roundDeadline = now + timeLimit;
+  match.countdownDeadline = countdownDeadline;
 
   activeMatches.set(match.id, match);
-  await persistMatchToDb(match);
+  void persistMatchToDb(match).catch(() => {});
 
-  broadcastToRoom(match.id, 'match_started', {
-    match: sanitizeMatchForUser(match)
+  // Broadcast synchronized starting countdown to room immediately
+  broadcastToRoom(match.id, 'match_starting', {
+    match: sanitizeMatchForUser(match),
+    countdownDeadline,
+    serverTime: now
   });
 
-  // Schedule automatic deadline expiration
-  scheduleRoundDeadline(match.id, 0, timeLimit);
+  // Schedule the synchronized question reveal at countdownDeadline
+  clearExistingRoundTimer(match.id);
+  const startTimer = setTimeout(() => {
+    const current = activeMatches.get(match.id);
+    if (!current || current.status !== 'starting') return;
+
+    const roundNow = Date.now();
+    const timeLimit = (current.settings.timePerQuestion || 60) * 1000;
+
+    current.status = 'playing';
+    current.currentRound = 0;
+    current.roundStartedAt = roundNow;
+    current.roundDeadline = roundNow + timeLimit;
+    current.countdownDeadline = undefined;
+
+    activeMatches.set(current.id, current);
+    void persistMatchToDb(current).catch(() => {});
+
+    broadcastToRoom(current.id, 'match_started', {
+      match: sanitizeMatchForUser(current),
+      roundIndex: 0,
+      serverTime: roundNow
+    });
+
+    scheduleRoundDeadline(current.id, 0, timeLimit);
+  }, COUNTDOWN_MS);
+
+  roundTimers.set(match.id, startTimer);
 
   return match;
 }
@@ -678,12 +708,16 @@ export async function submitAnswer(
 
   activeMatches.set(match.id, match);
 
-  // Broadcast neutral answer confirmation so opponent knows answer was submitted
+  // IMMEDIATELY broadcast neutral answer confirmation so opponent knows answer was submitted (< 1ms latency)
   broadcastToRoom(match.id, 'answer_submitted', {
     userId,
     roundIndex,
-    hasAnswered: true
+    hasAnswered: true,
+    serverTime: now
   });
+
+  // Non-blocking background persistence so gameplay has zero I/O stutter
+  void persistMatchToDb(match).catch(() => {});
 
   // Check if all players have answered
   const p1Answered = Boolean(roundResult.submissions[match.player1.uid]);
@@ -707,7 +741,7 @@ function scheduleRoundDeadline(matchId: string, roundIndex: number, ms: number) 
     if (match && match.status === 'playing' && match.currentRound === roundIndex) {
       completeRound(matchId, roundIndex);
     }
-  }, ms + 500); // 500ms grace period
+  }, ms + 250); // Minimal 250ms grace period
 
   roundTimers.set(matchId, timer);
 }
@@ -738,6 +772,8 @@ async function completeRound(matchId: string, roundIndex: number) {
     match.roundResults.push(roundResult);
   }
 
+  const now = Date.now();
+
   // Check unanswered players
   if (!roundResult.submissions[match.player1.uid]) {
     roundResult.submissions[match.player1.uid] = {
@@ -745,7 +781,7 @@ async function completeRound(matchId: string, roundIndex: number) {
       isCorrect: false,
       pointsAwarded: 0,
       timeTakenSeconds: match.settings.timePerQuestion || 60,
-      submittedAt: Date.now()
+      submittedAt: now
     };
     match.player1.answers.push(false);
   }
@@ -756,51 +792,56 @@ async function completeRound(matchId: string, roundIndex: number) {
       isCorrect: false,
       pointsAwarded: 0,
       timeTakenSeconds: match.settings.timePerQuestion || 60,
-      submittedAt: Date.now()
+      submittedAt: now
     };
     match.player2.answers.push(false);
   }
 
   match.status = 'round_review';
   activeMatches.set(match.id, match);
-  await persistMatchToDb(match);
+  void persistMatchToDb(match).catch(() => {});
 
-  // Broadcast round complete with revealed results
+  // Broadcast round complete with revealed results IMMEDIATELY
   broadcastToRoom(match.id, 'round_complete', {
     roundIndex,
     roundResult,
     player1Score: match.player1.score,
     player2Score: match.player2?.score || 0,
-    match: sanitizeMatchForUser(match)
+    match: sanitizeMatchForUser(match),
+    serverTime: now
   });
 
-  // Delay transition for 4.5 seconds in review mode so players can read the explanation
-  setTimeout(async () => {
+  // Delay transition for 3.5 seconds in review mode so players can read the explanation
+  clearExistingRoundTimer(match.id);
+  const reviewTimer = setTimeout(async () => {
     const nextRound = roundIndex + 1;
     if (nextRound >= match.questions.length) {
       // Final question complete -> Finish Match!
       await finishMatch(match.id);
     } else {
       // Advance to next round
-      const now = Date.now();
+      const advanceNow = Date.now();
       const timeLimit = (match.settings.timePerQuestion || 60) * 1000;
 
       match.status = 'playing';
       match.currentRound = nextRound;
-      match.roundStartedAt = now;
-      match.roundDeadline = now + timeLimit;
+      match.roundStartedAt = advanceNow;
+      match.roundDeadline = advanceNow + timeLimit;
 
       activeMatches.set(match.id, match);
-      await persistMatchToDb(match);
+      void persistMatchToDb(match).catch(() => {});
 
       broadcastToRoom(match.id, 'next_question', {
         roundIndex: nextRound,
-        match: sanitizeMatchForUser(match)
+        match: sanitizeMatchForUser(match),
+        serverTime: advanceNow
       });
 
       scheduleRoundDeadline(match.id, nextRound, timeLimit);
     }
-  }, 4500);
+  }, 3500);
+
+  roundTimers.set(match.id, reviewTimer);
 }
 
 // Complete the entire match and calculate winner
@@ -1008,14 +1049,70 @@ export async function getUserMatchHistory(userId: string): Promise<H2HHistoryIte
   }
 }
 
-// Register WebSocket for a match
-export function registerMatchSocket(matchId: string, ws: WebSocket) {
+// Register WebSocket for a match with immediate hydration & fast-path actions
+export function registerMatchSocket(matchId: string, ws: WebSocket, userId?: string) {
   if (!matchSockets.has(matchId)) {
     matchSockets.set(matchId, new Set());
   }
   matchSockets.get(matchId)!.add(ws);
 
+  // 1. Immediately hydrate client with authoritative state and server timestamp
+  const match = activeMatches.get(matchId);
+  if (match && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      event: 'init_sync',
+      data: {
+        match: sanitizeMatchForUser(match, userId),
+        serverTime: Date.now()
+      }
+    }));
+  }
+
+  // 2. High-speed bidirectional action listener
+  ws.on('message', async (raw) => {
+    try {
+      const msg = JSON.parse(raw.toString());
+
+      // Ping-pong for millisecond clock synchronization & Cloud Run keepalive
+      if (msg.action === 'ping') {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            event: 'pong',
+            data: {
+              serverTime: Date.now(),
+              clientTime: msg.clientTime
+            }
+          }));
+        }
+        return;
+      }
+
+      // High-speed direct answer submission
+      if (
+        msg.action === 'answer' &&
+        msg.userId &&
+        msg.matchId &&
+        typeof msg.roundIndex === 'number' &&
+        msg.selectedOption
+      ) {
+        await submitAnswer(msg.userId, msg.matchId, msg.roundIndex, msg.selectedOption);
+      }
+    } catch (e) {
+      console.warn('H2H WebSocket message handling notice:', e);
+    }
+  });
+
+  // 3. Keepalive ping every 15s to prevent cloud proxy disconnects
+  const heartbeat = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.ping();
+    } else {
+      clearInterval(heartbeat);
+    }
+  }, 15000);
+
   ws.on('close', () => {
+    clearInterval(heartbeat);
     const set = matchSockets.get(matchId);
     if (set) {
       set.delete(ws);

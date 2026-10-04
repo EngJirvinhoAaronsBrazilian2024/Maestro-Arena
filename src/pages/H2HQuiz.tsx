@@ -12,7 +12,8 @@ import {
   fetchH2HMatchState,
   fetchPublicMatches,
   fetchUserH2HHistory,
-  subscribeToH2HMatch
+  subscribeToH2HMatch,
+  getSynchronizedServerTime
 } from '../services/h2hService';
 import { H2HMatch, H2HMatchSettings, H2HHistoryItem } from '../types/h2h';
 import { QuizCategory, QuizDifficulty } from '../types/quiz';
@@ -95,9 +96,12 @@ export function H2HQuiz() {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(60);
+  const [opponentHasAnswered, setOpponentHasAnswered] = useState<boolean>(false);
+  const [startingCountdown, setStartingCountdown] = useState<number>(3);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const timerIntervalRef = useRef<any>(null);
+  const countdownIntervalRef = useRef<any>(null);
 
   const currentUserId = useMemo(() => {
     if (user?.id) return user.id;
@@ -175,17 +179,35 @@ export function H2HQuiz() {
     }
 
     switch (event) {
+      case 'init_sync':
+        // Fresh state synchronized from server
+        break;
       case 'player_joined':
         toast.success(`${data.joinedPlayer?.displayName || 'An opponent'} joined the room!`);
         break;
-      case 'match_started':
-        toast.info("Match is starting! Get ready for Question 1!");
+      case 'match_starting':
+        // Synchronized countdown starting for both players simultaneously
+        setStartingCountdown(3);
         setSelectedOption(null);
         setHasSubmitted(false);
+        setOpponentHasAnswered(false);
+        break;
+      case 'match_started':
+        toast.info("Match is live! Question 1 revealed!", { duration: 1500 });
+        setSelectedOption(null);
+        setHasSubmitted(false);
+        setOpponentHasAnswered(false);
         break;
       case 'next_question':
         setSelectedOption(null);
         setHasSubmitted(false);
+        setOpponentHasAnswered(false);
+        break;
+      case 'answer_submitted':
+        // Immediate real-time reflection when opponent locks in their answer
+        if (data.userId && data.userId !== currentUserId) {
+          setOpponentHasAnswered(true);
+        }
         break;
       case 'round_complete':
         break;
@@ -202,7 +224,31 @@ export function H2HQuiz() {
     }
   };
 
-  // 4. Client countdown timer synced with authoritative roundDeadline
+  // 4. Synchronized starting countdown timer
+  useEffect(() => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+
+    if (match?.status === 'starting' && match.countdownDeadline) {
+      const updateCountdown = () => {
+        const now = getSynchronizedServerTime();
+        const diffMs = match.countdownDeadline! - now;
+        const secs = Math.max(0, Math.ceil(diffMs / 1000));
+        setStartingCountdown(secs);
+      };
+      updateCountdown();
+      countdownIntervalRef.current = setInterval(updateCountdown, 100);
+    }
+
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
+  }, [match?.status, match?.countdownDeadline]);
+
+  // 5. Client countdown timer synced with authoritative roundDeadline
   useEffect(() => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
@@ -210,11 +256,12 @@ export function H2HQuiz() {
 
     if (match?.status === 'playing' && match.roundDeadline) {
       const updateTimer = () => {
-        const remaining = Math.max(0, Math.ceil((match.roundDeadline! - Date.now()) / 1000));
+        const now = getSynchronizedServerTime();
+        const remaining = Math.max(0, Math.ceil((match.roundDeadline! - now) / 1000));
         setTimeLeft(remaining);
       };
       updateTimer();
-      timerIntervalRef.current = setInterval(updateTimer, 250);
+      timerIntervalRef.current = setInterval(updateTimer, 200);
     }
 
     return () => {
@@ -445,6 +492,43 @@ export function H2HQuiz() {
   }
 
   // -------------------------------------------------------------
+  // RENDER: SYNCHRONIZED COUNTDOWN (STATUS: 'starting')
+  // -------------------------------------------------------------
+  if (match && match.status === 'starting') {
+    return (
+      <div className="mx-auto max-w-md space-y-6 animate-in fade-in zoom-in-95 duration-300 py-12 px-4">
+        <div className="rounded-3xl border-2 border-rose-300 bg-white p-8 text-center shadow-xl shadow-rose-600/10 space-y-6">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-black uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-rose-600 animate-spin" />
+            Synchronizing Both Players
+          </div>
+
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">
+              Match Starting!
+            </h2>
+            <p className="text-xs text-slate-500 font-medium mt-1">
+              Both players will reveal Question 1 simultaneously.
+            </p>
+          </div>
+
+          <div className="py-4">
+            <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-3xl bg-gradient-to-tr from-rose-600 via-rose-600 to-red-600 text-white font-black text-6xl shadow-2xl shadow-rose-600/35 animate-bounce">
+              {startingCountdown > 0 ? startingCountdown : "GO!"}
+            </div>
+          </div>
+
+          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-around text-xs font-bold text-slate-600">
+            <span className="font-black text-slate-900">{match.player1.displayName}</span>
+            <span className="text-rose-600 font-black">VS</span>
+            <span className="font-black text-slate-900">{match.player2?.displayName || 'Opponent'}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
   // RENDER: ACTIVE MATCH PLAYING OR ROUND REVIEW
   // -------------------------------------------------------------
   if (match && (match.status === 'playing' || match.status === 'round_review') && currentQ) {
@@ -503,12 +587,32 @@ export function H2HQuiz() {
                 {match.player1.displayName.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-black text-xs sm:text-sm text-slate-900 truncate">
-                    {match.player1.displayName}
-                  </span>
-                  {isPlayer1 && (
-                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-rose-100 text-rose-700 rounded-md">You</span>
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="font-black text-xs sm:text-sm text-slate-900 truncate">
+                      {match.player1.displayName}
+                    </span>
+                    {isPlayer1 && (
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-rose-100 text-rose-700 rounded-md">You</span>
+                    )}
+                  </div>
+                  {/* Status Indicator */}
+                  {isPlayer1 ? (
+                    hasSubmitted ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 shrink-0">
+                        <CheckCheck size={10} /> Locked
+                      </span>
+                    ) : null
+                  ) : (
+                    (opponentHasAnswered || currentRoundResult?.submissions?.[match.player1.uid]) ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 shrink-0 animate-pulse">
+                        <CheckCheck size={10} /> Locked
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-400 shrink-0">
+                        <Clock size={10} /> Thinking
+                      </span>
+                    )
                   )}
                 </div>
                 <div className="text-base sm:text-lg font-black text-rose-600">
@@ -526,12 +630,32 @@ export function H2HQuiz() {
                 {match.player2?.displayName.charAt(0).toUpperCase() || '?'}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-black text-xs sm:text-sm text-slate-900 truncate">
-                    {match.player2?.displayName || 'Opponent'}
-                  </span>
-                  {!isPlayer1 && (
-                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-rose-100 text-rose-700 rounded-md">You</span>
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="font-black text-xs sm:text-sm text-slate-900 truncate">
+                      {match.player2?.displayName || 'Opponent'}
+                    </span>
+                    {!isPlayer1 && (
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-rose-100 text-rose-700 rounded-md">You</span>
+                    )}
+                  </div>
+                  {/* Status Indicator */}
+                  {!isPlayer1 ? (
+                    hasSubmitted ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 shrink-0">
+                        <CheckCheck size={10} /> Locked
+                      </span>
+                    ) : null
+                  ) : (
+                    (opponentHasAnswered || (match.player2 && currentRoundResult?.submissions?.[match.player2.uid])) ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 shrink-0 animate-pulse">
+                        <CheckCheck size={10} /> Locked
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-400 shrink-0">
+                        <Clock size={10} /> Thinking
+                      </span>
+                    )
                   )}
                 </div>
                 <div className="text-base sm:text-lg font-black text-slate-700">

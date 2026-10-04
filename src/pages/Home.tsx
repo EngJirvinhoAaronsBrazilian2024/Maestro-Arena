@@ -322,17 +322,9 @@ export function Home() {
 
   const topNews = articles?.slice(0, 4) || [];
 
-  const [isHomeIframeLoading, setIsHomeIframeLoading] = useState<boolean>(true);
-  const [homeIframeKey, setHomeIframeKey] = useState<number>(0);
-
-  const handleHomeRefresh = () => {
-    setIsHomeIframeLoading(true);
-    setHomeIframeKey((prev) => prev + 1);
-  };
-
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
-                  {/* Premium Hero Section - Fully Responsive Across All Devices */}
+      {/* Premium Hero Section - Fully Responsive Across All Devices */}
       <div className="relative w-full overflow-hidden rounded-[24px] shadow-sm border border-slate-200 flex flex-col md:min-h-[550px] group mb-10 bg-white">
         
         {/* Full Image Container:
@@ -456,86 +448,9 @@ export function Home() {
         </div>
       )}
 
-      {/* Bento Grid Layout */}
+      {/* Main Home Sections: Team Browser, Standings, News */}
       <div className="flex flex-col gap-6 w-full max-w-4xl mx-auto">
-        
-        {/* Left Column (Main Content: Feed & Live) */}
-        <div className="space-y-6 w-full">
-          
-          {/* Real-Time Live Matches & Upcoming Highlights from ScoreBat */}
-          <Card className="border border-white/80 bg-white/70 backdrop-blur-xl overflow-hidden shadow-sm">
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 bg-slate-50/50">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-2.5 w-2.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-                </span>
-                <CardTitle className="text-lg font-black text-slate-950 flex items-center gap-2">
-                  World Football
-                </CardTitle>
-                <span className="text-xs font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-md border border-cyan-200">
-                  Real-time
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleHomeRefresh}
-                  title="Reload Live Feed"
-                  className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 shadow-2xs transition-colors cursor-pointer"
-                >
-                  <RotateCw className={`w-3.5 h-3.5 ${isHomeIframeLoading ? 'animate-spin text-cyan-600' : ''}`} />
-                </button>
-
-                <Link to="/livescore" className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline ml-1">
-                  View All →
-                </Link>
-              </div>
-            </CardHeader>
-
-            <CardContent className="p-0">
-              <div className="relative w-full overflow-hidden bg-white" style={{ height: '620px' }}>
-                {isHomeIframeLoading && (
-                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/95 backdrop-blur-xs">
-                    <div className="relative flex items-center justify-center">
-                      <div className="h-10 w-10 rounded-full border-4 border-slate-200"></div>
-                      <div className="absolute h-10 w-10 rounded-full border-4 border-cyan-500 border-t-transparent animate-spin"></div>
-                    </div>
-                    <p className="mt-3 text-xs font-bold text-slate-700">Loading real-time matches...</p>
-                  </div>
-                )}
-
-                <iframe
-                  key={homeIframeKey}
-                  src="https://www.scorebat.com/embed/livescore/"
-                  title="Real-Time World Football Matches"
-                  frameBorder="0"
-                  width="100%"
-                  allowFullScreen
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                  onLoad={() => setIsHomeIframeLoading(false)}
-                  className="w-full border-0 block"
-                  style={{
-                    width: '100%',
-                    marginTop: '-54px',
-                    height: 'calc(100% + 54px)',
-                    border: 'none',
-                    display: 'block',
-                    opacity: isHomeIframeLoading ? 0 : 1,
-                    transition: 'opacity 0.25s ease-in-out',
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-          
-
-        </div>
-
-        {/* Right Column (Sidebar: Team Browser, Standings, News) */}
         <div className="space-y-6">
-          
           {/* Favorites Widget / Team Browser */}
           <Card className="relative overflow-hidden bg-white/75 backdrop-blur-xl border border-white/80 shadow-[0_8px_32px_rgba(15,23,42,0.04)]">
             <CardHeader className="bg-slate-50/70 border-b border-slate-100">
