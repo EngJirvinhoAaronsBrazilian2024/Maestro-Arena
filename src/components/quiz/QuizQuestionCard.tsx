@@ -91,6 +91,7 @@ export function QuizQuestionCard({
   const isAnswerCorrect = selectedAnswer === question.correctAnswer;
   const progressPercent = (currentNumber / totalQuestions) * 100;
   const isTimeLow = timeRemaining !== null && timeRemaining <= 5;
+  const isAmberTime = timeRemaining !== null && timeRemaining > 5 && timeRemaining <= 10;
   const CategoryIcon = getCategoryIcon(category);
 
   // SVG Circular countdown geometry
@@ -98,6 +99,9 @@ export function QuizQuestionCard({
   const circumference = 2 * Math.PI * radius;
   const timeProgress = timeRemaining !== null ? Math.max(0, Math.min(1, timeRemaining / (maxTime || 25))) : 1;
   const strokeOffset = circumference * (1 - timeProgress);
+
+  // Color transition: green (>=10s) -> amber (6-10s) -> urgent pulsing red (<5s)
+  const timerStrokeColor = isTimeLow ? '#EF4444' : isAmberTime ? '#F59E0B' : '#10B981';
 
   const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 
@@ -109,10 +113,10 @@ export function QuizQuestionCard({
       
       {/* RESPONSIVE FOOTBALL ARENA QUESTION CARD (Mobile & Desktop) */}
       <div className="w-full max-w-4xl mx-auto space-y-4 sm:space-y-6">
-      {/* 1. QUIZ HEADER: 100% Light Mode Football Header */}
-      <div className="relative overflow-hidden rounded-[28px] bg-white/80 backdrop-blur-xl border border-white/90 text-slate-900 shadow-[0_8px_32px_rgba(15,23,42,0.04)]">
+      {/* 1. BROADCAST-STYLE QUIZ HEADER */}
+      <div className="relative overflow-hidden rounded-[28px] bg-white/90 backdrop-blur-xl border border-white/90 text-slate-900 shadow-[0_8px_32px_rgba(15,23,42,0.06)]">
         {/* Pitch line graphics & subtle brand glow */}
-        <div className="absolute top-0 right-1/4 w-72 h-72 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute top-0 right-1/4 w-72 h-72 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute -bottom-10 -left-10 w-60 h-60 bg-rose-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="relative z-10 p-5 md:p-6">
@@ -122,28 +126,28 @@ export function QuizQuestionCard({
               <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-600 to-red-700 text-white shadow-md shadow-rose-600/25 border border-rose-400/30">
                 <Trophy className="h-6 w-6 text-amber-300" />
                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                 </span>
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-950 flex items-center gap-1.5">
-                    Maestro Quiz
+                    Maestro Match Pitch
                   </h1>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-cyan-50 text-cyan-800 border border-cyan-200">
-                    Live
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Live Broadcast
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 font-semibold flex items-center gap-2 mt-0.5">
-                  <span>Test your football knowledge</span>
+                  <span>Matchday Arena</span>
                   <span className="text-slate-300">•</span>
                   <span className="text-rose-600 font-bold">{difficulty}</span>
                 </p>
               </div>
             </div>
 
-            {/* Score & Circular Countdown Timer */}
+            {/* Score & Animated Circular Countdown Timer */}
             <div className="flex items-center gap-4 self-end sm:self-center">
               {/* Current Score Tag - Gold Accent */}
               <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-amber-50/80 border border-amber-200/80 shadow-2xs backdrop-blur-md">
@@ -156,7 +160,7 @@ export function QuizQuestionCard({
                 </div>
               </div>
 
-              {/* Circular Timer Component */}
+              {/* Animated Countdown Clock with Color Transition (Green -> Amber -> Urgent Pulsing Red) */}
               {timeRemaining !== null && (
                 <div className="relative flex items-center justify-center">
                   <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 54 54">
@@ -169,12 +173,12 @@ export function QuizQuestionCard({
                       strokeWidth="4"
                       fill="transparent"
                     />
-                    {/* Countdown track */}
+                    {/* Countdown track with dynamic color transition */}
                     <circle
                       cx="27"
                       cy="27"
                       r={radius}
-                      stroke={isTimeLow ? '#E11D48' : '#0891B2'}
+                      stroke={timerStrokeColor}
                       strokeWidth="4"
                       strokeDasharray={circumference}
                       strokeDashoffset={strokeOffset}
@@ -184,62 +188,100 @@ export function QuizQuestionCard({
                     />
                   </svg>
                   <div className={cn(
-                    "absolute flex flex-col items-center justify-center transition-transform",
-                    isTimeLow ? "scale-110 text-rose-600 animate-pulse" : "text-slate-900"
+                    "absolute flex flex-col items-center justify-center transition-all",
+                    isTimeLow ? "scale-110 text-rose-600 animate-pulse drop-shadow-[0_0_8px_rgba(239,68,68,0.7)]" : 
+                    isAmberTime ? "text-amber-600 font-black" : "text-emerald-600 font-black"
                   )}>
                     <span className="text-sm font-black leading-none">{timeRemaining}</span>
-                    <span className="text-[8px] font-black uppercase text-slate-400 leading-none mt-0.5">sec</span>
+                    <span className="text-[8px] font-black uppercase leading-none mt-0.5">sec</span>
                   </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Stepper Dots & Current Question Progress */}
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-bold">
-                <CategoryIcon className="w-3.5 h-3.5 text-rose-600" />
-                {category === 'All' ? 'Mixed Arena' : category}
-              </span>
-              <span className="text-slate-500 font-medium">
-                Question <strong className="text-slate-950 font-black">{currentNumber}</strong> of {totalQuestions}
-              </span>
+          {/* DYNAMIC FOOTBALL PITCH TIMELINE (e.g. Question 4 of 10) */}
+          <div className="mt-4 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-between text-xs font-black mb-2">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-900 text-emerald-100 border border-emerald-700 font-black uppercase tracking-wider text-[10px]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                  Pitch Timeline
+                </span>
+                <span className="text-slate-800 font-extrabold text-xs sm:text-sm">
+                  Question <strong className="text-emerald-700 font-black">{currentNumber}</strong> of {totalQuestions}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-bold">
+                <span className="text-slate-400 uppercase tracking-wider text-[10px]">Match Time:</span>
+                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-900 font-black">
+                  {Math.min(90, Math.round((currentNumber / totalQuestions) * 90))}'
+                </span>
+              </div>
             </div>
 
-            {/* Micro Question Step Indicators */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
-              {Array.from({ length: totalQuestions }).map((_, idx) => {
-                const pastAnswer = userAnswersHistory[idx];
-                const isCurrent = idx === currentNumber - 1;
-                
-                let dotClass = "w-6 h-2 rounded-full transition-all ";
-                if (pastAnswer) {
-                  dotClass += pastAnswer.isCorrect ? "bg-cyan-500 shadow-xs shadow-cyan-500/40" : "bg-rose-500 shadow-xs shadow-rose-500/40";
-                } else if (isCurrent) {
-                  dotClass += "bg-rose-600 ring-2 ring-rose-400/50 scale-110 shadow-xs shadow-rose-600/50 animate-pulse";
-                } else {
-                  dotClass += "bg-slate-200";
-                }
+            {/* Stadium Pitch Shape with Turf & Pitch Markings */}
+            <div className="relative h-11 sm:h-12 w-full rounded-2xl overflow-hidden bg-gradient-to-r from-emerald-950 via-emerald-800 to-emerald-950 border-2 border-emerald-600/70 shadow-inner flex items-center select-none">
+              {/* Pitch Grass Stripes */}
+              <div className="absolute inset-0 opacity-20 flex pointer-events-none">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div key={i} className={cn("flex-1 h-full", i % 2 === 0 ? "bg-black/40" : "bg-white/20")} />
+                ))}
+              </div>
 
-                return (
-                  <div 
-                    key={idx} 
-                    title={`Question ${idx + 1}`}
-                    className={dotClass}
-                  />
-                );
-              })}
+              {/* Pitch Markings: Penalty Boxes & Halfway Line */}
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-12 sm:w-16 h-8 border-r-2 border-y-2 border-white/35 pointer-events-none" />
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-5 sm:w-7 h-4 border-r-2 border-y-2 border-white/30 pointer-events-none" />
+              
+              <div className="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 bg-white/40 pointer-events-none" />
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 border-white/35 pointer-events-none" />
+
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-12 sm:w-16 h-8 border-l-2 border-y-2 border-white/35 pointer-events-none" />
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-5 sm:w-7 h-4 border-l-2 border-y-2 border-white/30 pointer-events-none" />
+
+              {/* Progress illumination fill along the pitch */}
+              <div 
+                className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-emerald-500/40 via-emerald-400/50 to-emerald-300/60 backdrop-brightness-125 transition-all duration-500 ease-out border-r-2 border-emerald-300 shadow-[0_0_15px_rgba(52,211,153,0.6)]"
+                style={{ width: `${progressPercent}%` }}
+              />
+
+              {/* Step Checkpoints along the pitch timeline */}
+              <div className="relative z-10 w-full flex items-center justify-between px-3 sm:px-5 pointer-events-none">
+                {Array.from({ length: totalQuestions }).map((_, idx) => {
+                  const isPassed = idx < currentNumber - 1;
+                  const isCurrent = idx === currentNumber - 1;
+                  const pastAnswer = userAnswersHistory[idx];
+
+                  return (
+                    <div key={idx} className="flex flex-col items-center">
+                      <div 
+                        className={cn(
+                          "w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border transition-all duration-300",
+                          pastAnswer?.isCorrect ? "bg-emerald-400 border-white shadow-[0_0_8px_rgba(52,211,153,0.9)]" :
+                          pastAnswer && !pastAnswer.isCorrect ? "bg-rose-500 border-white shadow-[0_0_8px_rgba(244,63,94,0.9)]" :
+                          isCurrent ? "bg-white border-amber-300 scale-125 shadow-[0_0_10px_rgba(255,255,255,0.9)] animate-pulse" :
+                          "bg-emerald-950/90 border-emerald-600/60"
+                        )}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Animated Gliding Football Indicator */}
+              <div 
+                className="absolute top-1/2 -translate-y-1/2 z-20 transition-all duration-500 ease-out pointer-events-none flex items-center justify-center"
+                style={{ left: `calc(${Math.min(95, Math.max(3, progressPercent))}% - 12px)` }}
+              >
+                <div className="relative">
+                  <span className="text-base sm:text-lg drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)] filter">
+                    ⚽
+                  </span>
+                  <span className="absolute -inset-1 rounded-full bg-emerald-400/40 blur-xs -z-10 animate-ping"></span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Global Progress Bar on bottom edge */}
-        <div className="h-1.5 w-full bg-slate-100 overflow-hidden">
-          <div 
-            className="h-full bg-gradient-to-r from-rose-600 via-rose-500 to-cyan-500 transition-all duration-500 ease-out" 
-            style={{ width: `${progressPercent}%` }} 
-          />
         </div>
       </div>
 
@@ -312,7 +354,7 @@ export function QuizQuestionCard({
         )}
       </div>
 
-      {/* 3. ANSWER OPTIONS: Interactive Football Gaming Cards with Electric Aqua for correct */}
+      {/* 3. ANSWER OPTIONS: Instant Visual Feedback (Emerald Glow / Soft Crimson Vibration Shake) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5 md:gap-4">
         {shuffledOptions.map((option, index) => {
           const isSelected = selectedAnswer === option;
@@ -323,18 +365,24 @@ export function QuizQuestionCard({
 
           if (!selectedAnswer) {
             // Idle state before answer
-            btnClass += "bg-white/90 border-slate-200/90 hover:border-cyan-400 hover:bg-cyan-50/30 text-slate-800 shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0";
+            btnClass += "bg-white/90 border-slate-200/90 hover:border-emerald-400 hover:bg-emerald-50/30 text-slate-800 shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0";
             labelBadgeClass += "bg-slate-100 text-slate-700 border border-slate-200";
           } else {
-            // Evaluated states after answer: Aqua for correct, Coral/Rose for warning incorrect
-            if (isCorrectOption) {
-              btnClass += "border-cyan-500 bg-cyan-50/90 text-cyan-950 shadow-md shadow-cyan-500/15 scale-[1.01] ring-2 ring-cyan-400/40";
-              labelBadgeClass += "bg-cyan-600 text-white shadow-2xs";
+            // Evaluated states after answer
+            if (isCorrectOption && isSelected) {
+              // User picked correct: Emerald glow with celebratory check
+              btnClass += "border-emerald-500 bg-emerald-50/95 text-emerald-950 shadow-[0_0_30px_rgba(16,185,129,0.55)] scale-[1.01] ring-4 ring-emerald-400/50";
+              labelBadgeClass += "bg-emerald-600 text-white shadow-md shadow-emerald-600/30";
             } else if (isSelected && !isCorrectOption) {
-              btnClass += "border-rose-400 bg-rose-50/90 text-rose-950 shadow-md shadow-rose-500/15 shake";
-              labelBadgeClass += "bg-rose-600 text-white shadow-2xs";
+              // User picked incorrect: Soft crimson vibration shake effect
+              btnClass += "crimson-vibrate shake border-rose-500 bg-rose-50/95 text-rose-950 shadow-[0_0_25px_rgba(244,63,94,0.35)] ring-4 ring-rose-400/40";
+              labelBadgeClass += "bg-rose-600 text-white shadow-md shadow-rose-600/30";
+            } else if (!isSelected && isCorrectOption) {
+              // Correct choice revealed
+              btnClass += "border-emerald-500 bg-emerald-50/90 text-emerald-950 shadow-[0_0_25px_rgba(16,185,129,0.45)] ring-2 ring-emerald-400/60";
+              labelBadgeClass += "bg-emerald-600 text-white shadow-sm";
             } else {
-              btnClass += "border-slate-100 bg-slate-50/50 opacity-45 text-slate-400 cursor-not-allowed";
+              btnClass += "border-slate-100 bg-slate-50/40 opacity-40 text-slate-400 cursor-not-allowed";
               labelBadgeClass += "bg-slate-100 text-slate-400";
             }
           }
@@ -357,15 +405,23 @@ export function QuizQuestionCard({
                 {option}
               </span>
               
-              {/* Status Icons */}
-              {selectedAnswer && isCorrectOption && (
-                <div className="absolute right-3 sm:right-4 w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center shrink-0 animate-in zoom-in-75 duration-200">
-                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              {/* Instant Visual Feedback Icons */}
+              {selectedAnswer && isCorrectOption && isSelected && (
+                <div className="absolute right-3 sm:right-4 flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-600 text-white font-black text-xs shadow-md animate-bounce">
+                  <CheckCircle2 className="w-4 h-4 text-white" />
+                  <span className="uppercase tracking-wider text-[11px] hidden sm:inline">Goal! Correct</span>
                 </div>
               )}
               {selectedAnswer && isSelected && !isCorrectOption && (
-                <div className="absolute right-3 sm:right-4 w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 animate-in zoom-in-75 duration-200">
-                  <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                <div className="absolute right-3 sm:right-4 flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-600 text-white font-black text-xs shadow-md">
+                  <XCircle className="w-4 h-4 text-white" />
+                  <span className="uppercase tracking-wider text-[11px] hidden sm:inline">Missed</span>
+                </div>
+              )}
+              {selectedAnswer && !isSelected && isCorrectOption && (
+                <div className="absolute right-3 sm:right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-900 font-black text-xs border border-emerald-300 animate-pulse">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span className="uppercase tracking-wider text-[10px] hidden sm:inline">Correct Choice</span>
                 </div>
               )}
             </button>
@@ -379,18 +435,18 @@ export function QuizQuestionCard({
           <div className="flex-1 flex items-start gap-3 sm:gap-4">
             <div className={cn(
               "w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs",
-              isAnswerCorrect ? "bg-cyan-100 text-cyan-700" : "bg-rose-100 text-rose-600"
+              isAnswerCorrect ? "bg-emerald-100 text-emerald-700 shadow-md shadow-emerald-500/20" : "bg-rose-100 text-rose-600 shadow-md shadow-rose-500/20"
             )}>
               {isAnswerCorrect ? <CheckCircle2 className="w-5 h-5 sm:w-7 sm:h-7" /> : <XCircle className="w-5 h-5 sm:w-7 sm:h-7" />}
             </div>
             
             <div className="space-y-1 text-left min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className={cn("font-black text-base sm:text-xl md:text-2xl", isAnswerCorrect ? "text-cyan-800" : "text-rose-700")}>
-                  {isAnswerCorrect ? 'Goal! Correct Answer' : (selectedAnswer === '__TIMEOUT__' ? 'Full Time! Out of Time' : 'Missed Chance! Incorrect')}
+                <h3 className={cn("font-black text-base sm:text-xl md:text-2xl", isAnswerCorrect ? "text-emerald-800" : "text-rose-700")}>
+                  {isAnswerCorrect ? 'Goal! Correct Answer' : (selectedAnswer === '__TIMEOUT__' ? 'Full Time! Out of Time' : 'Missed Chance! Incorrect Choice')}
                 </h3>
                 {isAnswerCorrect && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black bg-cyan-100 text-cyan-900 shrink-0">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black bg-emerald-100 text-emerald-900 border border-emerald-300 shrink-0">
                     +10 Pts
                   </span>
                 )}
@@ -401,7 +457,7 @@ export function QuizQuestionCard({
                 </p>
               ) : (
                 <p className="text-xs sm:text-sm text-slate-500">
-                  {isAnswerCorrect ? 'Great football knowledge!' : `The correct answer is: ${question.correctAnswer}`}
+                  {isAnswerCorrect ? 'World class football knowledge!' : `The correct answer is: ${question.correctAnswer}`}
                 </p>
               )}
             </div>

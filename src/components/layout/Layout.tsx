@@ -28,7 +28,7 @@ export function Layout() {
               {/* Content area inside container */}
               <div className={cn(
                 "min-w-0 flex-1 overscroll-contain",
-                isLivescore ? "flex flex-col min-h-0 overflow-hidden p-1 sm:p-1.5" : "overflow-y-auto p-1.5 sm:p-2.5 md:p-3.5"
+                isLivescore ? "flex flex-col min-h-0 overflow-y-auto sm:overflow-hidden p-1 sm:p-1.5" : "overflow-y-auto p-1.5 sm:p-2.5 md:p-3.5"
               )}>
                 <AnimatePresence mode="wait">
                   <motion.div

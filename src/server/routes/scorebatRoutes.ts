@@ -43,35 +43,41 @@ router.get("/proxy", async (req, res) => {
       html = html.replace("<head>", '<head>\n<base href="https://www.scorebat.com/">');
     }
 
-    // Clean header & footer hiding via pure CSS (without hiding any match links or running intervals)
+    // Clean CSS to hide only branding headers and external footer links without deleting React DOM nodes
     const inAppScript = `
-<style>
-  /* Cleanly hide the ScoreBat top branding bar */
+<style id="scorebat-clean-styles">
+  /* Cleanly hide the ScoreBat top branding bar and footer links while preserving match cards */
   div._36895710,
-  .BatPlayerLC,
-  .BatPlayerRC,
-  /* Cleanly hide the ScoreBat bottom footer */
+  div[class*="_36895710"],
+  header,
   .WidgetFt,
   .WidgetFtB,
-  .WidgetBy,
-  .WidgetD,
-  .WidgetDT {
+  .WidgetBy {
     display: none !important;
     visibility: hidden !important;
-    height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
+    height: 0px !important;
+    max-height: 0px !important;
+    padding: 0px !important;
+    margin: 0px !important;
+    overflow: hidden !important;
   }
 
-  /* Reset top padding so videos start right at top */
-  div._8736d9fb {
+  /* Reset content container top padding so matches start right at top */
+  div._8736d9fb,
+  div[class*="_8736d9fb"] {
     padding-top: 0px !important;
+    top: 0px !important;
   }
 </style>
 `;
 
     // Inject script right after <head>
     html = html.replace("<head>", `<head>${inAppScript}`);
+
+    const setCookie = response.headers.get("set-cookie");
+    if (setCookie) {
+      res.setHeader("Set-Cookie", setCookie);
+    }
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     // Allow framing and full video playback capabilities

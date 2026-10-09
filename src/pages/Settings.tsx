@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Monitor, Bell, Shield, MessageSquare, Send, Smartphone } from 'lucide-react';
+import { Monitor, Bell, Shield, MessageSquare, Send, Smartphone, Scale, FileText, ChevronRight, AlertTriangle } from 'lucide-react';
 import { insforge } from '../lib/insforge';
 import { toast } from 'sonner';
 import { UserAvatar } from '../components/ui/UserAvatar';
@@ -253,6 +254,70 @@ export function Settings() {
             <button className="text-sm font-medium text-blue-600 hover:underline">
               Change Password
             </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Legal & Policies */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Scale className="h-5 w-5 text-rose-600" />
+            Legal & Policies
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-slate-500 mb-2">
+            Review the terms governing the use of Maestro Arena, livescore feeds, video replays, and betting disclaimers.
+          </p>
+
+          <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-slate-50/50">
+            <Link 
+              to="/terms" 
+              className="flex items-center justify-between p-3.5 hover:bg-white transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-rose-600 transition-colors">
+                    Terms of Service
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Betting tips disclaimer, video highlight embed rights, fair play
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
+            </Link>
+
+            <Link 
+              to="/privacy" 
+              className="flex items-center justify-between p-3.5 hover:bg-white transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Shield className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
+                    Privacy Policy
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    GDPR rights, data protection, storage, and account deletion
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
+            </Link>
+          </div>
+
+          <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 flex items-start gap-2.5 mt-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-amber-800 leading-relaxed font-medium">
+              Football predictions and betting tips are strictly for entertainment & informational purposes. 18+ only. Gamble responsibly.
+            </p>
           </div>
         </CardContent>
       </Card>

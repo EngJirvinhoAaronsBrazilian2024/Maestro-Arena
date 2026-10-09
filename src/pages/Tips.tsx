@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { getTips } from '../services/tipsService';
 import { Tip, TipCategory, normalizeCategory } from '../types/tips';
 import { Card, CardContent } from '../components/ui/Card';
@@ -512,11 +513,19 @@ export function Tips() {
       </div>
 
       {/* DISCLAIMER */}
-      <div className="mt-12 bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3 text-sm text-slate-500">
+      <div className="mt-12 bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3 text-xs sm:text-sm text-slate-500">
         <Info className="flex-shrink-0 mt-0.5 text-slate-400" size={18} />
-        <p>
-          Tips are predictions for entertainment and informational purposes. Results are not guaranteed. Please make your own decisions and avoid risking money you cannot afford to lose.
-        </p>
+        <div className="space-y-1">
+          <p>
+            Tips and football predictions are provided strictly for entertainment and informational purposes. Results are not guaranteed. Please make your own decisions and avoid risking money you cannot afford to lose. 18+ only.
+          </p>
+          <p className="text-xs text-slate-400">
+            For our complete non-liability terms and responsible gambling guidelines, please read our{' '}
+            <Link to="/terms" className="text-rose-600 hover:underline font-bold">
+              Betting Disclaimer & Terms of Service
+            </Link>.
+          </p>
+        </div>
       </div>
 
     </div>

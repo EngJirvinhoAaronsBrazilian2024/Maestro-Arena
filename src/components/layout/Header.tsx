@@ -300,9 +300,32 @@ export function Header() {
               <ChevronLeft className="h-5 w-5" />
               <span className="sr-only">Back</span>
             </Button>
-            <Link to="/" className="flex items-center mr-6 shrink-0">
+            <Link to="/" className="flex items-center mr-4 sm:mr-6 shrink-0">
               <img src="/logo.png" alt="Maestro Arena Logo" className="h-10 sm:h-12 w-auto object-contain" />
             </Link>
+            
+            {/* Live Player Stats Chip (Quiz Header) */}
+            {location.pathname.startsWith('/quiz') && (
+              <div className="hidden md:flex items-center gap-2 lg:gap-2.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-slate-900/95 text-white border border-slate-700/80 shadow-md backdrop-blur-md text-[11px] sm:text-xs font-black animate-in fade-in duration-300 mr-2 lg:mr-auto shrink-0">
+                <span className="flex items-center gap-1 text-amber-400">
+                  <span>🔥</span>
+                  <span className="text-slate-300 font-medium text-[10px] sm:text-[11px]">Current Streak:</span>
+                  <span className="text-white font-black">5 Days</span>
+                </span>
+                <span className="w-1 h-2.5 bg-slate-700 rounded-full" />
+                <span className="flex items-center gap-1 text-yellow-400">
+                  <span>⭐</span>
+                  <span className="text-slate-300 font-medium text-[10px] sm:text-[11px]">Total Points:</span>
+                  <span className="text-white font-black">1,420</span>
+                </span>
+                <span className="w-1 h-2.5 bg-slate-700 rounded-full" />
+                <span className="flex items-center gap-1 text-emerald-400">
+                  <span>🎯</span>
+                  <span className="text-slate-300 font-medium text-[10px] sm:text-[11px]">Accuracy:</span>
+                  <span className="text-white font-black">84%</span>
+                </span>
+              </div>
+            )}
             
             <div className="flex flex-1 items-center justify-end space-x-1 sm:space-x-2 relative">
               
@@ -355,21 +378,23 @@ export function Header() {
 
                 {notifOpen && (
                   <>
-                    {/* Dark backdrop overlay on phone */}
+                    {/* Transparent/subtle backdrop overlay on phone to close when tapping outside */}
                     <div 
-                      className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 md:hidden"
+                      className="fixed inset-0 bg-slate-900/20 backdrop-blur-2xs z-40 sm:hidden"
                       onClick={() => setNotifOpen(false)}
                     />
 
-                    {/* Centered modal on mobile phone, dropdown on desktop */}
-                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-sm rounded-2xl border border-slate-200 bg-white shadow-2xl z-50 overflow-hidden md:absolute md:top-auto md:left-auto md:right-0 md:translate-x-0 md:translate-y-0 md:mt-2 md:w-88 md:rounded-xl md:shadow-xl">
-                      {/* Header bar with count and Clear All button */}
-                      <div className="p-3.5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                    {/* Displays downwards directly below the header/bell on mobile phone, and dropdown on desktop */}
+                    <div className="fixed top-16 right-2 left-2 max-w-sm ml-auto sm:left-auto sm:absolute sm:top-full sm:right-0 sm:mt-2 sm:w-96 rounded-2xl border border-slate-200 bg-white shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 flex flex-col">
+                      {/* Header bar with count and prominent Clear All button */}
+                      <div className="p-3 sm:p-3.5 bg-slate-50 border-b border-slate-100 flex justify-between items-center shrink-0">
                         <div className="flex items-center gap-2">
-                          <Bell className="w-4 h-4 text-rose-600" />
+                          <div className="p-1 rounded-md bg-rose-50 text-rose-600">
+                            <Bell className="w-4 h-4" />
+                          </div>
                           <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
                           {notifications.length > 0 && (
-                            <span className="text-[11px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">
+                            <span className="text-[11px] font-black bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">
                               {notifications.length}
                             </span>
                           )}
@@ -378,17 +403,22 @@ export function Header() {
                         <div className="flex items-center gap-1.5">
                           {notifications.length > 0 && (
                             <button
-                              onClick={clearAllNotifications}
-                              className="text-[11px] font-semibold text-slate-500 hover:text-rose-600 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                clearAllNotifications();
+                              }}
+                              className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/90 flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors cursor-pointer shadow-2xs"
                               title="Clear all notifications"
                             >
-                              <Trash2 className="w-3 h-3 text-slate-400 hover:text-rose-500" />
+                              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                               <span>Clear all</span>
                             </button>
                           )}
                           <button
+                            type="button"
                             onClick={() => setNotifOpen(false)}
-                            className="p-1 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-600 transition cursor-pointer"
                             aria-label="Close notifications"
                           >
                             <X className="w-4 h-4" />
@@ -397,7 +427,7 @@ export function Header() {
                       </div>
 
                       {/* Notification Items List with Individual Delete */}
-                      <div className="max-h-[60vh] md:max-h-80 overflow-y-auto divide-y divide-slate-100">
+                      <div className="max-h-[calc(100dvh-130px)] sm:max-h-96 overflow-y-auto divide-y divide-slate-100 overscroll-contain">
                         {notifications.length > 0 ? (
                           notifications.map((notif, notifIdx) => {
                             const badge = getNotificationBadge(notif.type);

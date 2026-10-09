@@ -51,5 +51,6 @@ export interface QuizUserStats {
   totalQuestions: number;
   correctAnswers: number;
   bestScore: number;
+  totalScore?: number;
   categoriesPlayed: string[];
 }

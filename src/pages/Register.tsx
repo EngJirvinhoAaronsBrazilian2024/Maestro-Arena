@@ -115,6 +115,12 @@ export function Register() {
                 Sign in
               </Link>
             </div>
+            <p className="text-center text-[11px] text-slate-400 pt-2 border-t border-slate-100">
+              By creating an account, you agree to our{' '}
+              <Link to="/terms" className="text-rose-600 hover:underline font-semibold">Terms of Service</Link>
+              {' '}and{' '}
+              <Link to="/privacy" className="text-rose-600 hover:underline font-semibold">Privacy Policy</Link>.
+            </p>
           </form>
         </CardContent>
       </Card>

@@ -66,6 +66,8 @@ const Tips = lazyWithRetry(() => import('./pages/Tips').then(m => ({ default: (m
 const Livescore = lazyWithRetry(() => import('./pages/Livescore').then(m => ({ default: (m as any).Livescore || (m as any).default })));
 const UserProfile = lazyWithRetry(() => import('./pages/UserProfile').then(m => ({ default: (m as any).UserProfile || (m as any).default })));
 const Settings = lazyWithRetry(() => import('./pages/Settings').then(m => ({ default: (m as any).Settings || (m as any).default })));
+const TermsOfService = lazyWithRetry(() => import('./pages/TermsOfService').then(m => ({ default: (m as any).TermsOfService || (m as any).default })));
+const PrivacyPolicy = lazyWithRetry(() => import('./pages/PrivacyPolicy').then(m => ({ default: (m as any).PrivacyPolicy || (m as any).default })));
 const AdminDashboard = lazyWithRetry(() => import('./pages/AdminDashboard').then(m => ({ default: (m as any).AdminDashboard || (m as any).default })));
 const AdminQuizManagement = lazyWithRetry(() => import('./pages/admin/AdminQuizManagement').then(m => ({ default: (m as any).AdminQuizManagement || (m as any).default })));
 const AdminTipsManagement = lazyWithRetry(() => import("./pages/admin/AdminTipsManagement").then(m => ({ default: (m as any).AdminTipsManagement || (m as any).default })));
@@ -232,6 +234,8 @@ export default function App() {
                     
                     <Route path="settings" element={<Settings />} />
                     <Route path="profile" element={<UserProfile />} />
+                    <Route path="terms" element={<TermsOfService />} />
+                    <Route path="privacy" element={<PrivacyPolicy />} />
                     
                     <Route path="my-feed" element={<Navigate to="/tips" replace />} />
                     <Route path="*" element={<PlaceholderPage title="Page Not Found" />} />

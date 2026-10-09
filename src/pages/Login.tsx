@@ -171,6 +171,14 @@ export function Login() {
                 Sign up
               </Link>
             </div>
+
+            {/* Legal Footnote */}
+            <p className="text-center text-[11px] text-slate-400 pt-3 border-t border-slate-100">
+              By continuing, you accept our{' '}
+              <Link to="/terms" className="text-slate-600 hover:text-rose-600 font-semibold hover:underline">Terms of Service</Link>
+              {' '}and{' '}
+              <Link to="/privacy" className="text-slate-600 hover:text-rose-600 font-semibold hover:underline">Privacy Policy</Link>.
+            </p>
           </form>
         </div>
       </div>

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   RotateCw,
-  Activity
+  Activity,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -11,16 +13,18 @@ export interface FotMobWidgetProps {
   className?: string;
   defaultLeague?: string;
   showLeaguePills?: boolean;
+  onToggleWide?: () => void;
+  isWide?: boolean;
 }
 
 export const FOTMOB_NAV_PRESETS = [
-  { id: 'today', name: 'All Matches', url: '/api/besoccer/proxy?path=/livescore' },
-  { id: 'premier-league', name: 'Premier League', url: 'https://www.fotmob.com/leagues/47/overview/premier-league' },
-  { id: 'champions-league', name: 'Champions League', url: 'https://www.fotmob.com/leagues/42/overview/champions-league' },
-  { id: 'la-liga', name: 'La Liga', url: 'https://www.fotmob.com/leagues/87/overview/la-liga' },
-  { id: 'serie-a', name: 'Serie A', url: 'https://www.fotmob.com/leagues/55/overview/serie-a' },
-  { id: 'bundesliga', name: 'Bundesliga', url: 'https://www.fotmob.com/leagues/54/overview/bundesliga' },
-  { id: 'ligue-1', name: 'Ligue 1', url: 'https://www.fotmob.com/leagues/53/overview/ligue-1' }
+  { id: 'today', name: 'All Matches', url: 'https://www.scorebat.com/embed/livescore/' },
+  { id: 'premier-league', name: 'Premier League', url: '/api/fotmob/proxy?path=/leagues/47/overview/premier-league' },
+  { id: 'champions-league', name: 'Champions League', url: '/api/fotmob/proxy?path=/leagues/42/overview/champions-league' },
+  { id: 'la-liga', name: 'La Liga', url: '/api/fotmob/proxy?path=/leagues/87/overview/la-liga' },
+  { id: 'serie-a', name: 'Serie A', url: '/api/fotmob/proxy?path=/leagues/55/overview/serie-a' },
+  { id: 'bundesliga', name: 'Bundesliga', url: '/api/fotmob/proxy?path=/leagues/54/overview/bundesliga' },
+  { id: 'ligue-1', name: 'Ligue 1', url: '/api/fotmob/proxy?path=/leagues/53/overview/ligue-1' }
 ];
 
 export function FotMobWidget({
@@ -28,38 +32,62 @@ export function FotMobWidget({
   minHeight = '850px',
   className = '',
   defaultLeague = 'today',
-  showLeaguePills = true
+  showLeaguePills = true,
+  onToggleWide,
+  isWide = false
 }: FotMobWidgetProps) {
   const [activePreset, setActivePreset] = useState<string>(defaultLeague);
   const [iframeUrl, setIframeUrl] = useState<string>(
-    FOTMOB_NAV_PRESETS.find(p => p.id === defaultLeague)?.url || '/api/besoccer/proxy?path=/livescore'
+    FOTMOB_NAV_PRESETS.find(p => p.id === defaultLeague)?.url || '/api/scorebat/proxy'
   );
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [reloadKey, setReloadKey] = useState<number>(0);
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [internalExpanded, setInternalExpanded] = useState<boolean>(false);
 
+  const isWideActive = onToggleWide ? isWide : internalExpanded;
+  const isScoreBat = activePreset === 'today';
+
+  // Auto-dismiss loading state quickly so it never blocks or causes delays
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, reloadKey, iframeUrl]);
+
+  // Tab switching: ScoreBat for All Matches, FotMob for individual leagues
   const handleSelectPreset = (preset: typeof FOTMOB_NAV_PRESETS[0]) => {
     setActivePreset(preset.id);
     setIsLoading(true);
     setIframeUrl(preset.url);
-    setReloadKey(k => k + 1);
+    setReloadKey((k) => k + 1);
   };
 
   const handleReload = () => {
     setIsLoading(true);
-    setReloadKey(k => k + 1);
+    setReloadKey((k) => k + 1);
+  };
+
+  const handleToggleWide = () => {
+    if (onToggleWide) {
+      onToggleWide();
+    } else {
+      setInternalExpanded(!internalExpanded);
+    }
   };
 
   return (
     <div className={cn(
       "relative rounded-2xl sm:rounded-3xl border border-slate-200/90 bg-white shadow-xs overflow-hidden transition-all duration-300 flex flex-col min-h-0",
       height === '100%' ? "flex-1 h-full" : "",
-      isExpanded ? "fixed inset-2 sm:inset-6 z-50 rounded-3xl shadow-2xl" : "",
+      !onToggleWide && internalExpanded ? "fixed inset-2 sm:inset-6 z-50 rounded-3xl shadow-2xl" : "",
       className
     )}>
-      {/* Quick League Navigation Pills (All matches, Premier League, etc.) */}
+      {/* 1. Quick League Navigation Pills (All matches [ScoreBat], Premier League, etc.) */}
       {showLeaguePills && (
-        <div className="px-3 sm:px-4 py-2 border-b border-slate-100 bg-slate-50/80 shrink-0 flex items-center justify-between gap-2">
+        <div className="px-3 sm:px-4 py-2 border-b border-slate-100 bg-slate-50/80 shrink-0 flex items-center justify-between gap-2 z-10">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1">
             {FOTMOB_NAV_PRESETS.map((preset) => {
               const isSelected = activePreset === preset.id;
@@ -82,6 +110,20 @@ export function FotMobWidget({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* Symbol that widens the screen */}
+            <button
+              type="button"
+              onClick={handleToggleWide}
+              className="p-1.5 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 text-slate-600 hover:text-emerald-700 shadow-2xs transition-all cursor-pointer flex items-center gap-1"
+              title={isWideActive ? "Restore Normal Screen" : "Widen Screen"}
+            >
+              {isWideActive ? (
+                <Minimize2 className="w-3.5 h-3.5 text-emerald-600" />
+              ) : (
+                <Maximize2 className="w-3.5 h-3.5" />
+              )}
+            </button>
+
             <button
               type="button"
               onClick={handleReload}
@@ -94,56 +136,48 @@ export function FotMobWidget({
         </div>
       )}
 
-      {/* 3. Embed Container - Permanently Spacious Tall View with Top & Bottom Footer Masking */}
+      {/* 2. Content Container: ScoreBat for All Matches (with masked header & blocked ads), FotMob for respective leagues */}
       <div 
         className="w-full relative overflow-hidden bg-white flex-1 min-h-0 h-full"
-        style={height === '100%' ? undefined : { 
-          height: isExpanded 
-            ? 'calc(100vh - 120px)' 
-            : '1350px',
-          minHeight: isExpanded 
-            ? '680px' 
-            : '1100px'
+        style={{ 
+          height: height === '100%' 
+            ? '100%' 
+            : (isWideActive ? 'calc(100vh - 120px)' : '1350px'),
+          minHeight: isWideActive 
+            ? 'calc(100vh - 140px)' 
+            : (minHeight && minHeight !== '0' ? minHeight : '850px')
         }}
       >
-        {/* Loading Overlay */}
         {isLoading && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/95 backdrop-blur-xs p-6 text-center animate-in fade-in duration-200">
-            <div className="relative flex items-center justify-center mb-4">
-              <div className="h-12 w-12 rounded-full border-4 border-slate-100 border-t-emerald-600 animate-spin"></div>
-              <Activity className="w-5 h-5 text-emerald-600 absolute" />
+          <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-center p-2 bg-white/90 backdrop-blur-xs border-b border-emerald-100 animate-in fade-in duration-150 pointer-events-none">
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded-full border-2 border-emerald-200 border-t-emerald-600 animate-spin" />
+              <span className="text-xs font-bold text-slate-800">
+                Updating match feed...
+              </span>
             </div>
-            <h4 className="text-sm font-black text-slate-900 tracking-tight">
-              Connecting to Live Football Match Feed...
-            </h4>
-            <p className="text-xs text-slate-500 font-medium max-w-sm mt-1">
-              Loading real-time live scores, active match clocks, verified lineups, and official competition tables.
-            </p>
           </div>
         )}
 
-        {/* Iframe with top and bottom footer masking (extends beyond edges inside overflow-hidden) */}
         <iframe
           key={`${reloadKey}-${iframeUrl}`}
           src={iframeUrl}
-          title="Football Scores & Matches Centre"
+          title={isScoreBat ? "ScoreBat Global Livescores" : "Football Scores & Matches Centre"}
           frameBorder="0"
           width="100%"
           height="100%"
           allowFullScreen
-          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; storage-access *; cross-origin-isolated"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           onLoad={() => setIsLoading(false)}
-          className="w-full border-0 block"
+          className="w-full h-full border-0 block"
           style={{
             position: 'absolute',
-            top: activePreset === 'today' ? '0px' : '-54px',
+            top: isScoreBat ? '-48px' : 0,
             left: 0,
             width: '100%',
-            height: activePreset === 'today' ? 'calc(100% + 60px)' : 'calc(100% + 54px + 60px)',
+            height: isScoreBat ? 'calc(100% + 48px)' : '100%',
             border: 'none',
-            display: 'block',
-            opacity: isLoading ? 0 : 1,
-            transition: 'opacity 0.25s ease-in-out'
+            display: 'block'
           }}
         />
       </div>

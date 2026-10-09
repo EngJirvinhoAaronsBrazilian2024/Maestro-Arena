@@ -55,6 +55,133 @@ app.use("/api/scorebat", scorebatRoutes);
 app.use("/api/fotmob", fotmobRoutes);
 app.use("/api/besoccer", besoccerRoutes);
 
+// Proxy FotMob dynamic data & API endpoints (translationmapping, data, leagues, matches, search, player, etc.)
+// so all league tabs, tables, fixtures and matches load client-side with zero issues
+app.use("/api", async (req, res, next) => {
+  try {
+    const targetUrl = `https://www.fotmob.com/api${req.url}`;
+    const resp = await fetch(targetUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.9"
+      }
+    });
+    if (!resp.ok) {
+      return res.status(resp.status).json({ error: resp.statusText });
+    }
+    const contentType = resp.headers.get("content-type") || "application/json";
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "public, max-age=60");
+    const data = await resp.text();
+    return res.send(data);
+  } catch (err: any) {
+    return next();
+  }
+});
+
+// Forward FotMob Next.js static assets and image resources so client-side hydration always succeeds
+const fotmobAssetCache = new Map<string, { buffer: Buffer; contentType: string }>();
+
+app.use("/_next", async (req, res, next) => {
+  try {
+    const assetUrl = `https://www.fotmob.com/_next${req.url}`;
+    const cached = fotmobAssetCache.get(assetUrl);
+    if (cached) {
+      res.setHeader("Content-Type", cached.contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+      return res.send(cached.buffer);
+    }
+
+    const resp = await fetch(assetUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "*/*"
+      }
+    });
+
+    if (!resp.ok) {
+      return next();
+    }
+
+    const contentType =
+      resp.headers.get("content-type") ||
+      (req.url.endsWith(".js")
+        ? "application/javascript"
+        : req.url.endsWith(".css")
+        ? "text/css"
+        : "application/octet-stream");
+
+    const arrayBuf = await resp.arrayBuffer();
+    const buffer = Buffer.from(arrayBuf);
+
+    if (fotmobAssetCache.size < 600) {
+      fotmobAssetCache.set(assetUrl, { buffer, contentType });
+    }
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+    return res.send(buffer);
+  } catch {
+    return next();
+  }
+});
+
+app.get("/theme.js", async (req, res, next) => {
+  try {
+    const resp = await fetch("https://www.fotmob.com/theme.js", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+      }
+    });
+    if (!resp.ok) return next();
+    res.setHeader("Content-Type", "application/javascript");
+    res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+    const text = await resp.text();
+    return res.send(text);
+  } catch {
+    return next();
+  }
+});
+
+app.use("/image_resources", async (req, res, next) => {
+  try {
+    const targetUrl = `https://images.fotmob.com/image_resources${req.url}`;
+    const cached = fotmobAssetCache.get(targetUrl);
+    if (cached) {
+      res.setHeader("Content-Type", cached.contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+      return res.send(cached.buffer);
+    }
+
+    const resp = await fetch(targetUrl);
+    if (!resp.ok) return next();
+
+    const contentType = resp.headers.get("content-type") || "image/png";
+    const buf = Buffer.from(await resp.arrayBuffer());
+
+    if (fotmobAssetCache.size < 600) {
+      fotmobAssetCache.set(targetUrl, { buffer: buf, contentType });
+    }
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+    return res.send(buf);
+  } catch {
+    return next();
+  }
+});
+
+// In-app FotMob routing so clicking internal links/tabs inside FotMob stays inside the proxy
+app.use(["/leagues", "/matches", "/teams", "/players"], (req, res, next) => {
+  if (req.headers.accept?.includes("text/html")) {
+    return res.redirect(`/api/fotmob/proxy?path=${encodeURIComponent(req.originalUrl)}`);
+  }
+  return next();
+});
+
 async function startServer() {
   let PORT = 3000;
   const portArgIdx = process.argv.indexOf("--port");
