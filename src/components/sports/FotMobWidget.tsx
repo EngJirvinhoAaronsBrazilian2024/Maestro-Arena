@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   RotateCw,
-  Activity,
-  Maximize2,
-  Minimize2
+  Activity
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -22,13 +20,11 @@ export const FOTMOB_NAV_PRESETS = [
 ];
 
 export function FotMobWidget({
-  height = '1150px',
-  minHeight = '850px',
+  height = '100%',
+  minHeight = '0',
   className = '',
   defaultLeague = 'today',
-  showLeaguePills = true,
-  onToggleWide,
-  isWide = false
+  showLeaguePills = false,
 }: FotMobWidgetProps) {
   const [activePreset, setActivePreset] = useState<string>(defaultLeague);
   const [iframeUrl, setIframeUrl] = useState<string>(
@@ -36,9 +32,7 @@ export function FotMobWidget({
   );
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [reloadKey, setReloadKey] = useState<number>(0);
-  const [internalExpanded, setInternalExpanded] = useState<boolean>(false);
 
-  const isWideActive = onToggleWide ? isWide : internalExpanded;
   const isScoreBat = activePreset === 'today';
 
   // Auto-dismiss loading state quickly so it never blocks or causes delays
@@ -51,7 +45,7 @@ export function FotMobWidget({
     }
   }, [isLoading, reloadKey, iframeUrl]);
 
-  // Tab switching: ScoreBat for All Matches, FotMob for individual leagues
+  // Tab switching: ScoreBat for All Matches
   const handleSelectPreset = (preset: typeof FOTMOB_NAV_PRESETS[0]) => {
     setActivePreset(preset.id);
     setIsLoading(true);
@@ -64,22 +58,13 @@ export function FotMobWidget({
     setReloadKey((k) => k + 1);
   };
 
-  const handleToggleWide = () => {
-    if (onToggleWide) {
-      onToggleWide();
-    } else {
-      setInternalExpanded(!internalExpanded);
-    }
-  };
-
   return (
     <div className={cn(
       "relative rounded-2xl sm:rounded-3xl border border-slate-200/90 bg-white shadow-xs overflow-hidden transition-all duration-300 flex flex-col min-h-0",
       height === '100%' ? "flex-1 h-full" : "",
-      !onToggleWide && internalExpanded ? "fixed inset-2 sm:inset-6 z-50 rounded-3xl shadow-2xl" : "",
       className
     )}>
-      {/* 1. Quick League Navigation Pills (All matches [ScoreBat], Premier League, etc.) */}
+      {/* 1. Quick League Navigation Pills (if enabled) */}
       {showLeaguePills && (
         <div className="px-3 sm:px-4 py-2 border-b border-slate-100 bg-slate-50/80 shrink-0 flex items-center justify-between gap-2 z-10">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1">
@@ -104,20 +89,6 @@ export function FotMobWidget({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Symbol that widens the screen */}
-            <button
-              type="button"
-              onClick={handleToggleWide}
-              className="p-1.5 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 text-slate-600 hover:text-emerald-700 shadow-2xs transition-all cursor-pointer flex items-center gap-1"
-              title={isWideActive ? "Restore Normal Screen" : "Widen Screen"}
-            >
-              {isWideActive ? (
-                <Minimize2 className="w-3.5 h-3.5 text-emerald-600" />
-              ) : (
-                <Maximize2 className="w-3.5 h-3.5" />
-              )}
-            </button>
-
             <button
               type="button"
               onClick={handleReload}
@@ -130,16 +101,12 @@ export function FotMobWidget({
         </div>
       )}
 
-      {/* 2. Content Container: ScoreBat for All Matches (with masked header & blocked ads), FotMob for respective leagues */}
+      {/* 2. Content Container */}
       <div 
         className="w-full relative overflow-hidden bg-white flex-1 min-h-0 h-full"
         style={{ 
-          height: height === '100%' 
-            ? '100%' 
-            : (isWideActive ? 'calc(100vh - 120px)' : '1350px'),
-          minHeight: isWideActive 
-            ? 'calc(100vh - 140px)' 
-            : (minHeight && minHeight !== '0' ? minHeight : '850px')
+          height: height === '100%' ? '100%' : height,
+          minHeight: height === '100%' ? '0' : minHeight
         }}
       >
         {isLoading && (

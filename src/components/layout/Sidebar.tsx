@@ -22,7 +22,7 @@ export function Sidebar() {
   const isEditor = userData?.role === 'admin' || userData?.role === 'editor';
   const isAdmin = userData?.role === 'admin';
   return (
-    <aside className="hidden md:flex w-64 flex-col border-r border-slate-200 bg-white fixed h-[calc(100vh-4rem)] top-16 pb-4">
+    <aside className="hidden md:flex w-64 flex-col border-r border-slate-200 bg-white fixed h-[calc(100dvh-4rem-9px)] top-[calc(4rem+4px)] left-[3.5px] sm:left-[4.5px] z-30 pb-4">
       <div className="p-4 border-b border-slate-100 flex items-center justify-center mb-2">
         <img src="/logo.png" alt="Maestro Arena Logo" className="h-16 w-auto object-contain" />
       </div>

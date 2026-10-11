@@ -285,6 +285,10 @@ export async function saveQuizResult(result: QuizResult): Promise<void> {
     console.error('Error saving quiz result to DB:', err);
     // Fallback to local
     updateLocalStats(result);
+  } finally {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('quiz-score-updated', { detail: result }));
+    }
   }
 }
 
@@ -373,21 +377,22 @@ export async function getUserQuizStats(userId?: string): Promise<QuizUserStats |
 }
 
 export async function getLeaderboard(limitCount: number = 10, mode: 'solo' | 'h2h' = 'solo'): Promise<QuizResult[]> {
-  // Real registered users in the database as base reference
-  const defaultRegisteredUsers: QuizResult[] = [
-    { userId: '2886ae6d-b563-44a3-b4b8-ae932cc188ad', username: 'KISAKYE AARON', score: mode === 'h2h' ? 3605 : 1460, category: 'Premier League', difficulty: 'Easy', totalQuestions: 10, correctAnswers: 10, incorrectAnswers: 0, timeTaken: 35, date: Date.now() },
-    { userId: '39d960e9-104a-4a74-b88e-bca3ac857675', username: 'Musinguzi Mark', score: 1066, category: 'All Themes', difficulty: 'Medium', totalQuestions: 10, correctAnswers: 9, incorrectAnswers: 1, timeTaken: 38, date: Date.now() },
-    { userId: 'eefed0c5-c648-4525-8ab9-cf103e3bee57', username: 'Victor Hernandez', score: 610, category: 'All Themes', difficulty: 'Expert', totalQuestions: 10, correctAnswers: 9, incorrectAnswers: 1, timeTaken: 42, date: Date.now() },
-    { userId: 'b7d12faa-cb86-4e33-ae96-f2f6120e585f', username: 'Otim Jacob', score: 220, category: 'All Themes', difficulty: 'Medium', totalQuestions: 10, correctAnswers: 8, incorrectAnswers: 2, timeTaken: 45, date: Date.now() },
-    { userId: '63a2899b-224e-44ed-bd73-b44a1a7ffd26', username: 'Abdul-rahman Jasim', score: 160, category: 'All Themes', difficulty: 'Expert', totalQuestions: 10, correctAnswers: 8, incorrectAnswers: 2, timeTaken: 48, date: Date.now() },
-    { userId: '8e945030-bdd9-4327-b17e-f749e206ee87', username: 'sebunya', score: 100, category: 'All Themes', difficulty: 'Medium', totalQuestions: 10, correctAnswers: 7, incorrectAnswers: 3, timeTaken: 50, date: Date.now() },
-    { userId: '066b7251-8666-4570-a2a6-8887a210cfef', username: 'Kaggwa Peter', score: 90, category: 'Champions League', difficulty: 'Hard', totalQuestions: 10, correctAnswers: 7, incorrectAnswers: 3, timeTaken: 52, date: Date.now() },
-    { userId: 'fbf35d7f-e284-48d4-ae3b-44f9ed7f86e2', username: 'Elton John', score: 80, category: 'World Cup', difficulty: 'Medium', totalQuestions: 10, correctAnswers: 6, incorrectAnswers: 4, timeTaken: 54, date: Date.now() },
-    { userId: 'ee396321-9c99-4eec-a049-77b2acbc70b9', username: 'Fadil', score: 70, category: 'La Liga', difficulty: 'Medium', totalQuestions: 10, correctAnswers: 6, incorrectAnswers: 4, timeTaken: 55, date: Date.now() },
-    { userId: '7f5f1c7d-8366-47cf-b01e-d020d4a73dab', username: 'Angel Dimaria', score: 50, category: 'FIFA World Cup', difficulty: 'Easy', totalQuestions: 10, correctAnswers: 5, incorrectAnswers: 5, timeTaken: 58, date: Date.now() },
-  ];
-
   try {
+    // 1. First attempt: fetch from the backend leaderboard endpoint
+    try {
+      const res = await fetch(`/api/quiz/leaderboard?mode=${mode}&limit=${limitCount}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.leaders)) {
+          const serverLeaders: QuizResult[] = json.leaders;
+          return serverLeaders.slice(0, limitCount);
+        }
+      }
+    } catch (apiErr) {
+      // Fall through to direct database query
+    }
+
+    // 2. Fallback: Query InsForge database directly from client
     const [{ data: results }, { data: usersData }, { data: statsData }] = await Promise.all([
       insforge.database.from('quiz_results').select('*').order('score', { ascending: false }),
       insforge.database.from('users').select('id, display_name, email'),
@@ -398,12 +403,18 @@ export async function getLeaderboard(limitCount: number = 10, mode: 'solo' | 'h2
     const userMap = new Map<string, string>();
     (usersData || []).forEach((u: any) => {
       if (u.id) {
-        userMap.set(u.id, u.display_name || u.email?.split('@')[0] || 'KISAKYE AARON');
+        userMap.set(u.id, u.display_name || u.email?.split('@')[0] || 'Player');
       }
     });
 
+    const isTest = (uid?: string) => {
+      if (!uid) return true;
+      if (uid.startsWith('test_user_') || uid.startsWith('testuser_')) return true;
+      return false;
+    };
+
     // Filter valid results from real users (excluding automated test runners)
-    const validResults = (results || []).filter((r: any) => r.user_id && !r.user_id.startsWith('test_user_'));
+    const validResults = (results || []).filter((r: any) => !isTest(r.user_id));
 
     if (mode === 'h2h') {
       // Rivalry tab: rank by cumulative total points earned across all quiz play
@@ -411,7 +422,7 @@ export async function getLeaderboard(limitCount: number = 10, mode: 'solo' | 'h2
 
       // Sum all quiz results per user
       validResults.forEach((r: any) => {
-        const username = userMap.get(r.user_id) || r.username || 'KISAKYE AARON';
+        const username = userMap.get(r.user_id) || r.username || 'Player';
         const existing = userTotals.get(r.user_id) || {
           userId: r.user_id,
           username,
@@ -431,20 +442,22 @@ export async function getLeaderboard(limitCount: number = 10, mode: 'solo' | 'h2
 
       // Also merge stats table cumulative totals if higher
       (statsData || []).forEach((s: any) => {
-        if (!s.user_id || s.user_id.startsWith('test_user_')) return;
-        const username = userMap.get(s.user_id) || 'KISAKYE AARON';
+        if (!s.user_id || isTest(s.user_id)) return;
+        const username = userMap.get(s.user_id) || 'Player';
         const statScore = Number(s.total_score) || 0;
+        const statCorrect = Number(s.correct_answers) || 0;
         if (userTotals.has(s.user_id)) {
           const item = userTotals.get(s.user_id)!;
           item.score = Math.max(item.score, statScore);
+          item.correctAnswers = Math.max(item.correctAnswers, statCorrect);
         } else {
           userTotals.set(s.user_id, {
             userId: s.user_id,
             username,
             score: statScore,
             totalQuestions: (Number(s.quizzes_taken) || 1) * 10,
-            correctAnswers: Number(s.correct_answers) || 0,
-            incorrectAnswers: Math.max(0, ((Number(s.quizzes_taken) || 1) * 10) - (Number(s.correct_answers) || 0)),
+            correctAnswers: statCorrect,
+            incorrectAnswers: Math.max(0, ((Number(s.quizzes_taken) || 1) * 10) - statCorrect),
             timeTaken: 45,
             category: 'All Themes',
             difficulty: 'Expert',
@@ -453,68 +466,40 @@ export async function getLeaderboard(limitCount: number = 10, mode: 'solo' | 'h2
         }
       });
 
-      const userList = Array.from(userTotals.values());
-
-      // Ensure all 10 default registered users are present
-      const existingIds = new Set(userList.map(u => u.userId));
-      for (const defUser of defaultRegisteredUsers) {
-        if (!existingIds.has(defUser.userId)) {
-          userList.push(defUser);
-          existingIds.add(defUser.userId);
-        } else {
-          // If existing user has 0 points, ensure their default registered score is respected
-          const existing = userList.find(u => u.userId === defUser.userId);
-          if (existing && existing.score <= 0 && defUser.score > 0) {
-            existing.score = defUser.score;
-          }
-        }
-      }
+      const userList = Array.from(userTotals.values()).filter(u => (Number(u.score) || 0) > 0);
 
       // Check local storage for any guest score
       try {
         const localStats = localStorage.getItem('quizStats');
         if (localStats) {
           const parsed = JSON.parse(localStats);
-          if (parsed && (parsed.totalScore || parsed.bestScore)) {
-            const guestScore = parsed.totalScore || parsed.bestScore;
-            if (parsed.username && parsed.username.toLowerCase().includes('player')) {
-              parsed.username = 'KISAKYE AARON';
-              localStorage.setItem('quizStats', JSON.stringify(parsed));
-            }
-            const resolvedGuestName = (parsed.username && !parsed.username.toLowerCase().includes('player') && !parsed.username.toLowerCase().includes('anonymous'))
-              ? parsed.username
-              : 'KISAKYE AARON';
-            const guestId = parsed.userId || '2886ae6d-b563-44a3-b4b8-ae932cc188ad';
-            if (guestScore > 0) {
-              const matchedUser = userList.find(u => u.userId === guestId || u.username.toLowerCase() === resolvedGuestName.toLowerCase());
-              if (matchedUser) {
-                matchedUser.score = Math.max(matchedUser.score, guestScore);
-              } else if (!existingIds.has(guestId)) {
-                userList.push({
-                  userId: guestId,
-                  username: resolvedGuestName,
-                  score: guestScore,
-                  totalQuestions: parsed.totalQuestions || 10,
-                  correctAnswers: parsed.correctAnswers || 10,
-                  incorrectAnswers: 0,
-                  timeTaken: 35,
-                  category: 'Mixed Arena',
-                  difficulty: 'Medium',
-                  date: Date.now()
-                });
-              }
+          const guestScore = parsed.totalScore || parsed.bestScore || 0;
+          if (guestScore > 0 && parsed.userId) {
+            const matchedUser = userList.find(u => u.userId === parsed.userId);
+            if (matchedUser) {
+              matchedUser.score = Math.max(matchedUser.score, guestScore);
+            } else {
+              userList.push({
+                userId: parsed.userId,
+                username: parsed.username || 'You (Local)',
+                score: guestScore,
+                totalQuestions: parsed.totalQuestions || 10,
+                correctAnswers: parsed.correctAnswers || 10,
+                incorrectAnswers: 0,
+                timeTaken: 35,
+                category: 'Mixed Arena',
+                difficulty: 'Medium',
+                date: Date.now()
+              });
             }
           }
         }
       } catch (e) {}
 
-      // STRICT SORT: Highest points strictly first, anyone with 0 points always at the bottom
+      // STRICT SORT: Highest points strictly first
       userList.sort((a, b) => {
-        const scoreA = Number(a.score) || 0;
-        const scoreB = Number(b.score) || 0;
-        if (scoreB !== scoreA) {
-          return scoreB - scoreA;
-        }
+        const diff = (Number(b.score) || 0) - (Number(a.score) || 0);
+        if (diff !== 0) return diff;
         return (Number(b.correctAnswers) || 0) - (Number(a.correctAnswers) || 0);
       });
 
@@ -524,7 +509,7 @@ export async function getLeaderboard(limitCount: number = 10, mode: 'solo' | 'h2
       const userBest = new Map<string, QuizResult>();
 
       validResults.forEach((r: any) => {
-        const username = userMap.get(r.user_id) || r.username || 'KISAKYE AARON';
+        const username = userMap.get(r.user_id) || r.username || 'Player';
         const score = Number(r.score) || 0;
         if (!userBest.has(r.user_id) || score > userBest.get(r.user_id)!.score) {
           userBest.set(r.user_id, {
@@ -544,8 +529,8 @@ export async function getLeaderboard(limitCount: number = 10, mode: 'solo' | 'h2
 
       // Also merge any registered user who has points in statsData
       (statsData || []).forEach((s: any) => {
-        if (!s.user_id || s.user_id.startsWith('test_user_')) return;
-        const username = userMap.get(s.user_id) || 'KISAKYE AARON';
+        if (!s.user_id || isTest(s.user_id)) return;
+        const username = userMap.get(s.user_id) || 'Player';
         const statScore = Number(s.total_score) || 0;
         if (!userBest.has(s.user_id)) {
           userBest.set(s.user_id, {
@@ -563,68 +548,12 @@ export async function getLeaderboard(limitCount: number = 10, mode: 'solo' | 'h2
         }
       });
 
-      const userList = Array.from(userBest.values());
-      
-      // Merge default registered users so all spots have real system users
-      const existingIds = new Set(userList.map(u => u.userId));
-      for (const defUser of defaultRegisteredUsers) {
-        if (!existingIds.has(defUser.userId)) {
-          userList.push(defUser);
-          existingIds.add(defUser.userId);
-        } else {
-          // If user in list has 0 or <= 0 points, upgrade them to their legitimate positive score
-          const existing = userList.find(u => u.userId === defUser.userId);
-          if (existing && existing.score <= 0 && defUser.score > 0) {
-            existing.score = defUser.score;
-          }
-        }
-      }
+      const userList = Array.from(userBest.values()).filter(u => (Number(u.score) || 0) > 0);
 
-      // Check local storage for any guest score
-      try {
-        const localStats = localStorage.getItem('quizStats');
-        if (localStats) {
-          const parsed = JSON.parse(localStats);
-          if (parsed && (parsed.bestScore || parsed.totalScore)) {
-            const guestScore = parsed.bestScore || parsed.totalScore;
-            if (parsed.username && parsed.username.toLowerCase().includes('player')) {
-              parsed.username = 'KISAKYE AARON';
-              localStorage.setItem('quizStats', JSON.stringify(parsed));
-            }
-            const resolvedGuestName = (parsed.username && !parsed.username.toLowerCase().includes('player') && !parsed.username.toLowerCase().includes('anonymous'))
-              ? parsed.username
-              : 'KISAKYE AARON';
-            const guestId = parsed.userId || '2886ae6d-b563-44a3-b4b8-ae932cc188ad';
-            if (guestScore > 0) {
-              const matchedUser = userList.find(u => u.userId === guestId || u.username.toLowerCase() === resolvedGuestName.toLowerCase());
-              if (matchedUser) {
-                matchedUser.score = Math.max(matchedUser.score, guestScore);
-              } else if (!existingIds.has(guestId)) {
-                userList.push({
-                  userId: guestId,
-                  username: resolvedGuestName,
-                  score: guestScore,
-                  totalQuestions: parsed.totalQuestions || 10,
-                  correctAnswers: parsed.correctAnswers || 10,
-                  incorrectAnswers: 0,
-                  timeTaken: 35,
-                  category: 'Mixed Arena',
-                  difficulty: 'Medium',
-                  date: Date.now()
-                });
-              }
-            }
-          }
-        }
-      } catch (e) {}
-
-      // STRICT SORT: Highest points first, anyone with 0 points always at the bottom
+      // STRICT SORT: Highest points first
       userList.sort((a, b) => {
-        const scoreA = Number(a.score) || 0;
-        const scoreB = Number(b.score) || 0;
-        if (scoreB !== scoreA) {
-          return scoreB - scoreA;
-        }
+        const diff = (Number(b.score) || 0) - (Number(a.score) || 0);
+        if (diff !== 0) return diff;
         return (Number(b.correctAnswers) || 0) - (Number(a.correctAnswers) || 0);
       });
 
@@ -632,7 +561,7 @@ export async function getLeaderboard(limitCount: number = 10, mode: 'solo' | 'h2
     }
   } catch (err) {
     console.error('Error fetching leaderboard:', err);
-    return defaultRegisteredUsers.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0)).slice(0, limitCount);
+    return [];
   }
 }
 

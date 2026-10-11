@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { QuizCategory, QuizDifficulty, QuizQuestion, QuizResult, QuizUserStats } from '../types/quiz';
 import { getQuizQuestions, saveQuizResult, getUserQuizStats, getLeaderboard } from '../services/quizService';
@@ -11,7 +11,8 @@ import {
   Clock, 
   Activity, 
   PlayCircle, 
-  RotateCcw, 
+  RotateCcw,
+  RotateCw,
   LayoutGrid, 
   CheckCircle2, 
   XCircle, 
@@ -142,6 +143,12 @@ export function FootballQuiz() {
   const [leaderboardTab, setLeaderboardTab] = useState<'solo' | 'h2h'>('solo');
   const [finalResult, setFinalResult] = useState<QuizResult | null>(null);
 
+  // Real-time leaderboard synchronization state
+  const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(false);
+  const [isRefreshingLeaderboard, setIsRefreshingLeaderboard] = useState(false);
+  const [lastLeaderboardUpdated, setLastLeaderboardUpdated] = useState<number>(Date.now());
+  const isFetchingLeaderboardRef = useRef(false);
+
   // Rotating hero slides state & 3-second auto-scroll interval
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
 
@@ -155,8 +162,16 @@ export function FootballQuiz() {
   // Transition animation state
   const [transitioning, setTransitioning] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
+  const fetchLeaderboardData = useCallback(async (isManual: boolean = false) => {
+    if (isFetchingLeaderboardRef.current) return;
+    isFetchingLeaderboardRef.current = true;
+    if (isManual) {
+      setIsRefreshingLeaderboard(true);
+    } else if (leaderboard.length === 0) {
+      setIsLeaderboardLoading(true);
+    }
+
+    try {
       const currentUserId = user?.id || userData?.id;
       const [stats, leaders] = await Promise.all([
         getUserQuizStats(currentUserId),
@@ -164,9 +179,62 @@ export function FootballQuiz() {
       ]);
       setUserStats(stats);
       setLeaderboard(leaders);
-    };
-    loadData();
+      setLastLeaderboardUpdated(Date.now());
+    } catch (err) {
+      console.error('Failed to fetch real-time leaderboard:', err);
+    } finally {
+      setIsLeaderboardLoading(false);
+      setIsRefreshingLeaderboard(false);
+      isFetchingLeaderboardRef.current = false;
+    }
   }, [user?.id, userData?.id, leaderboardTab]);
+
+  // Initial load and tab changes
+  useEffect(() => {
+    try {
+      const resetDone = localStorage.getItem('quiz_fresh_leaderboard_2026');
+      if (!resetDone) {
+        localStorage.removeItem('quizStats');
+        localStorage.setItem('quiz_fresh_leaderboard_2026', 'true');
+      }
+    } catch {}
+    fetchLeaderboardData(false);
+  }, [fetchLeaderboardData]);
+
+  // Real-time automatic background polling (every 15s) + visibility change + custom event sync
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchLeaderboardData(false);
+    }, 15000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLeaderboardData(false);
+      }
+    };
+
+    const handleScoreUpdated = () => {
+      fetchLeaderboardData(false);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('quiz-score-updated', handleScoreUpdated);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('quiz-score-updated', handleScoreUpdated);
+    };
+  }, [fetchLeaderboardData]);
+
+  const formatTimeSince = (timestamp: number) => {
+    const elapsed = Math.floor((Date.now() - timestamp) / 1000);
+    if (elapsed < 5) return 'just now';
+    if (elapsed < 60) return `${elapsed}s ago`;
+    const mins = Math.floor(elapsed / 60);
+    if (mins < 60) return `${mins}m ago`;
+    return 'recently';
+  };
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -303,42 +371,6 @@ export function FootballQuiz() {
         {/* UNIFIED RESPONSIVE FOOTBALL ARENA: KICKOFF BUTTON AFTER SELECTION */}
         <div className="w-full max-w-6xl mx-auto space-y-5 sm:space-y-8 pb-16 min-w-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
           
-          {/* LIVE PLAYER STATS CHIP: Floating badge right in the header */}
-          <div className="w-full flex items-center justify-between flex-wrap gap-2.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/95 border border-slate-200/90 shadow-2xs backdrop-blur-md">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-800">Live Player Stats</span>
-            </div>
-
-            {/* Floating Stats Badge - Fully Responsive for Mobile & Desktop */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl sm:rounded-full bg-slate-950 text-white border border-slate-800 shadow-md backdrop-blur-md text-xs font-black">
-              <div className="flex items-center gap-1.5 text-amber-400 shrink-0">
-                <span>🔥</span>
-                <span className="text-slate-300 font-medium text-[11px] sm:text-xs">Streak:</span>
-                <span className="text-white font-black">5 Days</span>
-              </div>
-              <span className="hidden sm:inline-block w-1 h-3 bg-slate-700 rounded-full shrink-0" />
-              <div className="flex items-center gap-1.5 text-yellow-400 shrink-0">
-                <span>⭐</span>
-                <span className="text-slate-300 font-medium text-[11px] sm:text-xs">Total Points:</span>
-                <span className="text-white font-black">
-                  {(userStats?.totalScore !== undefined ? userStats.totalScore : (userStats?.bestScore !== undefined ? userStats.bestScore : 0)).toLocaleString()}
-                </span>
-              </div>
-              <span className="hidden sm:inline-block w-1 h-3 bg-slate-700 rounded-full shrink-0" />
-              <div className="flex items-center gap-1.5 text-emerald-400 shrink-0">
-                <span>🎯</span>
-                <span className="text-slate-300 font-medium text-[11px] sm:text-xs">Accuracy:</span>
-                <span className="text-white font-black">
-                  {userStats && userStats.totalQuestions > 0 ? `${Math.round((userStats.correctAnswers / userStats.totalQuestions) * 100)}%` : '100%'}
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* 1. HERO BANNER: Maestro Arena Football Quiz & Competitions */}
           <div className="relative w-full overflow-hidden rounded-[24px] sm:rounded-[32px] shadow-sm border border-slate-200 flex flex-col md:min-h-[460px] group mb-6 bg-white">
             
@@ -917,43 +949,52 @@ export function FootballQuiz() {
                       <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight truncate">Leaderboard & Rivalry</h3>
-                      <p className="text-xs text-slate-500 font-medium truncate">Top Football Masters Podium</p>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight truncate">Leaderboard & Rivalry</h3>
+                        {/* Real-time Live Badge */}
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider shrink-0" title="Syncing real-time scores">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                          <span className="hidden xs:inline">Live</span>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-medium truncate">
+                        Live Sync • Updated {formatTimeSince(lastLeaderboardUpdated)}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-bold shrink-0">
-                    <button 
-                      onClick={() => setLeaderboardTab('solo')}
-                      className={cn("px-2.5 sm:px-3 py-1 rounded-lg transition-all", leaderboardTab === 'solo' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500")}
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Manual Refresh Button */}
+                    <button
+                      onClick={() => fetchLeaderboardData(true)}
+                      disabled={isRefreshingLeaderboard}
+                      title="Refresh real-time scores"
+                      className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition active:scale-95 disabled:opacity-50"
                     >
-                      Solo
+                      <RotateCw className={cn("w-3.5 h-3.5 transition-transform", isRefreshingLeaderboard && "animate-spin text-emerald-600")} />
                     </button>
-                    <button 
-                      onClick={() => setLeaderboardTab('h2h')}
-                      className={cn("px-2.5 sm:px-3 py-1 rounded-lg transition-all", leaderboardTab === 'h2h' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500")}
-                    >
-                      Rivalry
-                    </button>
+
+                    {/* Mode Tabs */}
+                    <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
+                      <button 
+                        onClick={() => setLeaderboardTab('solo')}
+                        className={cn("px-2.5 sm:px-3 py-1 rounded-lg transition-all", leaderboardTab === 'solo' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500")}
+                      >
+                        Solo
+                      </button>
+                      <button 
+                        onClick={() => setLeaderboardTab('h2h')}
+                        className={cn("px-2.5 sm:px-3 py-1 rounded-lg transition-all", leaderboardTab === 'h2h' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500")}
+                      >
+                        Rivalry
+                      </button>
+                    </div>
                   </div>
                 </div>
                 
                 {(() => {
-                  const defaultLeaders: QuizResult[] = [
-                    { userId: '2886ae6d-b563-44a3-b4b8-ae932cc188ad', username: 'KISAKYE AARON', score: leaderboardTab === 'h2h' ? 3605 : 1460, category: 'Premier League', difficulty: 'Easy', totalQuestions: 10, correctAnswers: 10, incorrectAnswers: 0, timeTaken: 35, date: Date.now() },
-                    { userId: '39d960e9-104a-4a74-b88e-bca3ac857675', username: 'Musinguzi Mark', score: 1066, category: 'All Themes', difficulty: 'Medium', totalQuestions: 10, correctAnswers: 9, incorrectAnswers: 1, timeTaken: 38, date: Date.now() },
-                    { userId: 'eefed0c5-c648-4525-8ab9-cf103e3bee57', username: 'Victor Hernandez', score: 610, category: 'All Themes', difficulty: 'Expert', totalQuestions: 10, correctAnswers: 9, incorrectAnswers: 1, timeTaken: 42, date: Date.now() },
-                    { userId: 'b7d12faa-cb86-4e33-ae96-f2f6120e585f', username: 'Otim Jacob', score: 220, category: 'All Themes', difficulty: 'Medium', totalQuestions: 10, correctAnswers: 8, incorrectAnswers: 2, timeTaken: 45, date: Date.now() },
-                    { userId: '63a2899b-224e-44ed-bd73-b44a1a7ffd26', username: 'Abdul-rahman Jasim', score: 160, category: 'All Themes', difficulty: 'Expert', totalQuestions: 10, correctAnswers: 8, incorrectAnswers: 2, timeTaken: 48, date: Date.now() },
-                    { userId: '8e945030-bdd9-4327-b17e-f749e206ee87', username: 'sebunya', score: 100, category: 'All Themes', difficulty: 'Medium', totalQuestions: 10, correctAnswers: 7, incorrectAnswers: 3, timeTaken: 50, date: Date.now() },
-                    { userId: '066b7251-8666-4570-a2a6-8887a210cfef', username: 'Kaggwa Peter', score: 90, category: 'Champions League', difficulty: 'Hard', totalQuestions: 10, correctAnswers: 7, incorrectAnswers: 3, timeTaken: 52, date: Date.now() },
-                    { userId: 'fbf35d7f-e284-48d4-ae3b-44f9ed7f86e2', username: 'Elton John', score: 80, category: 'World Cup', difficulty: 'Medium', totalQuestions: 10, correctAnswers: 6, incorrectAnswers: 4, timeTaken: 54, date: Date.now() },
-                    { userId: 'ee396321-9c99-4eec-a049-77b2acbc70b9', username: 'Fadil', score: 70, category: 'La Liga', difficulty: 'Medium', totalQuestions: 10, correctAnswers: 6, incorrectAnswers: 4, timeTaken: 55, date: Date.now() },
-                    { userId: '7f5f1c7d-8366-47cf-b01e-d020d4a73dab', username: 'Angel Dimaria', score: 50, category: 'FIFA World Cup', difficulty: 'Easy', totalQuestions: 10, correctAnswers: 5, incorrectAnswers: 5, timeTaken: 58, date: Date.now() },
-                  ];
-
-                  const rawLeaders = leaderboard && leaderboard.length > 0 ? leaderboard : defaultLeaders;
-                  // STRICT SORT: Highest score first, no 0-point player ahead of anyone with points
-                  const displayLeaders = [...rawLeaders].sort((a, b) => {
+                  // 100% Real Data: derived exclusively from genuine database records
+                  const displayLeaders = [...(leaderboard || [])].sort((a, b) => {
                     const diff = (Number(b.score) || 0) - (Number(a.score) || 0);
                     if (diff !== 0) return diff;
                     return (Number(b.correctAnswers) || 0) - (Number(a.correctAnswers) || 0);
@@ -973,20 +1014,38 @@ export function FootballQuiz() {
                     ? (Number(displayLeaders[userRankIdx].score) || 0)
                     : (userStats?.totalScore !== undefined ? userStats.totalScore : (userStats?.bestScore !== undefined ? userStats.bestScore : 0));
 
-                  // Current user's accurate rank:
-                  // If in displayLeaders, their 1-indexed position;
-                  // otherwise, count how many leaders have higher score + 1
+                  // Current user's accurate real rank:
                   const userRank = userRankIdx !== -1 
                     ? userRankIdx + 1 
                     : (displayLeaders.filter(l => (Number(l.score) || 0) > userPoints).length + 1);
 
-                  const top10Cutoff = Number(displayLeaders[Math.min(9, displayLeaders.length - 1)]?.score) || 50;
+                  const top10Cutoff = Number(displayLeaders[Math.min(9, Math.max(0, displayLeaders.length - 1))]?.score) || 50;
                   const ptsAway = Math.max(10, top10Cutoff - userPoints + 10);
+
+                  if (displayLeaders.length === 0) {
+                    return (
+                      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center relative z-10">
+                        <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mb-3 shadow-sm">
+                          <Trophy className="w-7 h-7" />
+                        </div>
+                        <h4 className="text-base font-black text-slate-900 mb-1">Real-Time Arena Waiting</h4>
+                        <p className="text-xs text-slate-500 max-w-xs mb-4">
+                          No quiz results recorded in this mode yet. Be the first champion to take a quiz and claim the #1 spot on the podium!
+                        </p>
+                        <button
+                          onClick={startQuiz}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-md shadow-emerald-600/20 active:scale-95"
+                        >
+                          Play First Match
+                        </button>
+                      </div>
+                    );
+                  }
 
                   return (
                     <>
                       <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 pb-16 space-y-3 relative z-10">
-                        {/* 1. PODIUM PRESENTATION: Top 3 stepped pedestals with avatar crests */}
+                        {/* 1. PODIUM PRESENTATION: Top 3 stepped pedestals with real contenders */}
                         <div className="pt-2 pb-2 px-0.5 sm:px-1">
                           <div className="flex items-end justify-center gap-1.5 sm:gap-2 max-w-sm mx-auto text-center">
                             
@@ -994,12 +1053,16 @@ export function FootballQuiz() {
                             <div className="flex-1 flex flex-col items-center min-w-0">
                               <div className="relative mb-1.5">
                                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-100 border-2 border-slate-300 p-0.5 shadow-md flex items-center justify-center font-black text-slate-800 text-xs">
-                                  {displayLeaders[1]?.username?.slice(0, 2).toUpperCase() || 'P2'}
+                                  {displayLeaders[1]?.username ? displayLeaders[1].username.slice(0, 2).toUpperCase() : '—'}
                                 </div>
                                 <span className="absolute -top-2 -right-1 text-xs sm:text-sm">🥈</span>
                               </div>
-                              <p className="text-[10px] sm:text-[11px] font-black text-slate-900 truncate w-full px-0.5">{displayLeaders[1]?.username || 'Musinguzi Mark'}</p>
-                              <span className="text-[9px] sm:text-[10px] font-black text-slate-600 mb-1.5">{displayLeaders[1]?.score ?? 0} pts</span>
+                              <p className="text-[10px] sm:text-[11px] font-black text-slate-900 truncate w-full px-0.5">
+                                {displayLeaders[1]?.username || 'Open Spot'}
+                              </p>
+                              <span className="text-[9px] sm:text-[10px] font-black text-slate-600 mb-1.5">
+                                {displayLeaders[1] ? `${displayLeaders[1].score} pts` : 'Claim 2nd'}
+                              </span>
                               
                               <div className="w-full h-14 sm:h-20 rounded-t-2xl bg-gradient-to-b from-slate-200 via-slate-300 to-slate-400 border-t-2 border-x-2 border-slate-300 shadow-sm flex flex-col items-center justify-center text-slate-700">
                                 <span className="text-lg sm:text-2xl font-black">2</span>
@@ -1011,12 +1074,16 @@ export function FootballQuiz() {
                             <div className="flex-1 flex flex-col items-center -mt-3 sm:-mt-4 min-w-0">
                               <div className="relative mb-1.5">
                                 <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-amber-100 border-2 border-amber-400 p-0.5 shadow-lg shadow-amber-400/30 flex items-center justify-center font-black text-amber-950 text-xs sm:text-sm ring-2 ring-amber-300">
-                                  {displayLeaders[0]?.username?.slice(0, 2).toUpperCase() || 'KA'}
+                                  {displayLeaders[0]?.username ? displayLeaders[0].username.slice(0, 2).toUpperCase() : '👑'}
                                 </div>
                                 <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-base sm:text-lg drop-shadow animate-bounce">👑</span>
                               </div>
-                              <p className="text-[11px] sm:text-xs font-black text-slate-950 truncate w-full px-0.5">{displayLeaders[0]?.username || 'KISAKYE AARON'}</p>
-                              <span className="text-[10px] sm:text-[11px] font-black text-amber-600 mb-1.5">{displayLeaders[0]?.score ?? 0} pts</span>
+                              <p className="text-[11px] sm:text-xs font-black text-slate-950 truncate w-full px-0.5">
+                                {displayLeaders[0]?.username || 'Champion'}
+                              </p>
+                              <span className="text-[10px] sm:text-[11px] font-black text-amber-600 mb-1.5">
+                                {displayLeaders[0] ? `${displayLeaders[0].score} pts` : 'Play to win'}
+                              </span>
                               
                               <div className="w-full h-20 sm:h-28 rounded-t-2xl bg-gradient-to-b from-amber-300 via-yellow-400 to-amber-500 border-t-2 border-x-2 border-amber-300 shadow-lg shadow-amber-500/20 flex flex-col items-center justify-center text-amber-950">
                                 <span className="text-xl sm:text-3xl font-black">1</span>
@@ -1028,12 +1095,16 @@ export function FootballQuiz() {
                             <div className="flex-1 flex flex-col items-center min-w-0">
                               <div className="relative mb-1.5">
                                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-orange-100 border-2 border-orange-300 p-0.5 shadow-md flex items-center justify-center font-black text-orange-950 text-xs">
-                                  {displayLeaders[2]?.username?.slice(0, 2).toUpperCase() || 'VH'}
+                                  {displayLeaders[2]?.username ? displayLeaders[2].username.slice(0, 2).toUpperCase() : '—'}
                                 </div>
                                 <span className="absolute -top-2 -right-1 text-xs sm:text-sm">🥉</span>
                               </div>
-                              <p className="text-[10px] sm:text-[11px] font-black text-slate-900 truncate w-full px-0.5">{displayLeaders[2]?.username || 'Victor Hernandez'}</p>
-                              <span className="text-[9px] sm:text-[10px] font-black text-orange-700 mb-1.5">{displayLeaders[2]?.score ?? 0} pts</span>
+                              <p className="text-[10px] sm:text-[11px] font-black text-slate-900 truncate w-full px-0.5">
+                                {displayLeaders[2]?.username || 'Open Spot'}
+                              </p>
+                              <span className="text-[9px] sm:text-[10px] font-black text-orange-700 mb-1.5">
+                                {displayLeaders[2] ? `${displayLeaders[2].score} pts` : 'Claim 3rd'}
+                              </span>
                               
                               <div className="w-full h-11 sm:h-16 rounded-t-2xl bg-gradient-to-b from-amber-600 via-orange-600 to-amber-700 border-t-2 border-x-2 border-orange-400 shadow-sm flex flex-col items-center justify-center text-white">
                                 <span className="text-base sm:text-xl font-black">3</span>
@@ -1044,18 +1115,18 @@ export function FootballQuiz() {
                           </div>
                         </div>
 
-                        {/* List of Remaining Contenders */}
+                        {/* List of Remaining Real Contenders */}
                         <div className="space-y-1.5">
                           {displayLeaders.slice(3).map((res, i) => {
                             const rankNum = i + 4;
                             return (
-                              <div key={i} className="flex items-center gap-2 sm:gap-2.5 p-2 rounded-xl bg-slate-50 border border-slate-100 text-xs min-w-0">
+                              <div key={res.userId || i} className="flex items-center gap-2 sm:gap-2.5 p-2 rounded-xl bg-slate-50 border border-slate-100 text-xs min-w-0">
                                 <div className="w-6 h-6 rounded-full bg-white border border-slate-200 font-black flex items-center justify-center text-slate-700 text-[11px] shrink-0">
                                   {rankNum}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-bold text-slate-900 truncate">{res.username || 'KISAKYE AARON'}</p>
-                                  <p className="text-[10px] text-slate-400 truncate">{res.category} • {res.difficulty}</p>
+                                  <p className="font-bold text-slate-900 truncate">{res.username || 'Real Contender'}</p>
+                                  <p className="text-[10px] text-slate-400 truncate">{res.category || 'All Themes'} • {res.difficulty || 'Expert'}</p>
                                 </div>
                                 <div className="text-right shrink-0">
                                   <span className="font-black text-slate-900">{res.score}</span>

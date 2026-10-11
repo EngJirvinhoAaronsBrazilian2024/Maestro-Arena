@@ -304,29 +304,6 @@ export function Header() {
               <img src="/logo.png" alt="Maestro Arena Logo" className="h-10 sm:h-12 w-auto object-contain" />
             </Link>
             
-            {/* Live Player Stats Chip (Quiz Header) */}
-            {location.pathname.startsWith('/quiz') && (
-              <div className="hidden md:flex items-center gap-2 lg:gap-2.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-slate-900/95 text-white border border-slate-700/80 shadow-md backdrop-blur-md text-[11px] sm:text-xs font-black animate-in fade-in duration-300 mr-2 lg:mr-auto shrink-0">
-                <span className="flex items-center gap-1 text-amber-400">
-                  <span>🔥</span>
-                  <span className="text-slate-300 font-medium text-[10px] sm:text-[11px]">Current Streak:</span>
-                  <span className="text-white font-black">5 Days</span>
-                </span>
-                <span className="w-1 h-2.5 bg-slate-700 rounded-full" />
-                <span className="flex items-center gap-1 text-yellow-400">
-                  <span>⭐</span>
-                  <span className="text-slate-300 font-medium text-[10px] sm:text-[11px]">Total Points:</span>
-                  <span className="text-white font-black">1,420</span>
-                </span>
-                <span className="w-1 h-2.5 bg-slate-700 rounded-full" />
-                <span className="flex items-center gap-1 text-emerald-400">
-                  <span>🎯</span>
-                  <span className="text-slate-300 font-medium text-[10px] sm:text-[11px]">Accuracy:</span>
-                  <span className="text-white font-black">84%</span>
-                </span>
-              </div>
-            )}
-            
             <div className="flex flex-1 items-center justify-end space-x-1 sm:space-x-2 relative">
               
               {/* Desktop Active Search */}
