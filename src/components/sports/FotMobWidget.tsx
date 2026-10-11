@@ -18,13 +18,7 @@ export interface FotMobWidgetProps {
 }
 
 export const FOTMOB_NAV_PRESETS = [
-  { id: 'today', name: 'All Matches', url: 'https://www.scorebat.com/embed/livescore/' },
-  { id: 'premier-league', name: 'Premier League', url: '/api/fotmob/proxy?path=/leagues/47/overview/premier-league' },
-  { id: 'champions-league', name: 'Champions League', url: '/api/fotmob/proxy?path=/leagues/42/overview/champions-league' },
-  { id: 'la-liga', name: 'La Liga', url: '/api/fotmob/proxy?path=/leagues/87/overview/la-liga' },
-  { id: 'serie-a', name: 'Serie A', url: '/api/fotmob/proxy?path=/leagues/55/overview/serie-a' },
-  { id: 'bundesliga', name: 'Bundesliga', url: '/api/fotmob/proxy?path=/leagues/54/overview/bundesliga' },
-  { id: 'ligue-1', name: 'Ligue 1', url: '/api/fotmob/proxy?path=/leagues/53/overview/ligue-1' }
+  { id: 'today', name: 'All Matches', url: 'https://www.scorebat.com/embed/livescore/' }
 ];
 
 export function FotMobWidget({

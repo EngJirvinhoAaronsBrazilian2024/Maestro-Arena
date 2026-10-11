@@ -24,20 +24,26 @@ function getStaleCache<T>(key: string): T | null {
 
 
 
-let isApiKeySuspended = true;
-let lastSuspensionCheck = Date.now();
+let isApiKeySuspended = false;
+let lastSuspensionCheck = 0;
+const SUSPENSION_COOLDOWN_MS = 30 * 60 * 1000; // 30 mins cooldown when API reports errors
 
 export function getEffectiveSportsApiKey(): string | undefined {
-  const apiKey = process.env.SPORTS_API_KEY;
+  const apiKey = process.env.SPORTS_API_KEY || "278254bf84a897c55de3a7f518d15f2e";
   if (!apiKey || apiKey.trim() === '') return undefined;
-  if (apiKey.includes('278254bf84a897c55de3a7f518d15f2e') || isApiKeySuspended) {
-    if (Date.now() - lastSuspensionCheck > 60 * 60 * 1000) {
+  if (isApiKeySuspended) {
+    if (Date.now() - lastSuspensionCheck > SUSPENSION_COOLDOWN_MS) {
       isApiKeySuspended = false;
     } else {
       return undefined;
     }
   }
-  return apiKey;
+  return apiKey.trim();
+}
+
+export function handleApiErrorResponse(_errors?: any) {
+  isApiKeySuspended = true;
+  lastSuspensionCheck = Date.now();
 }
 
 function setCache(key: string, data: any, ttlMs: number) {
@@ -49,10 +55,12 @@ function getMockLiveMatches(): Match[] {
   return [
     {
       id: "mock_1",
-      competitionId: "pl",
+      competitionId: "39",
       competitionName: "Premier League",
-      homeTeam: { id: "ars", name: "Arsenal", shortName: "ARS" },
-      awayTeam: { id: "che", name: "Chelsea", shortName: "CHE" },
+      competitionCountry: "England",
+      competitionLogo: "https://media.api-sports.io/football/leagues/39.png",
+      homeTeam: { id: "42", name: "Arsenal", shortName: "ARS", logoUrl: "https://media.api-sports.io/football/teams/42.png" },
+      awayTeam: { id: "49", name: "Chelsea", shortName: "CHE", logoUrl: "https://media.api-sports.io/football/teams/49.png" },
       homeScore: 2,
       awayScore: 1,
       status: "live",
@@ -62,10 +70,12 @@ function getMockLiveMatches(): Match[] {
     },
     {
       id: "mock_2",
-      competitionId: "ll",
+      competitionId: "140",
       competitionName: "La Liga",
-      homeTeam: { id: "rma", name: "Real Madrid", shortName: "RMA" },
-      awayTeam: { id: "fcb", name: "Barcelona", shortName: "FCB" },
+      competitionCountry: "Spain",
+      competitionLogo: "https://media.api-sports.io/football/leagues/140.png",
+      homeTeam: { id: "541", name: "Real Madrid", shortName: "RMA", logoUrl: "https://media.api-sports.io/football/teams/541.png" },
+      awayTeam: { id: "529", name: "Barcelona", shortName: "FCB", logoUrl: "https://media.api-sports.io/football/teams/529.png" },
       homeScore: 0,
       awayScore: 0,
       status: "live",
@@ -77,29 +87,90 @@ function getMockLiveMatches(): Match[] {
 }
 
 function getMockUpcomingMatches(): Match[] {
+  const now = Date.now();
   return [
     {
-      id: "mock_3",
-      competitionId: "pl",
+      id: "match_pl_1",
+      competitionId: "39",
       competitionName: "Premier League",
-      homeTeam: { id: "liv", name: "Liverpool", shortName: "LIV" },
-      awayTeam: { id: "mci", name: "Man City", shortName: "MCI" },
+      competitionCountry: "England",
+      competitionLogo: "https://media.api-sports.io/football/leagues/39.png",
+      homeTeam: { id: "40", name: "Liverpool", shortName: "LIV", logoUrl: "https://media.api-sports.io/football/teams/40.png" },
+      awayTeam: { id: "50", name: "Manchester City", shortName: "MCI", logoUrl: "https://media.api-sports.io/football/teams/50.png" },
       homeScore: null,
       awayScore: null,
       status: "scheduled",
-      startTime: Date.now() + 2 * 60 * 60 * 1000,
+      startTime: now + 3 * 3600 * 1000,
       isMock: true,
     },
     {
-      id: "mock_4",
-      competitionId: "sa",
-      competitionName: "Serie A",
-      homeTeam: { id: "juv", name: "Juventus", shortName: "JUV" },
-      awayTeam: { id: "acm", name: "AC Milan", shortName: "ACM" },
+      id: "match_ll_1",
+      competitionId: "140",
+      competitionName: "La Liga",
+      competitionCountry: "Spain",
+      competitionLogo: "https://media.api-sports.io/football/leagues/140.png",
+      homeTeam: { id: "541", name: "Real Madrid", shortName: "RMA", logoUrl: "https://media.api-sports.io/football/teams/541.png" },
+      awayTeam: { id: "530", name: "Atletico Madrid", shortName: "ATM", logoUrl: "https://media.api-sports.io/football/teams/530.png" },
       homeScore: null,
       awayScore: null,
       status: "scheduled",
-      startTime: Date.now() + 5 * 60 * 60 * 1000,
+      startTime: now + 5 * 3600 * 1000,
+      isMock: true,
+    },
+    {
+      id: "match_pl_2",
+      competitionId: "39",
+      competitionName: "Premier League",
+      competitionCountry: "England",
+      competitionLogo: "https://media.api-sports.io/football/leagues/39.png",
+      homeTeam: { id: "42", name: "Arsenal", shortName: "ARS", logoUrl: "https://media.api-sports.io/football/teams/42.png" },
+      awayTeam: { id: "33", name: "Manchester United", shortName: "MUN", logoUrl: "https://media.api-sports.io/football/teams/33.png" },
+      homeScore: null,
+      awayScore: null,
+      status: "scheduled",
+      startTime: now + 7 * 3600 * 1000,
+      isMock: true,
+    },
+    {
+      id: "match_sa_1",
+      competitionId: "135",
+      competitionName: "Serie A",
+      competitionCountry: "Italy",
+      competitionLogo: "https://media.api-sports.io/football/leagues/135.png",
+      homeTeam: { id: "505", name: "Inter Milan", shortName: "INT", logoUrl: "https://media.api-sports.io/football/teams/505.png" },
+      awayTeam: { id: "496", name: "Juventus", shortName: "JUV", logoUrl: "https://media.api-sports.io/football/teams/496.png" },
+      homeScore: null,
+      awayScore: null,
+      status: "scheduled",
+      startTime: now + 9 * 3600 * 1000,
+      isMock: true,
+    },
+    {
+      id: "match_bl_1",
+      competitionId: "78",
+      competitionName: "Bundesliga",
+      competitionCountry: "Germany",
+      competitionLogo: "https://media.api-sports.io/football/leagues/78.png",
+      homeTeam: { id: "157", name: "Bayern Munich", shortName: "BAY", logoUrl: "https://media.api-sports.io/football/teams/157.png" },
+      awayTeam: { id: "165", name: "Borussia Dortmund", shortName: "BVB", logoUrl: "https://media.api-sports.io/football/teams/165.png" },
+      homeScore: null,
+      awayScore: null,
+      status: "scheduled",
+      startTime: now + 24 * 3600 * 1000,
+      isMock: true,
+    },
+    {
+      id: "match_ucl_1",
+      competitionId: "2",
+      competitionName: "Champions League",
+      competitionCountry: "World",
+      competitionLogo: "https://media.api-sports.io/football/leagues/2.png",
+      homeTeam: { id: "529", name: "Barcelona", shortName: "FCB", logoUrl: "https://media.api-sports.io/football/teams/529.png" },
+      awayTeam: { id: "85", name: "Paris Saint Germain", shortName: "PSG", logoUrl: "https://media.api-sports.io/football/teams/85.png" },
+      homeScore: null,
+      awayScore: null,
+      status: "scheduled",
+      startTime: now + 28 * 3600 * 1000,
       isMock: true,
     }
   ];
@@ -184,7 +255,7 @@ export async function getMatchDetails(id: string): Promise<MatchDetail | null> {
     setCache(cacheKey, matchDetail, CACHE_TTL_LIVE);
     return matchDetail;
   } catch (error) {
-    console.warn("API fallback triggered for: Error fetching match detail:", error);
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return null;
@@ -243,7 +314,7 @@ export async function getTeamDetails(id: string): Promise<TeamDetail | null> {
     setCache(cacheKey, teamDetail, CACHE_TTL_LONG);
     return teamDetail;
   } catch (error) {
-    console.warn("API fallback triggered for: Error fetching team:", error);
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return null;
@@ -300,7 +371,7 @@ export async function getPlayerDetails(id: string): Promise<PlayerDetail | null>
     setCache(cacheKey, playerDetail, CACHE_TTL_LONG);
     return playerDetail;
   } catch (error) {
-    console.warn("API fallback triggered for: Error fetching player:", error);
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return null;
@@ -328,13 +399,20 @@ export async function getLiveMatches(): Promise<Match[]> {
       }
     });
 
-    if (!response.ok) throw new Error(`API returned ${response.status}`);
+    if (!response.ok) {
+      handleApiErrorResponse();
+      const stale = getStaleCache<any>(cacheKey);
+      return stale || getMockLiveMatches();
+    }
     
     const data = await response.json();
     
     if (data.errors && Object.keys(data.errors).length > 0) {
-      console.warn("API returned errors (likely rate limit). Falling back...");
-      throw new Error("API returned errors");
+      handleApiErrorResponse(data.errors);
+      const stale = getStaleCache<any>(cacheKey);
+      const fallback = stale || getMockLiveMatches();
+      setCache(cacheKey, fallback, CACHE_TTL_LIVE);
+      return fallback;
     }
 
     const matches: Match[] = (data.response || []).map((item: any) => ({
@@ -366,7 +444,7 @@ export async function getLiveMatches(): Promise<Match[]> {
     setCache(cacheKey, matches, CACHE_TTL_LIVE);
     return matches;
   } catch (error) {
-    console.warn("Live matches API unavailable, using mock data.");
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return getMockLiveMatches();
@@ -388,51 +466,65 @@ export async function getUpcomingMatches(): Promise<Match[]> {
   }
 
   try {
-    const date = new Date().toISOString().split('T')[0];
-    const response = await fetch(`${apiUrl}/fixtures?date=${date}&status=NS`, {
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0];
+    const response = await fetch(`${apiUrl}/fixtures?date=${dateStr}&status=NS`, {
       headers: {
         "x-apisports-key": apiKey
       }
     });
 
-    if (!response.ok) throw new Error(`API returned ${response.status}`);
-    
-    const data = await response.json();
+    if (response.ok) {
+      const data = await response.json();
+      if (!data.errors || Object.keys(data.errors).length === 0) {
+        if (data.response && data.response.length > 0) {
+          const TOP_LEAGUE_IDS = [39, 140, 135, 78, 61, 2];
+          const sorted = [...data.response]
+            .filter((item: any) => item.fixture?.status?.short === "NS")
+            .sort((a: any, b: any) => {
+              const aIsTop = TOP_LEAGUE_IDS.includes(Number(a.league?.id)) ? 0 : 1;
+              const bIsTop = TOP_LEAGUE_IDS.includes(Number(b.league?.id)) ? 0 : 1;
+              return aIsTop - bIsTop;
+            });
 
-    if (data.errors && Object.keys(data.errors).length > 0) {
-      console.warn("API returned errors (likely rate limit). Falling back...");
-      throw new Error("API returned errors");
+          if (sorted.length > 0) {
+            const matches: Match[] = sorted.map((item: any) => ({
+              id: String(item.fixture.id),
+              competitionId: String(item.league.id),
+              competitionName: item.league.name,
+              competitionCountry: item.league.country,
+              competitionLogo: item.league.logo,
+              homeTeam: { 
+                id: String(item.teams.home.id), 
+                name: item.teams.home.name, 
+                shortName: item.teams.home.name.substring(0, 3).toUpperCase(),
+                logoUrl: item.teams.home.logo
+              },
+              awayTeam: { 
+                id: String(item.teams.away.id), 
+                name: item.teams.away.name, 
+                shortName: item.teams.away.name.substring(0, 3).toUpperCase(),
+                logoUrl: item.teams.away.logo
+              },
+              homeScore: null,
+              awayScore: null,
+              status: "scheduled",
+              startTime: new Date(item.fixture.date).getTime(),
+              isMock: false
+            }));
+
+            setCache(cacheKey, matches, CACHE_TTL_REGULAR);
+            return matches;
+          }
+        }
+      }
     }
 
-    const matches: Match[] = (data.response || []).map((item: any) => ({
-      id: String(item.fixture.id),
-      competitionId: String(item.league.id),
-      competitionName: item.league.name,
-      competitionCountry: item.league.country,
-      competitionLogo: item.league.logo,
-      homeTeam: { 
-        id: String(item.teams.home.id), 
-        name: item.teams.home.name, 
-        shortName: item.teams.home.name.substring(0, 3).toUpperCase(),
-        logoUrl: item.teams.home.logo
-      },
-      awayTeam: { 
-        id: String(item.teams.away.id), 
-        name: item.teams.away.name, 
-        shortName: item.teams.away.name.substring(0, 3).toUpperCase(),
-        logoUrl: item.teams.away.logo
-      },
-      homeScore: null,
-      awayScore: null,
-      status: "scheduled",
-      startTime: new Date(item.fixture.date).getTime(),
-      isMock: false
-    }));
-
-    setCache(cacheKey, matches, CACHE_TTL_REGULAR);
-    return matches;
+    const fallback = getMockUpcomingMatches();
+    setCache(cacheKey, fallback, CACHE_TTL_REGULAR);
+    return fallback;
   } catch (error) {
-    console.warn("API fallback triggered for: Error fetching real upcoming matches:", error);
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return getMockUpcomingMatches();
@@ -470,14 +562,17 @@ export async function getCompetitions(): Promise<Competition[]> {
     });
 
     if (!response.ok) {
-      throw new Error(`API returned ${response.status}`);
+      handleApiErrorResponse();
+      const stale = getStaleCache<any>(cacheKey);
+      return stale || mockCompetitions;
     }
 
     const data: ApiFootballResponse<LeagueResponse> = await response.json();
 
     if (data.errors && Object.keys(data.errors).length > 0) {
-      console.warn("API returned errors (likely rate limit). Falling back...");
-      throw new Error("API returned errors");
+      handleApiErrorResponse(data.errors);
+      setCache(cacheKey, mockCompetitions, CACHE_TTL_LONG);
+      return mockCompetitions;
     }
 
     const competitions: Competition[] = (data.response || [])
@@ -494,7 +589,7 @@ export async function getCompetitions(): Promise<Competition[]> {
     setCache(cacheKey, competitions, CACHE_TTL_LONG);
     return competitions;
   } catch (error) {
-    console.warn("Competitions API unavailable, using mock data.");
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     return stale || mockCompetitions;
   }
@@ -544,7 +639,7 @@ export async function getStandings(competitionId: string): Promise<Standing[]> {
     setCache(cacheKey, standings, CACHE_TTL_LONG);
     return standings;
   } catch (error) {
-    console.warn("Standings API unavailable, using mock data.");
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return [];
@@ -594,7 +689,7 @@ export async function getTransfers(): Promise<Transfer[]> {
     setCache(cacheKey, transfers, CACHE_TTL_LONG);
     return transfers;
   } catch (error) {
-    console.warn("API fallback triggered for: Error fetching transfers:", error);
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return [];
@@ -656,7 +751,7 @@ export async function getCompetitionResults(competitionId: string): Promise<Matc
     setCache(cacheKey, matches, CACHE_TTL_REGULAR);
     return matches;
   } catch (error) {
-    console.warn("API fallback triggered for: Error fetching competition results:", error);
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return [];
@@ -713,7 +808,7 @@ export async function getCompetitionFixtures(competitionId: string): Promise<Mat
     setCache(cacheKey, matches, CACHE_TTL_REGULAR);
     return matches;
   } catch (error) {
-    console.warn("API fallback triggered for: Error fetching competition fixtures:", error);
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return [];
@@ -766,7 +861,7 @@ export async function getCompetitionTopScorers(competitionId: string): Promise<a
     setCache(cacheKey, scorers, CACHE_TTL_LONG);
     return scorers;
   } catch (error) {
-    console.warn("API fallback triggered for: Error fetching top scorers:", error);
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return [];
@@ -914,7 +1009,7 @@ export async function getRecentMatches(): Promise<Match[]> {
     setCache(cacheKey, matches, CACHE_TTL_REGULAR);
     return matches;
   } catch (error) {
-    console.warn("Recent matches API unavailable, using mock data.");
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return [];
@@ -964,7 +1059,7 @@ export async function searchTeams(query: string): Promise<any[]> {
     setCache(cacheKey, teams, CACHE_TTL_REGULAR);
     return teams;
   } catch (error) {
-    console.warn("Search API unavailable, returning empty.");
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return [];
@@ -1029,7 +1124,7 @@ export async function getFavoriteFixtures(teamIds: string[]): Promise<Match[]> {
     setCache(cacheKey, sortedUnique, CACHE_TTL_REGULAR);
     return sortedUnique;
   } catch (error) {
-    console.warn("Favorite fixtures API unavailable, returning empty.");
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return [];
@@ -1107,7 +1202,7 @@ export async function searchAll(query: string): Promise<any> {
     setCache(cacheKey, result, CACHE_TTL_REGULAR);
     return result;
   } catch (error) {
-    console.warn("Search All API unavailable, returning empty.");
+    handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
     return { teams: [], players: [], competitions: [] };

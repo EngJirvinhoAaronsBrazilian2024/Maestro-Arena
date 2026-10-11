@@ -2,14 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Trophy, Clock, Star, AlertCircle, ArrowRight, X, Check, ChevronDown, ChevronUp, Search, Calendar, History, Activity, Radio, RotateCw, Tv } from 'lucide-react';
-import { MatchCard } from '../components/sports/MatchCard';
+import { Trophy, Star, AlertCircle, ArrowRight, X, Check, ChevronDown, ChevronUp, Search, Activity } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../hooks/useFavorites';
 import { useArticles } from '../services/news/hooks';
-import { useLiveMatches, useUpcomingMatches, useRecentMatches, useFavoriteFixtures } from '../services/sports/hooks';
 import { insforge } from '../lib/insforge';
 import { toast } from 'sonner';
+import { LiveScoresSection } from '../components/sports/LiveScoresSection';
 import heroImage from '../assets/images/football_stars_hero_2026_1788809874968.jpg';
 import madridTrioHero from '../assets/images/madrid_trio_hero_1789305202373.jpg';
 import premiumHeroAlt from '../assets/images/premium_hero_players_alt_1789403921046.jpg';
@@ -38,98 +37,12 @@ const getLeaguePriority = (competition: any) => {
   return 100;
 };
 
-interface UpcomingTopMatch {
-  id: string | number;
-  leagueId: string | number;
-  leagueName: string;
-  leagueLogo?: string;
-  home: {
-    id?: number | string;
-    name: string;
-    logo?: string;
-  };
-  away: {
-    id?: number | string;
-    name: string;
-    logo?: string;
-  };
-  time: string;
-  dateLabel: string;
-  status: string;
-}
-
 export function Home() {
   const { user, userData } = useAuth() as any;
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const [showTeamBrowser, setShowTeamBrowser] = useState(false);
   const [expandedLeague, setExpandedLeague] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [topLeagueUpcomingMatches, setTopLeagueUpcomingMatches] = useState<UpcomingTopMatch[]>([]);
-  const [loadingUpcoming, setLoadingUpcoming] = useState(true);
-
-  // Free football API: Fetch sample of upcoming matches from top leagues
-  useEffect(() => {
-    let isMounted = true;
-    async function fetchTopUpcoming() {
-      try {
-        const today = new Date();
-        const dToday = today.toISOString().slice(0, 10).replace(/-/g, '');
-        const tmrw = new Date(today.getTime() + 86400000);
-        const dTomrw = tmrw.toISOString().slice(0, 10).replace(/-/g, '');
-
-        const [resToday, resTomrw] = await Promise.all([
-          fetch(`/api/fotmob/matches?liveOnly=false&date=${dToday}`)
-            .then(r => r.ok ? r.json() : { leagues: [] })
-            .catch(() => ({ leagues: [] })),
-          fetch(`/api/fotmob/matches?liveOnly=false&date=${dTomrw}`)
-            .then(r => r.ok ? r.json() : { leagues: [] })
-            .catch(() => ({ leagues: [] }))
-        ]);
-
-        const topKeywords = ['premier league', 'la liga', 'bundesliga', 'serie a', 'ligue 1', 'champions league'];
-        const allowedCcodes = ['ENG', 'ESP', 'GER', 'ITA', 'FRA', 'INT'];
-
-        const extractMatches = (data: any, label: string) => {
-          const list: UpcomingTopMatch[] = [];
-          (data?.leagues || []).forEach((l: any) => {
-            const leagueName = (l.name || '').toLowerCase();
-            const isTop = topKeywords.some(k => leagueName === k || leagueName.startsWith(k)) &&
-                          (allowedCcodes.includes(l.ccode) || !l.ccode);
-            if (isTop) {
-              (l.matches || []).forEach((m: any) => {
-                if (m.status === 'NS' || !m.isLive) {
-                  list.push({
-                    id: m.id,
-                    leagueId: l.id,
-                    leagueName: l.name,
-                    leagueLogo: l.logo,
-                    home: m.home,
-                    away: m.away,
-                    time: m.time,
-                    dateLabel: label,
-                    status: m.status
-                  });
-                }
-              });
-            }
-          });
-          return list;
-        };
-
-        const combined = [...extractMatches(resToday, 'Today'), ...extractMatches(resTomrw, 'Tomorrow')];
-        if (isMounted) {
-          // Display sample of upcoming matches from top leagues
-          setTopLeagueUpcomingMatches(combined.slice(0, 6));
-          setLoadingUpcoming(false);
-        }
-      } catch (err) {
-        if (isMounted) setLoadingUpcoming(false);
-      }
-    }
-
-    fetchTopUpcoming();
-    return () => { isMounted = false; };
-  }, []);
 
   const topLeagues = [
     {
@@ -353,59 +266,7 @@ export function Home() {
     return () => clearInterval(timer);
   }, [slides.length]);
 
-  const { matches: liveMatches, isLoading: isLoadingLive } = useLiveMatches();
-  const { matches: upcomingMatchesRaw, isLoading: isLoadingUpcoming } = useUpcomingMatches();
-  const { matches: recentMatchesRaw, isLoading: isLoadingRecent } = useRecentMatches();
   const { articles, isLoading: isLoadingNews } = useArticles('published');
-
-  const upcomingMatches = useMemo(() => {
-    if (!upcomingMatchesRaw) return [];
-    return [...upcomingMatchesRaw].sort((a, b) => {
-      const pA = getLeaguePriority({ id: a.competitionId, name: a.competitionName, country: a.competitionCountry });
-      const pB = getLeaguePriority({ id: b.competitionId, name: b.competitionName, country: b.competitionCountry });
-      return pA - pB;
-    });
-  }, [upcomingMatchesRaw]);
-  
-  const recentMatches = useMemo(() => {
-    if (!recentMatchesRaw) return [];
-    return [...recentMatchesRaw].sort((a, b) => {
-      const pA = getLeaguePriority({ id: a.competitionId, name: a.competitionName, country: a.competitionCountry });
-      const pB = getLeaguePriority({ id: b.competitionId, name: b.competitionName, country: b.competitionCountry });
-      return pA - pB;
-    });
-  }, [recentMatchesRaw]);
-
-  // Personalized Feed
-  
-
-  
-  const favoriteTeamIds = useMemo(() => favorites.filter(f => f.type === 'team').map(f => f.id.replace('team_', '')), [favorites]);
-  const { fixtures: favoriteFixtures } = useFavoriteFixtures(favoriteTeamIds);
-  
-  const myFeedUpcoming = useMemo(() => {
-    if (!favoriteFixtures || favoriteFixtures.length === 0) return [];
-    return favoriteFixtures.filter((m: any) => m.status === 'scheduled');
-  }, [favoriteFixtures]);
-  
-  const myFeedLive = useMemo(() => {
-    if (!favoriteFixtures || favoriteFixtures.length === 0) return [];
-    return favoriteFixtures.filter((m: any) => m.status === 'live');
-  }, [favoriteFixtures]);
-  
-
-  const featuredLive = useMemo(() => {
-    if (!liveMatches) return [];
-    // Only show live matches NOT in myFeedLive to avoid duplication if user has favorites
-    return [...liveMatches]
-      .filter(m => favorites.length === 0 || (!isFavorite(`team_${m.homeTeam.id}`) && !isFavorite(`team_${m.awayTeam.id}`) && !isFavorite(m.homeTeam.id) && !isFavorite(m.awayTeam.id) && !favorites.some(f => f.name === m.homeTeam.name || f.name === m.awayTeam.name)))
-      .sort((a, b) => {
-        const pA = getLeaguePriority({ id: a.competitionId, name: a.competitionName, country: a.competitionCountry });
-        const pB = getLeaguePriority({ id: b.competitionId, name: b.competitionName, country: b.competitionCountry });
-        return pA - pB;
-      }).slice(0, 4);
-  }, [liveMatches, favorites]);
-
   const topNews = articles?.slice(0, 4) || [];
 
   return (
@@ -486,151 +347,8 @@ export function Home() {
         </div>
       </div>
 
-      {/* SAMPLE OF UPCOMING MATCHES FROM TOP LEAGUES (Directly after Enter Arena) */}
-      <div className="w-full max-w-4xl mx-auto space-y-3.5 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="flex items-center justify-between gap-3 px-1">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-xl bg-rose-50 text-rose-600 border border-rose-200/80 shadow-2xs">
-              <Calendar className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-950">
-                  Upcoming Matches
-                </h2>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-black uppercase tracking-wider">
-                  Top Leagues
-                </span>
-              </div>
-              <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
-                Live upcoming fixtures from Premier League, Bundesliga, La Liga & Serie A
-              </p>
-            </div>
-          </div>
-
-          <Link 
-            to="/livescore" 
-            className="group inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-white/90 hover:bg-rose-50 px-3 py-1.5 rounded-full border border-slate-200/90 shadow-2xs transition-all shrink-0 cursor-pointer"
-          >
-            <span>Match Center</span>
-            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        </div>
-
-        {loadingUpcoming ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {[1, 2, 3].map((n) => (
-              <div key={n} className="h-32 rounded-2xl bg-white/70 border border-slate-200/80 p-4 animate-pulse space-y-3">
-                <div className="h-3 bg-slate-200 rounded-md w-24" />
-                <div className="h-8 bg-slate-100 rounded-xl" />
-                <div className="h-3 bg-slate-200 rounded-md w-20 mx-auto" />
-              </div>
-            ))}
-          </div>
-        ) : topLeagueUpcomingMatches.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
-            {topLeagueUpcomingMatches.map((m) => {
-              const parts = (m.time || '').trim().split(' ');
-              const matchTime = parts.length > 1 ? parts[1] : (parts[0] || 'TBD');
-
-              return (
-                <div 
-                  key={m.id}
-                  className="group relative bg-white/90 backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-rose-300 transition-all flex flex-col justify-between overflow-hidden"
-                >
-                  {/* Top Bar: League badge & Kickoff timing */}
-                  <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-slate-100">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      {m.leagueLogo && (
-                        <img 
-                          src={m.leagueLogo} 
-                          alt={m.leagueName} 
-                          className="w-4 h-4 object-contain shrink-0"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      )}
-                      <span className="text-[11px] font-black text-slate-800 tracking-tight truncate">
-                        {m.leagueName}
-                      </span>
-                    </div>
-
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-wider shrink-0">
-                      <Clock className="w-3 h-3 text-slate-400" />
-                      <span>{m.dateLabel} {matchTime}</span>
-                    </span>
-                  </div>
-
-                  {/* Teams Clash */}
-                  <div className="grid grid-cols-5 items-center gap-2 py-1">
-                    {/* Home Team */}
-                    <div className="col-span-2 flex flex-col items-center text-center gap-1 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center p-1 group-hover:scale-105 transition-transform">
-                        {m.home.logo ? (
-                          <img 
-                            src={m.home.logo} 
-                            alt={m.home.name} 
-                            className="w-6 h-6 object-contain"
-                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                          />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-rose-100 text-rose-700 font-black text-xs flex items-center justify-center">
-                            {m.home.name.slice(0, 1)}
-                          </div>
-                        )}
-                      </div>
-                      <span className="text-xs font-bold text-slate-900 leading-tight line-clamp-2" title={m.home.name}>
-                        {m.home.name}
-                      </span>
-                    </div>
-
-                    {/* VS Badge */}
-                    <div className="col-span-1 flex flex-col items-center justify-center">
-                      <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-400 font-black text-[10px] flex items-center justify-center border border-slate-200/80">
-                        VS
-                      </span>
-                    </div>
-
-                    {/* Away Team */}
-                    <div className="col-span-2 flex flex-col items-center text-center gap-1 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center p-1 group-hover:scale-105 transition-transform">
-                        {m.away.logo ? (
-                          <img 
-                            src={m.away.logo} 
-                            alt={m.away.name} 
-                            className="w-6 h-6 object-contain"
-                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                          />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 font-black text-xs flex items-center justify-center">
-                            {m.away.name.slice(0, 1)}
-                          </div>
-                        )}
-                      </div>
-                      <span className="text-xs font-bold text-slate-900 leading-tight line-clamp-2" title={m.away.name}>
-                        {m.away.name}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Bottom Action */}
-                  <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[10px] font-medium text-slate-400">
-                      Matchday Preview
-                    </span>
-                    <Link 
-                      to="/livescore"
-                      className="text-[11px] font-black text-rose-600 group-hover:text-rose-700 flex items-center gap-1 hover:underline cursor-pointer"
-                    >
-                      <span>Matchday Live</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : null}
-      </div>
+      {/* Live Football Scores & Real-Time Matches */}
+      <LiveScoresSection />
 
       {polls.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full max-w-4xl mx-auto">
