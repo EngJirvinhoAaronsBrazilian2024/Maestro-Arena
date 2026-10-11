@@ -49,6 +49,24 @@ app.use("/api/quiz", quizRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/tips", tipsRoutes);
 app.use("/api/admin", adminRoutes);
+
+// Articles / News public and admin API proxy
+app.all("/api/articles", (req, res, next) => {
+  req.url = "/articles";
+  adminRoutes(req, res, next);
+});
+app.all("/api/articles/:id", (req, res, next) => {
+  req.url = `/articles/${req.params.id}`;
+  adminRoutes(req, res, next);
+});
+app.all("/api/news/articles", (req, res, next) => {
+  req.url = "/articles";
+  adminRoutes(req, res, next);
+});
+app.all("/api/news/articles/:id", (req, res, next) => {
+  req.url = `/articles/${req.params.id}`;
+  adminRoutes(req, res, next);
+});
 app.use("/api/feedback", (req, res, next) => {
   req.url = '/feedback' + (req.url === '/' ? '' : req.url);
   adminRoutes(req, res, next);

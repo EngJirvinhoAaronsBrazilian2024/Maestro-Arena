@@ -812,6 +812,37 @@ router.get('/articles', async (req, res) => {
   }
 });
 
+router.get('/articles/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const admin = getInsforgeAdmin();
+    const { data, error } = await admin.database
+      .from('articles')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error || !data) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    const a = data;
+    res.json({
+      id: a.id,
+      title: a.title,
+      content: a.content,
+      summary: a.summary || (a.content ? a.content.slice(0, 180) + '...' : ''),
+      imageUrl: a.image_url || a.imageUrl,
+      authorId: a.author_id,
+      authorName: a.author_name || 'Jirvinho Brazilian sports maestro',
+      status: a.status,
+      category: a.category || 'general',
+      publishedAt: Number(a.published_at || Date.now())
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/articles', async (req, res) => {
   try {
     const { title, content, summary, category, imageUrl, image_url, authorId, author_id, authorName, author_name, status, publishedAt, published_at } = req.body;

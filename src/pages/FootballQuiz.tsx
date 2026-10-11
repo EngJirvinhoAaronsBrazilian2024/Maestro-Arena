@@ -28,7 +28,6 @@ import {
   Award,
   Zap,
   Swords,
-  Calendar,
   ChevronDown,
   Check
 } from 'lucide-react';
@@ -899,7 +898,7 @@ export function FootballQuiz() {
                 </div>
               </div>
 
-              {/* Quick H2H and Daily Trivia Cards - Light Mode */}
+              {/* Quick H2H Multiplayer Card - Light Mode */}
               <div className="grid gap-3.5 sm:gap-4 w-full min-w-0">
                 <div className="bg-gradient-to-br from-rose-50 to-red-50/50 rounded-2xl sm:rounded-3xl md:rounded-[30px] p-4 sm:p-6 text-slate-900 shadow-2xs relative overflow-hidden border border-rose-200/80 w-full min-w-0">
                   <div className="absolute right-0 top-0 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl pointer-events-none"></div>
@@ -920,24 +919,6 @@ export function FootballQuiz() {
                       Find Match <ChevronRight className="w-4 h-4" />
                     </Link>
                   </div>
-                </div>
-
-                <div className="bg-white rounded-2xl sm:rounded-3xl md:rounded-[30px] p-3.5 sm:p-5 shadow-2xs border border-slate-200/80 flex items-center justify-between gap-3 sm:gap-4 w-full min-w-0">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center shrink-0 shadow-2xs">
-                      <Calendar className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-black text-sm text-slate-900 tracking-tight truncate">Daily Football Trivia</h4>
-                      <p className="text-xs text-slate-500 font-medium truncate">New match riddle every morning</p>
-                    </div>
-                  </div>
-                  <Link
-                    to="/quiz/daily"
-                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200/80 font-bold text-xs transition-colors shrink-0"
-                  >
-                    Play Today
-                  </Link>
                 </div>
               </div>
 

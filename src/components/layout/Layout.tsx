@@ -11,9 +11,9 @@ export function Layout() {
   const isLivescore = location.pathname === '/livescore';
   
   return (
-    <div className="flex h-screen h-[100dvh] min-h-[100dvh] max-h-[100dvh] flex-col bg-gradient-to-br from-[#E6F0FA] via-[#D1E0F0] to-[#B8CCE4] overflow-hidden border-[3.5px] sm:border-[4.5px] border-rose-600 shadow-2xl shadow-rose-600/15 box-border">
+    <div className="w-full h-screen h-[100dvh] min-h-[100dvh] max-h-[100dvh] flex flex-col bg-gradient-to-br from-[#E6F0FA] via-[#D1E0F0] to-[#B8CCE4] overflow-hidden rounded-[20px] sm:rounded-[24px] md:rounded-[28px] border-[3.5px] sm:border-[4px] border-rose-600 box-border isolate">
       {/* Top Header at the extreme top of the enclosing red boundary */}
-      <div className="w-full shrink-0 z-40 bg-white/95 backdrop-blur-md">
+      <div className="w-full shrink-0 z-40 bg-white/95 backdrop-blur-md rounded-t-[16px] sm:rounded-t-[20px]">
         <Header />
       </div>
 
@@ -44,7 +44,7 @@ export function Layout() {
             </div>
 
             {/* Bottom Navigation tabs at the bottom where the page tabs are */}
-            <div className="shrink-0 z-30 w-full">
+            <div className="shrink-0 z-30 w-full rounded-b-[16px] sm:rounded-b-[20px] overflow-hidden">
               <BottomNav />
             </div>
           </div>

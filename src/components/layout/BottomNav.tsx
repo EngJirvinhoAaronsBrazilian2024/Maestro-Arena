@@ -14,7 +14,7 @@ const navItems = [
 export function BottomNav() {
   const location = useLocation();
   return (
-    <div className="w-full border-t border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-[0_-6px_25px_rgba(15,23,42,0.08)] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+    <div className="w-full border-t border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-[0_-6px_25px_rgba(15,23,42,0.08)] rounded-b-[16px] sm:rounded-b-[20px] pb-[max(0.35rem,env(safe-area-inset-bottom))]">
       <nav className="flex h-16 items-center justify-around px-2 sm:px-4 max-w-lg mx-auto">
         {navItems.map((item) => (
           <NavLink
