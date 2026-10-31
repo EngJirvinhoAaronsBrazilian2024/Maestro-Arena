@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { Bookmark, Share2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { getImageUrl } from '../services/storageService';
+import { JirvinhoAdBanner } from '../components/ads/JirvinhoAdBanner';
 
 export function ArticlePage() {
   const { id } = useParams<{ id: string }>();
@@ -138,6 +139,9 @@ export function ArticlePage() {
           <p key={i}>{paragraph}</p>
         ))}
       </div>
+
+      {/* Official Technology Partner Sponsor Feature */}
+      <JirvinhoAdBanner variant="article" />
     </article>
   );
 }

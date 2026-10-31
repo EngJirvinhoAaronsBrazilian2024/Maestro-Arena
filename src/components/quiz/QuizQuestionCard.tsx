@@ -132,7 +132,7 @@ export function QuizQuestionCard({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-950 flex items-center gap-1.5">
+                  <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-1.5">
                     Maestro Match Pitch
                   </h1>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">

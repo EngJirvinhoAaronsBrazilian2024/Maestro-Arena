@@ -56,7 +56,7 @@ const ResetPassword = lazyWithRetry(() => import('./pages/ResetPassword').then(m
 const MatchCentre = lazyWithRetry(() => import('./pages/MatchCentre').then(m => ({ default: (m as any).MatchCentre || (m as any).default })));
 const TeamProfile = lazyWithRetry(() => import('./pages/TeamProfile').then(m => ({ default: (m as any).TeamProfile || (m as any).default })));
 const PlayerProfile = lazyWithRetry(() => import('./pages/PlayerProfile').then(m => ({ default: (m as any).PlayerProfile || (m as any).default })));
-const NewsList = lazyWithRetry(() => import('./pages/NewsList').then(m => ({ default: (m as any).NewsList || (m as any).default })));
+const NewsList = lazyWithRetry(() => import('./pages/NewsList').then(m => ({ default: (m as any).default || (m as any).NewsList })));
 const ArticlePage = lazyWithRetry(() => import('./pages/ArticlePage').then(m => ({ default: (m as any).ArticlePage || (m as any).default })));
 const FootballQuiz = lazyWithRetry(() => import('./pages/FootballQuiz').then(m => ({ default: (m as any).FootballQuiz || (m as any).default })));
 const H2HQuiz = lazyWithRetry(() => import('./pages/H2HQuiz').then(m => ({ default: (m as any).H2HQuiz || (m as any).default })));
@@ -76,6 +76,7 @@ const AdminNotifications = lazyWithRetry(() => import('./pages/admin/AdminNotifi
 const AdminPolls = lazyWithRetry(() => import('./pages/admin/AdminPolls').then(m => ({ default: (m as any).AdminPolls || (m as any).default })));
 const AdminSeasons = lazyWithRetry(() => import('./pages/admin/AdminSeasons').then(m => ({ default: (m as any).AdminSeasons || (m as any).default })));
 const AdminFeedback = lazyWithRetry(() => import('./pages/admin/AdminFeedback').then(m => ({ default: (m as any).AdminFeedback || (m as any).default })));
+const AdminActivityLogs = lazyWithRetry(() => import('./pages/admin/AdminActivityLogs').then(m => ({ default: (m as any).AdminActivityLogs || (m as any).default })));
 const PlaceholderPage = lazyWithRetry<React.ComponentType<{ title: string }>>(() => import('./pages/PlaceholderPage').then(m => ({ default: (m as any).PlaceholderPage || (m as any).default })));
 
 interface ErrorBoundaryProps {
@@ -203,6 +204,7 @@ export default function App() {
                 <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                   <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<AdminDashboard />} />
+                    <Route path="activity" element={<AdminActivityLogs />} />
                     <Route path="quiz" element={<AdminQuizManagement />} />
                     <Route path="news" element={<AdminNewsManagement />} />
                     <Route path="tips" element={<AdminTipsManagement />} />

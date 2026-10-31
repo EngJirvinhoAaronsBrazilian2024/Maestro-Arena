@@ -16,20 +16,32 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: 'auto',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-icon.svg', 'logo.svg'],
         manifest: {
           id: '/',
           name: 'Maestro Arena',
           short_name: 'Maestro',
           description: 'Live scores, football news, quizzes and tips.',
-          theme_color: '#0f172a',
-          background_color: '#ffffff',
+          theme_color: '#EAF7ED',
+          background_color: '#EAF7ED',
           display: 'standalone',
           orientation: 'portrait',
           start_url: '/',
           scope: '/',
           categories: ['sports', 'news', 'entertainment'],
           icons: [
+            {
+              src: '/pwa-icon.svg',
+              sizes: 'any',
+              type: 'image/svg+xml',
+              purpose: 'any'
+            },
+            {
+              src: '/pwa-icon.svg',
+              sizes: 'any',
+              type: 'image/svg+xml',
+              purpose: 'maskable'
+            },
             {
               src: '/pwa-192x192.png',
               sizes: '192x192',
@@ -113,6 +125,10 @@ export default defineConfig(() => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+      dedupe: ['react', 'react-dom'],
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'react-router-dom', 'lucide-react', 'sonner', 'clsx', 'tailwind-merge'],
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

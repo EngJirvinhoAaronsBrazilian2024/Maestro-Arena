@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Light Green Background Gradient (Purely Light Green, zero black) -->
+    <linearGradient id="bgLightGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EAF8EE" />
+      <stop offset="50%" stop-color="#D7F2DF" />
+      <stop offset="100%" stop-color="#C2EACB" />
+    </linearGradient>
+
+    <!-- Crimson Motion Swoosh Gradient -->
+    <linearGradient id="crimsonSwoosh" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#BE123C" />
+      <stop offset="50%" stop-color="#E11D48" />
+      <stop offset="100%" stop-color="#FB7185" />
+    </linearGradient>
+
+    <!-- Gold Crown Gradient -->
+    <linearGradient id="goldCrown" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#FCD34D" />
+    </linearGradient>
+
+    <!-- Subtle Outer Glow / Shadow -->
+    <filter id="softShadow" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0F172A" flood-opacity="0.12" />
+    </filter>
+
+    <filter id="badgeShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.10" />
+    </filter>
+  </defs>
+
+  <!-- PURE LIGHT GREEN BACKGROUND - 100% full bleed, zero black -->
+  <rect width="512" height="512" fill="url(#bgLightGreen)" />
+
+  <!-- Subtle Decorative Pitch Lines in Pure Light Green Palette -->
+  <circle cx="256" cy="240" r="215" fill="none" stroke="#A7DDB4" stroke-width="2.5" opacity="0.45" />
+  <circle cx="256" cy="240" r="185" fill="none" stroke="#A7DDB4" stroke-width="1.5" stroke-dasharray="6 6" opacity="0.35" />
+
+  <!-- Center White Shield Badge Backing for High Contrast -->
+  <g filter="url(#badgeShadow)">
+    <path d="M 256,76 
+             C 345,76 395,115 395,190 
+             C 395,295 295,355 256,380 
+             C 217,355 117,295 117,190 
+             C 117,115 167,76 256,76 Z" 
+          fill="#FFFFFF" 
+          stroke="#E2E8F0" 
+          stroke-width="3" />
+  </g>
+
+  <!-- CROWN OF THE MAESTRO -->
+  <g transform="translate(256, 118)">
+    <!-- Crown Base Arch -->
+    <path d="M -46,14 Q 0,8 46,14 L 38,20 Q 0,16 -38,20 Z" fill="#991B1B" />
+    <!-- Crown Body -->
+    <path d="M -44,14 L -52,-14 L -22,-2 L 0,-24 L 22,-2 L 52,-14 L 44,14 Q 0,8 -44,14 Z" 
+          fill="url(#goldCrown)" 
+          stroke="#B45309" 
+          stroke-width="2" 
+          stroke-linejoin="round" />
+    <!-- Jewels on Peaks -->
+    <circle cx="-52" cy="-14" r="4.5" fill="#E11D48" stroke="#FFFFFF" stroke-width="1.5" />
+    <circle cx="-22" cy="-2" r="3.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="1" />
+    <circle cx="0" cy="-24" r="5.5" fill="#E11D48" stroke="#FFFFFF" stroke-width="1.5" />
+    <circle cx="22" cy="-2" r="3.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="1" />
+    <circle cx="52" cy="-14" r="4.5" fill="#E11D48" stroke="#FFFFFF" stroke-width="1.5" />
+    <!-- Center Diamond -->
+    <polygon points="0,-4 5,4 0,10 -5,4" fill="#FFFFFF" opacity="0.9" />
+  </g>
+
+  <!-- SOCCER BALL WITH GEOMETRIC PENTAGONS -->
+  <g transform="translate(256, 218)">
+    <!-- Ball Base Circle with Subtle Shadow -->
+    <circle cx="0" cy="0" r="68" fill="#FFFFFF" stroke="#0F172A" stroke-width="5" />
+    
+    <!-- Central Navy Pentagon -->
+    <polygon points="0,-24 23,-7 14,21 -14,21 -23,-7" fill="#0F172A" />
+
+    <!-- Seam Lines radiating outwards to adjacent panels -->
+    <line x1="0" y1="-24" x2="0" y2="-48" stroke="#0F172A" stroke-width="4.5" stroke-linecap="round" />
+    <line x1="23" y1="-7" x2="46" y2="-15" stroke="#0F172A" stroke-width="4.5" stroke-linecap="round" />
+    <line x1="14" y1="21" x2="28" y2="42" stroke="#0F172A" stroke-width="4.5" stroke-linecap="round" />
+    <line x1="-14" y1="21" x2="-28" y2="42" stroke="#0F172A" stroke-width="4.5" stroke-linecap="round" />
+    <line x1="-23" y1="-7" x2="-46" y2="-15" stroke="#0F172A" stroke-width="4.5" stroke-linecap="round" />
+
+    <!-- Outer Edge Pentagonal Patches -->
+    <!-- Top patch -->
+    <path d="M -22,-56 Q 0,-48 22,-56 L 0,-48 Z" fill="#0F172A" />
+    <polygon points="-16,-66 0,-48 16,-66" fill="#0F172A" />
+    <!-- Top-Right patch -->
+    <polygon points="46,-15 64,-5 67,-26 50,-38" fill="#0F172A" />
+    <!-- Bottom-Right patch -->
+    <polygon points="28,42 50,48 58,32 46,16" fill="#0F172A" />
+    <!-- Bottom-Left patch -->
+    <polygon points="-28,42 -50,48 -58,32 -46,16" fill="#0F172A" />
+    <!-- Top-Left patch -->
+    <polygon points="-46,-15 -64,-5 -67,-26 -50,-38" fill="#0F172A" />
+
+    <!-- Ball Specular Light Highlight -->
+    <path d="M -42,-42 A 64 64 0 0 1 20,-62 A 54 54 0 0 0 -38,-20 Z" fill="#FFFFFF" opacity="0.6" />
+
+    <!-- SWOOSHING DYNAMIC ORBITAL MOTION ARCS (Crimson Velocity Trail) -->
+    <!-- Front Swoosh Ring -->
+    <path d="M -86,22 C -60,62 55,68 88,14 C 95,3 88,-4 76,-1 C 48,38 -45,34 -72,8 C -82,-2 -92,8 -86,22 Z" 
+          fill="url(#crimsonSwoosh)" 
+          stroke="#9F1239" 
+          stroke-width="1.5" />
+    <!-- Motion Sparks / Stars -->
+    <circle cx="82" cy="-10" r="3.5" fill="#E11D48" />
+    <circle cx="94" cy="4" r="2.5" fill="#FB7185" />
+    <circle cx="-88" cy="2" r="3" fill="#E11D48" />
+  </g>
+
+  <!-- TYPOGRAPHY: MAESTRO ARENA - Bold, Sharp, Vectorized Precision -->
+  <g transform="translate(256, 420)">
+    <!-- MAESTRO Text -->
+    <text x="0" y="0" 
+          text-anchor="middle" 
+          font-family="system-ui, -apple-system, 'Inter', 'Segoe UI', Roboto, sans-serif" 
+          font-size="44" 
+          font-weight="900" 
+          letter-spacing="5" 
+          fill="#0F172A">
+      MAESTRO
+    </text>
+
+    <!-- Sub-heading ARENA with flanking crimson bars -->
+    <g transform="translate(0, 32)">
+      <!-- Left Crimson Accent Line -->
+      <line x1="-120" y1="-8" x2="-55" y2="-8" stroke="#E11D48" stroke-width="3.5" stroke-linecap="round" />
+      
+      <!-- ARENA Text -->
+      <text x="0" y="0" 
+            text-anchor="middle" 
+            font-family="system-ui, -apple-system, 'Inter', 'Segoe UI', Roboto, sans-serif" 
+            font-size="24" 
+            font-weight="900" 
+            letter-spacing="8" 
+            fill="#E11D48">
+        ARENA
+      </text>
+
+      <!-- Right Crimson Accent Line -->
+      <line x1="55" y1="-8" x2="120" y2="-8" stroke="#E11D48" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+  </g>
+
+  <!-- Outer Safe-Zone Border Accent in Subtle Emerald Tone -->
+  <rect x="6" y="6" width="500" height="500" rx="42" fill="none" stroke="#86EFAC" stroke-width="4" opacity="0.5" />
+</svg>

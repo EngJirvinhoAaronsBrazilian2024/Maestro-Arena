@@ -6,6 +6,7 @@ import { Tabs } from '../components/ui/Tabs';
 import { LiveIndicator } from '../components/sports/LiveIndicator';
 import { Clock, Users, Activity, MessageSquare } from 'lucide-react';
 import { formatDateEAT } from '../lib/utils';
+import { JirvinhoAdBanner } from '../components/ads/JirvinhoAdBanner';
 
 export function MatchCentre() {
   const { id } = useParams<{ id: string }>();
@@ -149,11 +150,11 @@ export function MatchCentre() {
     <div className="mx-auto max-w-4xl space-y-6">
       {/* Match Scoreboard Header */}
       <div className="overflow-hidden rounded-[28px] bg-white/80 backdrop-blur-xl shadow-[0_8px_32px_rgba(15,23,42,0.04)] border border-white/90 relative">
-        <div className="pt-6 text-center text-xs font-black uppercase tracking-wider text-rose-600 relative z-10 border-b-0 pb-0">
+        <div className="pt-5 text-center text-xs font-extrabold uppercase tracking-wider text-rose-600 relative z-10 border-b-0 pb-0">
           {match.competitionName}
         </div>
         
-        <div className="flex flex-col items-center justify-between p-6 sm:flex-row">
+        <div className="flex flex-col items-center justify-between p-6 sm:flex-row gap-4">
           {/* Home Team */}
           <Link to={`/teams/${match.homeTeam.id}`} className="flex flex-1 flex-col items-center gap-3 group">
             {match.homeTeam.logoUrl ? (
@@ -163,23 +164,23 @@ export function MatchCentre() {
                 {match.homeTeam.shortName}
               </div>
             )}
-            <span className="text-center text-base sm:text-lg font-black text-slate-950 group-hover:text-rose-600 transition-colors">{match.homeTeam.name}</span>
+            <span className="text-center text-base sm:text-lg font-black text-slate-900 group-hover:text-rose-600 transition-colors">{match.homeTeam.name}</span>
           </Link>
 
           {/* Score & Status */}
-          <div className="my-6 flex flex-col items-center justify-center px-4 sm:my-0 sm:px-8">
-            <div className="flex items-center gap-4 text-4xl font-black sm:text-5xl text-slate-950">
+          <div className="my-4 flex flex-col items-center justify-center px-4 sm:my-0 sm:px-8">
+            <div className="flex items-center gap-3 text-4xl font-extrabold sm:text-5xl text-slate-900">
               <span>{match.homeScore !== null ? match.homeScore : '-'}</span>
-              <span className="text-slate-300">-</span>
+              <span className="text-slate-300 font-normal">:</span>
               <span>{match.awayScore !== null ? match.awayScore : '-'}</span>
             </div>
             
             <div className="mt-3 flex items-center justify-center gap-2">
               {match.status === 'live' ? (
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-cyan-50 text-cyan-800 border border-cyan-200 shadow-2xs">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
                   </span>
                   <span>{match.matchMinute ? `${match.matchMinute}'` : 'LIVE'}</span>
                 </div>
@@ -200,10 +201,13 @@ export function MatchCentre() {
                 {match.awayTeam.shortName}
               </div>
             )}
-            <span className="text-center text-base sm:text-lg font-black text-slate-950 group-hover:text-rose-600 transition-colors">{match.awayTeam.name}</span>
+            <span className="text-center text-base sm:text-lg font-black text-slate-900 group-hover:text-rose-600 transition-colors">{match.awayTeam.name}</span>
           </Link>
         </div>
       </div>
+
+      {/* Matchday Technology Sponsor Banner */}
+      <JirvinhoAdBanner variant="matchday" className="my-4" />
 
       <Tabs 
         tabs={[

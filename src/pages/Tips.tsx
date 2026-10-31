@@ -1,22 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { getTips } from '../services/tipsService';
-import { Tip, TipCategory, normalizeCategory } from '../types/tips';
+import { getTips, updateTip } from '../services/tipsService';
+import { Tip, TipCategory, TipStatus, normalizeCategory } from '../types/tips';
 import { Card, CardContent } from '../components/ui/Card';
 import { isSameDay } from '../lib/dateUtils';
-import { Calendar, AlertCircle, Info, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, AlertCircle, Info, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock, ShieldCheck, AlertTriangle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
-import manUtdTipsBg from '../assets/images/manutd_pl_tips_1790183435495.jpg';
-import arsenalTipsBg from '../assets/images/arsenal_pl_tips_1790184270568.jpg';
-import mancityTipsBg from '../assets/images/mancity_pl_tips_1790184285657.jpg';
-import chelseaTipsBg from '../assets/images/chelsea_pl_tips_1790184303424.jpg';
+import { useAuth } from '../context/AuthContext';
+import tipsTacticsGlow from '../assets/images/tips_tactics_glow_1793198200533.jpg';
+import tipsChampionsDuel from '../assets/images/tips_champions_duel_1793198213236.jpg';
+import tipsPremierShowdown from '../assets/images/tips_premier_showdown_1793198228176.jpg';
+import tipsTacticsCelebrate from '../assets/images/tips_tactics_celebrate_1793198240631.jpg';
+import { logActivity } from '../services/activityLogger';
+import { JirvinhoAdBanner } from '../components/ads/JirvinhoAdBanner';
 
 const TIPS_SLIDES = [
-  { id: 'manutd', team: 'Manchester United', image: manUtdTipsBg },
-  { id: 'arsenal', team: 'Arsenal', image: arsenalTipsBg },
-  { id: 'mancity', team: 'Manchester City', image: mancityTipsBg },
-  { id: 'chelsea', team: 'Chelsea', image: chelseaTipsBg },
+  { id: 'tactics-lab', team: 'Tactics & Analytics Lab', image: tipsTacticsGlow },
+  { id: 'champions-duel', team: 'Champions Clash & Key Duels', image: tipsChampionsDuel },
+  { id: 'premier-showdown', team: 'Premier League Goal Forecasts', image: tipsPremierShowdown },
+  { id: 'tactics-celebrate', team: 'Winning Accumulators & Master Tips', image: tipsTacticsCelebrate },
 ];
 
 const CATEGORIES: { id: TipCategory; label: string }[] = [
@@ -26,10 +29,13 @@ const CATEGORIES: { id: TipCategory; label: string }[] = [
 ];
 
 export function Tips() {
+  const { userData, user } = useAuth();
+  const isAdminOrEditor = userData?.role === 'admin' || userData?.role === 'editor';
   const [tips, setTips] = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [category, setCategory] = useState<TipCategory>('single');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'won' | 'pending' | 'lost'>('all');
   const [activeSlide, setActiveSlide] = useState(0);
   
   // Date filtering: defaults to Today (Date.now()) so user instantly knows the tips are for that day
@@ -58,6 +64,23 @@ export function Tips() {
     }
   };
 
+  const handleUpdateStatus = async (tipId: string, newStatus: TipStatus) => {
+    const adminId = user?.id || (user as any)?.uid || 'admin';
+    try {
+      await updateTip(adminId, tipId, { status: newStatus });
+      toast.success(`Bet status confirmed: ${newStatus.toUpperCase()}`);
+      setTips(prev => prev.map(t => t.id === tipId ? { ...t, status: newStatus } : t));
+      logActivity({
+        action: 'TIP_STATUS_UPDATED',
+        category: 'tips',
+        description: `Admin confirmed tip status as ${newStatus.toUpperCase()}`,
+        details: { tipId, status: newStatus }
+      });
+    } catch (e: any) {
+      toast.error('Failed to update bet status: ' + (e.message || 'Error'));
+    }
+  };
+
   useEffect(() => {
     fetchTips();
 
@@ -73,12 +96,18 @@ export function Tips() {
     return () => clearInterval(pollInterval);
   }, []);
 
-  // Filtered tips strictly by selected category, then by date (if set)
+  // Filtered tips strictly by selected category, date, and settlement status
   const filteredTips = useMemo(() => {
     return tips.filter(t => {
       // Category filter
       const norm = normalizeCategory(t.category);
       if (norm !== category) return false;
+
+      // Status filter
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'pending' && t.status !== 'pending' && t.status) return false;
+        if (statusFilter !== 'pending' && t.status !== statusFilter) return false;
+      }
 
       // Date filter (if set)
       if (dateFilter !== null) {
@@ -86,6 +115,21 @@ export function Tips() {
       }
       return true;
     });
+  }, [tips, category, dateFilter, statusFilter]);
+
+  // Compute status counts within current category and date scope
+  const statusCounts = useMemo(() => {
+    const counts = { all: 0, won: 0, pending: 0, lost: 0 };
+    tips.forEach(t => {
+      const norm = normalizeCategory(t.category);
+      if (norm !== category) return;
+      if (dateFilter !== null && !isSameDay(t.publishDate, dateFilter)) return;
+      counts.all++;
+      if (t.status === 'won') counts.won++;
+      else if (t.status === 'lost') counts.lost++;
+      else counts.pending++;
+    });
+    return counts;
   }, [tips, category, dateFilter]);
 
   // Count tips in each category across the active date scope
@@ -129,13 +173,43 @@ export function Tips() {
 
   const isToday = dateFilter !== null && isSameDay(dateFilter, Date.now());
   
-  const statusColor = (status: string) => {
+  const renderStatusBadge = (status: TipStatus | string) => {
     switch (status) {
-      case 'won': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'lost': return 'bg-rose-50 text-rose-700 border-rose-200';
-      case 'void': return 'bg-slate-100 text-slate-700 border-slate-200';
-      case 'postponed': return 'bg-amber-50 text-amber-700 border-amber-200';
-      default: return 'bg-cyan-50 text-cyan-800 border-cyan-200'; // pending
+      case 'won':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-2xs">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>WON</span>
+          </span>
+        );
+      case 'lost':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-red-50 text-red-700 border border-red-300 shadow-2xs">
+            <XCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+            <span>LOST</span>
+          </span>
+        );
+      case 'void':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-300 shadow-2xs">
+            <AlertTriangle className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <span>VOID</span>
+          </span>
+        );
+      case 'postponed':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+            <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span>POSTPONED</span>
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/90 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            <span>PENDING</span>
+          </span>
+        );
     }
   };
 
@@ -213,6 +287,22 @@ export function Tips() {
           
           {/* Mobile Bottom Blend */}
           <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent md:hidden pointer-events-none"></div>
+
+          {/* Interactive Slide Indicator Dots */}
+          <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5 bg-slate-950/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
+            {TIPS_SLIDES.map((slide, i) => (
+              <button
+                key={slide.id}
+                onClick={() => setActiveSlide(i)}
+                className={cn(
+                  "h-1.5 rounded-full transition-all cursor-pointer",
+                  activeSlide === i ? "w-6 bg-rose-500" : "w-2 bg-white/50 hover:bg-white"
+                )}
+                title={slide.team}
+                aria-label={`Go to slide ${i + 1}: ${slide.team}`}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Content Box */}
@@ -352,6 +442,69 @@ export function Tips() {
         </div>
       </div>
 
+      {/* RESULT STATUS FILTER TABS */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 px-0.5">
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs">
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={cn(
+              "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+              statusFilter === 'all'
+                ? "bg-slate-900 text-white shadow-2xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            )}
+          >
+            All Results ({statusCounts.all})
+          </button>
+          <button
+            onClick={() => setStatusFilter('won')}
+            className={cn(
+              "px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1",
+              statusFilter === 'won'
+                ? "bg-emerald-600 text-white shadow-2xs"
+                : "text-emerald-700 hover:bg-emerald-50"
+            )}
+          >
+            <CheckCircle2 size={13} />
+            Won ({statusCounts.won})
+          </button>
+          <button
+            onClick={() => setStatusFilter('pending')}
+            className={cn(
+              "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1",
+              statusFilter === 'pending'
+                ? "bg-blue-600 text-white shadow-2xs"
+                : "text-blue-700 hover:bg-blue-50"
+            )}
+          >
+            <Clock size={13} />
+            Pending ({statusCounts.pending})
+          </button>
+          <button
+            onClick={() => setStatusFilter('lost')}
+            className={cn(
+              "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1",
+              statusFilter === 'lost'
+                ? "bg-red-600 text-white shadow-2xs"
+                : "text-red-700 hover:bg-red-50"
+            )}
+          >
+            <XCircle size={13} />
+            Lost ({statusCounts.lost})
+          </button>
+        </div>
+
+        {/* Win Rate Summary Pill */}
+        {statusCounts.all > 0 && statusCounts.won > 0 && (
+          <div className="hidden sm:flex items-center gap-1.5 text-xs font-black text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+            <CheckCircle2 size={14} className="text-emerald-600" />
+            <span>
+              Win Rate: {Math.round((statusCounts.won / (statusCounts.won + statusCounts.lost || 1)) * 100)}%
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* CONTENT FEED */}
       <div>
         {loading ? (
@@ -431,10 +584,57 @@ export function Tips() {
                       {new Date(tip.publishDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full border text-xs font-black uppercase tracking-wide ${statusColor(tip.status)}`}>
-                    {tip.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {renderStatusBadge(tip.status)}
+                  </div>
                 </div>
+
+                {/* Result Settlement Status Banner */}
+                {tip.status === 'won' && (
+                  <div className="bg-gradient-to-r from-emerald-50 via-emerald-100/40 to-white border-b border-emerald-200/90 px-5 py-2.5 flex items-center justify-between text-xs animate-in fade-in">
+                    <div className="flex items-center gap-2 text-emerald-800 font-black">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>RESULT CONFIRMED: BET WON!</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[11px] font-black uppercase text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                      <span>Settled</span>
+                      {tip.odds && <span>• {tip.odds.toFixed(2)}x Profit</span>}
+                    </div>
+                  </div>
+                )}
+                {tip.status === 'lost' && (
+                  <div className="bg-red-50/70 border-b border-red-200/70 px-5 py-2 flex items-center justify-between text-xs text-red-800 font-bold">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="w-4 h-4 text-red-500 shrink-0" />
+                      <span>Result Confirmed: Bet Lost</span>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-red-600 bg-red-100/80 px-2.5 py-0.5 rounded-full border border-red-200">
+                      Settled
+                    </span>
+                  </div>
+                )}
+                {(tip.status === 'void' || tip.status === 'postponed') && (
+                  <div className="bg-amber-50/70 border-b border-amber-200/70 px-5 py-2 flex items-center justify-between text-xs text-amber-900 font-bold">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>{tip.status === 'void' ? 'Match Void / Stake Refunded' : 'Match Postponed / Rescheduled'}</span>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                      Post-Match Review
+                    </span>
+                  </div>
+                )}
+                {(!tip.status || tip.status === 'pending') && (
+                  <div className="bg-blue-50/40 border-b border-blue-100 px-5 py-2 flex items-center justify-between text-xs text-blue-900 font-bold">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                      <span>In Play / Awaiting Match Conclusion</span>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-blue-600 bg-blue-100/60 px-2 py-0.5 rounded-full">
+                      Awaiting Settlement
+                    </span>
+                  </div>
+                )}
 
                 <CardContent className="p-0">
                   <div className="divide-y divide-slate-100">
@@ -489,6 +689,12 @@ export function Tips() {
                               onClick={() => {
                                 navigator.clipboard.writeText(tip.bookingCode!);
                                 toast.success('Booking code copied: ' + tip.bookingCode);
+                                logActivity({
+                                  action: 'TIP_CODE_COPIED',
+                                  category: 'tips',
+                                  description: `Copied booking code "${tip.bookingCode}" for ${tip.category || 'VIP'} tip`,
+                                  details: { tipId: tip.id, bookingCode: tip.bookingCode, category: tip.category }
+                                });
                               }}
                               className="ml-1 text-cyan-700 hover:text-cyan-900 transition-colors cursor-pointer"
                               title="Copy Booking Code"
@@ -506,14 +712,76 @@ export function Tips() {
                     </div>
                   )}
                 </CardContent>
+
+                {/* Admin Quick Result Confirmation Toolbar (Visible to Admins & Editors) */}
+                {isAdminOrEditor && (
+                  <div className="bg-gradient-to-r from-amber-50/90 via-slate-50 to-amber-50/50 border-t border-amber-200/90 p-3 px-5 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-1.5 text-xs font-black text-amber-900">
+                      <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Admin Bet Settlement:</span>
+                      <span className="text-[10px] font-semibold text-slate-500 hidden sm:inline">(Click to confirm result after games)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus(tip.id, 'won')}
+                        className={cn(
+                          "px-3 py-1 rounded-lg text-xs font-black uppercase transition-all cursor-pointer flex items-center gap-1",
+                          tip.status === 'won' ? "bg-emerald-600 text-white shadow-xs" : "bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300"
+                        )}
+                        title="Confirm Bet Won"
+                      >
+                        <CheckCircle2 size={12} />
+                        Won
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus(tip.id, 'lost')}
+                        className={cn(
+                          "px-3 py-1 rounded-lg text-xs font-black uppercase transition-all cursor-pointer flex items-center gap-1",
+                          tip.status === 'lost' ? "bg-red-600 text-white shadow-xs" : "bg-white hover:bg-red-50 text-red-700 border border-red-300"
+                        )}
+                        title="Confirm Bet Lost"
+                      >
+                        <XCircle size={12} />
+                        Lost
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus(tip.id, 'void')}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-black uppercase transition-all cursor-pointer",
+                          tip.status === 'void' ? "bg-slate-700 text-white shadow-xs" : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-300"
+                        )}
+                        title="Mark Void / Refunded"
+                      >
+                        Void
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus(tip.id, 'pending')}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-black uppercase transition-all cursor-pointer",
+                          tip.status === 'pending' ? "bg-blue-600 text-white shadow-xs" : "bg-white hover:bg-blue-50 text-blue-700 border border-blue-300"
+                        )}
+                        title="Reset to Pending"
+                      >
+                        Pending
+                      </button>
+                    </div>
+                  </div>
+                )}
               </Card>
             ))}
           </div>
         )}
       </div>
 
+      {/* Technology Partner Spotlight */}
+      <JirvinhoAdBanner variant="compact" className="mt-8" />
+
       {/* DISCLAIMER */}
-      <div className="mt-12 bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3 text-xs sm:text-sm text-slate-500">
+      <div className="mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3 text-xs sm:text-sm text-slate-500">
         <Info className="flex-shrink-0 mt-0.5 text-slate-400" size={18} />
         <div className="space-y-1">
           <p>

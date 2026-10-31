@@ -45,8 +45,10 @@ import uclQuizBg from '../assets/images/quiz_ucl_trophy_1790185490017.jpg';
 import worldCupQuizBg from '../assets/images/quiz_world_cup_1790185501476.jpg';
 import premierLeagueQuizBg from '../assets/images/quiz_premier_league_1790185513108.jpg';
 import superstarsQuizBg from '../assets/images/quiz_superstars_arena_1790185526312.jpg';
+import quizTrophyGlory from '../assets/images/quiz_trophy_glory_1793101111914.jpg';
 
 const QUIZ_HERO_SLIDES = [
+  { id: 'glory', title: 'Grand Championship Victory & Golden Glory', image: quizTrophyGlory },
   { id: 'ucl', title: 'UEFA Champions League Glory', image: uclQuizBg },
   { id: 'worldcup', title: 'FIFA World Cup Final', image: worldCupQuizBg },
   { id: 'pl', title: 'Premier League Title Race', image: premierLeagueQuizBg },
@@ -443,6 +445,8 @@ export function FootballQuiz() {
             </div>
           </div>
 
+
+
           {/* 2. GAME CONFIGURATION & CATEGORY SELECTOR */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 w-full min-w-0">
             
@@ -829,14 +833,14 @@ export function FootballQuiz() {
               </div>
 
               {/* KICK OFF BUTTON: POSITIONED RIGHT AFTER SELECTING CATEGORY & MATCH CONDITIONS */}
-              <div className="bg-white rounded-2xl sm:rounded-3xl md:rounded-[32px] p-4 sm:p-6 md:p-8 shadow-xl shadow-slate-200/50 border border-slate-200/80 w-full min-w-0">
+              <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-lg border border-slate-200/90 w-full min-w-0">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 w-full min-w-0">
                   <div className="flex items-center gap-3 sm:gap-4 w-full min-w-0">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-red-600 to-red-700 text-white flex items-center justify-center font-bold shadow-lg shadow-red-600/30 shrink-0">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-bold shadow-lg shadow-emerald-600/30 shrink-0">
                       <PlayCircle className="w-6 h-6 sm:w-7 sm:h-7" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-red-600 bg-red-50 px-2.5 py-0.5 sm:py-1 rounded-full border border-red-100 inline-block">
+                      <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-0.5 sm:py-1 rounded-full border border-emerald-200 inline-block">
                         Setup Complete
                       </span>
                       <h3 className="text-base sm:text-xl font-black text-slate-900 tracking-tight mt-1 truncate">
@@ -852,48 +856,58 @@ export function FootballQuiz() {
                     type="button"
                     onClick={startQuiz}
                     disabled={transitioning}
-                    className="w-full sm:w-auto group relative inline-flex items-center justify-center gap-2.5 sm:gap-3 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white px-6 sm:px-9 py-3.5 sm:py-4 rounded-2xl font-black text-base sm:text-lg hover:from-red-500 hover:to-red-600 transition-all shadow-[0_10px_25px_rgba(239,68,68,0.35)] hover:shadow-[0_12px_30px_rgba(239,68,68,0.5)] hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                    className="w-full sm:w-auto group relative inline-flex items-center justify-center gap-2.5 sm:gap-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white px-7 sm:px-10 py-4 rounded-2xl font-black text-base sm:text-lg hover:from-emerald-500 hover:to-teal-500 transition-all shadow-[0_10px_25px_rgba(16,185,129,0.35)] hover:shadow-[0_12px_30px_rgba(16,185,129,0.5)] hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                   >
                     {transitioning ? (
                       <span className="flex items-center gap-2">
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Entering Arena...
+                        Entering Stadium...
                       </span>
                     ) : (
                       <>
                         <PlayCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white group-hover:scale-110 transition-transform shrink-0" /> 
-                        <span>Kick Off Quiz</span>
+                        <span>Kick Off Match</span>
                       </>
                     )}
                   </button>
                 </div>
               </div>
 
+
             </div>
 
             {/* Right Col: Stats, Multiplayer Card & Hall of Fame */}
             <div className="space-y-5 sm:space-y-8 w-full min-w-0">
               
-              {/* User Arena Stats - Always complete on mobile */}
+              {/* User Arena Stats - Cumulative Points & Records */}
               <div className="bg-white rounded-2xl sm:rounded-3xl md:rounded-[32px] p-4 sm:p-6 shadow-sm border border-slate-200/80 w-full min-w-0">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                     <Activity className="w-4 h-4 text-red-500 shrink-0"/> Career Records
                   </h3>
-                  <span className="text-[10px] font-bold text-slate-400">Arena Stats</span>
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Cumulative Scoring</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full min-w-0">
-                  <div className="bg-slate-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-slate-100 min-w-0">
-                    <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase mb-0.5 sm:mb-1 truncate">High Score</p>
-                    <p className="text-xl sm:text-3xl font-black text-slate-900 truncate">
-                      {userStats ? userStats.bestScore : 0} <span className="text-xs text-slate-400 font-bold">pts</span>
+                <div className="grid grid-cols-3 gap-2 sm:gap-2.5 w-full min-w-0 text-center">
+                  <div className="bg-rose-50/60 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-rose-100 min-w-0">
+                    <p className="text-[9px] sm:text-[10px] font-bold text-rose-700 uppercase mb-0.5 truncate">Total Points</p>
+                    <p className="text-lg sm:text-2xl font-black text-rose-950 truncate">
+                      {userStats?.totalScore ?? (userStats?.bestScore || 0)} <span className="text-[10px] text-rose-600 font-bold">pts</span>
                     </p>
+                    <span className="text-[9px] font-semibold text-rose-500 hidden sm:inline">All games added</span>
                   </div>
-                  <div className="bg-slate-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-slate-100 min-w-0">
-                    <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase mb-0.5 sm:mb-1 truncate">Quizzes Taken</p>
-                    <p className="text-xl sm:text-3xl font-black text-slate-900 truncate">
+                  <div className="bg-slate-50 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-100 min-w-0">
+                    <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase mb-0.5 truncate">Quizzes Taken</p>
+                    <p className="text-lg sm:text-2xl font-black text-slate-900 truncate">
                       {userStats ? userStats.totalQuizzes : 0}
                     </p>
+                    <span className="text-[9px] font-semibold text-slate-400 hidden sm:inline">Matches played</span>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-100 min-w-0">
+                    <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase mb-0.5 truncate">Best Match</p>
+                    <p className="text-lg sm:text-2xl font-black text-slate-900 truncate">
+                      {userStats ? userStats.bestScore : 0} <span className="text-[10px] text-slate-400 font-bold">pts</span>
+                    </p>
+                    <span className="text-[9px] font-semibold text-slate-400 hidden sm:inline">Single game</span>
                   </div>
                 </div>
               </div>
@@ -939,7 +953,7 @@ export function FootballQuiz() {
                         </div>
                       </div>
                       <p className="text-[11px] text-slate-400 font-medium truncate">
-                        Live Sync • Updated {formatTimeSince(lastLeaderboardUpdated)}
+                        Cumulative Points • Every point earned adds to your rank
                       </p>
                     </div>
                   </div>
@@ -1269,9 +1283,9 @@ export function FootballQuiz() {
                 <div className="w-10 h-10 mx-auto mb-2 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
                   <Star className="w-5 h-5 fill-rose-500 text-rose-500" />
                 </div>
-                <p className="text-[11px] text-rose-800 font-extrabold uppercase tracking-wider mb-0.5">Match Points</p>
-                <p className="text-2xl sm:text-3xl font-black text-slate-950">{finalResult.score} <span className="text-sm font-bold text-slate-400">pts</span></p>
-                <span className="text-[11px] font-bold text-rose-600">⚽ {finalResult.correctAnswers} Goals Scored</span>
+                <p className="text-[11px] text-rose-800 font-extrabold uppercase tracking-wider mb-0.5">Points Earned</p>
+                <p className="text-2xl sm:text-3xl font-black text-rose-600">+{finalResult.score} <span className="text-sm font-bold text-slate-400">pts</span></p>
+                <span className="text-[11px] font-bold text-emerald-600">✓ Added to Leaderboard</span>
               </div>
             </div>
             
@@ -1279,23 +1293,24 @@ export function FootballQuiz() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-3.5">
               <button
                 onClick={() => { setGameState('landing'); startQuiz(); }}
-                className="flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-base transition-all shadow-md shadow-rose-600/25 hover:-translate-y-0.5 cursor-pointer"
+                className="flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-base transition-all shadow-md shadow-emerald-600/30 hover:-translate-y-0.5 cursor-pointer active:scale-95"
               >
                 <RotateCcw className="w-5 h-5" /> Play Again
               </button>
               <button
                 onClick={() => setGameState('review')}
-                className="flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl bg-cyan-50 hover:bg-cyan-100 text-cyan-900 border border-cyan-200 font-black text-base transition-all shadow-2xs hover:-translate-y-0.5 cursor-pointer"
+                className="flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-base transition-all shadow-sm hover:-translate-y-0.5 cursor-pointer active:scale-95"
               >
-                <CheckCircle2 className="w-5 h-5 text-cyan-600" /> Review Answers
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" /> Review Answers
               </button>
               <button
                 onClick={() => setGameState('landing')}
-                className="flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-base border border-slate-200/80 transition-colors cursor-pointer"
+                className="flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-base border border-slate-200/80 transition-colors cursor-pointer active:scale-95"
               >
-                <LayoutGrid className="w-5 h-5" /> Change Category
+                <LayoutGrid className="w-5 h-5 text-slate-600" /> Change Category
               </button>
             </div>
+
           </div>
         </div>
       </div>

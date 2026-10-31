@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { FotMobWidget } from '../components/sports/FotMobWidget';
+import { JirvinhoAdBanner } from '../components/ads/JirvinhoAdBanner';
 
 export function Livescore() {
   const [viewMode, setViewMode] = useState<'live' | 'highlights'>('live');
@@ -77,6 +78,11 @@ export function Livescore() {
         >
           <RotateCw className={cn("w-4 h-4", isVideoLoading && viewMode === 'highlights' && "animate-spin text-rose-600")} />
         </button>
+      </div>
+
+      {/* Matchday Technology Sponsor Banner */}
+      <div className="shrink-0 w-full px-0.5">
+        <JirvinhoAdBanner variant="matchday" />
       </div>
 
       {/* Main Preview Area: Vertical, spacious, maximizes vertical screen real estate for all matches */}

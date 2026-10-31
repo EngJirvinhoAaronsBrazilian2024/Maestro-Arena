@@ -80,6 +80,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           favoriteTeams: data.favorite_teams || [],
           createdAt: data.created_at,
         };
+        try {
+          localStorage.setItem('insforge_user', JSON.stringify(mappedData));
+        } catch {}
         setUserData(mappedData);
       } else {
         // User is authenticated in auth.users, but missing public.users record:
@@ -99,14 +102,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.warn("Could not insert user profile in fetchUserData:", insertErr);
         }
         
-        setUserData({
+        const newMappedData: UserData = {
           id: newUserData.id,
           email: newUserData.email,
           displayName: newUserData.display_name,
           role: role as any,
           favoriteTeams: [],
           createdAt: newUserData.created_at
-        });
+        };
+        try {
+          localStorage.setItem('insforge_user', JSON.stringify(newMappedData));
+        } catch {}
+        setUserData(newMappedData);
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -117,6 +124,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      const current = userData;
+      if (current?.email) {
+        fetch('/api/activity/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: current.id,
+            userEmail: current.email,
+            userName: current.displayName,
+            action: 'AUTH_LOGOUT',
+            category: 'auth',
+            description: `${current.displayName || current.email} signed out of Maestro Arena`
+          })
+        }).catch(() => {});
+      }
+      try {
+        localStorage.removeItem('insforge_user');
+      } catch {}
       await insforge.auth.signOut();
     } catch (error) {
       console.error('Logout error', error);

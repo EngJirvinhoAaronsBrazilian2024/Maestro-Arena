@@ -17,6 +17,7 @@ import scorebatRoutes from "./src/server/routes/scorebatRoutes.js";
 import fotmobRoutes from "./src/server/routes/fotmobRoutes.js";
 import besoccerRoutes from "./src/server/routes/besoccerRoutes.js";
 import { registerMatchSocket } from "./src/server/services/h2hManager.js";
+import { autoIngestFootballNews } from "./src/server/services/autoNewsService.js";
 
 // Clean up tsx injected relative globals which break Vite ESM plugins (like vite-plugin-pwa)
 if (typeof (globalThis as any).__dirname !== "undefined") {
@@ -49,6 +50,10 @@ app.use("/api/quiz", quizRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/tips", tipsRoutes);
 app.use("/api/admin", adminRoutes);
+app.post("/api/activity/log", (req, res, next) => {
+  req.url = "/activity-logs";
+  adminRoutes(req, res, next);
+});
 
 // Articles / News public and admin API proxy
 app.all("/api/articles", (req, res, next) => {
@@ -65,6 +70,10 @@ app.all("/api/news/articles", (req, res, next) => {
 });
 app.all("/api/news/articles/:id", (req, res, next) => {
   req.url = `/articles/${req.params.id}`;
+  adminRoutes(req, res, next);
+});
+app.all("/api/news/auto-sync", (req, res, next) => {
+  req.url = "/news/auto-sync";
   adminRoutes(req, res, next);
 });
 app.use("/api/feedback", (req, res, next) => {
@@ -262,6 +271,20 @@ async function startServer() {
 
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT} (HTTP & WebSocket)`);
+
+    // Initial non-blocking football news sync (runs 5 seconds after server boots)
+    setTimeout(() => {
+      autoIngestFootballNews({ maxItems: 12 }).catch((err) =>
+        console.warn("[AutoNews] Boot sync notice:", err)
+      );
+    }, 5000);
+
+    // Periodic automated sync every 90 minutes
+    setInterval(() => {
+      autoIngestFootballNews({ maxItems: 10 }).catch((err) =>
+        console.warn("[AutoNews] Periodic sync notice:", err)
+      );
+    }, 90 * 60 * 1000);
   });
 
   server.on("error", (err: any) => {

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Brain, FileText, LogOut, LayoutDashboard, ChevronLeft, Menu, X, ShieldCheck, Target, Bell, Star, Award, HelpCircle } from 'lucide-react';
+import { Users, Brain, FileText, LogOut, LayoutDashboard, ChevronLeft, Menu, X, ShieldCheck, Target, Bell, Star, Award, HelpCircle, Activity } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 import { UserAvatar } from '../ui/UserAvatar';
 
 const adminNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
+  { icon: Activity, label: 'Activity Logs', path: '/admin/activity' },
   { icon: FileText, label: 'News Manager', path: '/admin/news' },
   { icon: Brain, label: 'Quiz Manager', path: '/admin/quiz' },
   { icon: Target, label: 'Tips Manager', path: '/admin/tips' },
@@ -34,12 +35,19 @@ export function AdminLayout() {
     navigate('/login');
   };
 
+  const adminContentRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (adminContentRef.current) {
+      adminContentRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
+
   if (loading || !userData) return null;
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-[#E6F0FA] via-[#D1E0F0] to-[#B8CCE4] font-sans">
+    <div className="flex min-h-screen bg-gradient-to-br from-[#EAF7ED] via-[#D5EEDC] to-[#BFDEC8] font-sans">
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 z-50 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-md px-4 py-3 flex justify-between items-center shadow-xs">
+      <div className="md:hidden fixed top-0 z-50 w-full border-b border-emerald-200/80 bg-[#EAF7ED]/95 backdrop-blur-md px-4 py-3 flex justify-between items-center shadow-xs">
         <div className="flex items-center gap-2.5 font-bold text-slate-900">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-rose-600 to-red-600 text-white shadow-sm shadow-rose-600/25">
             <ShieldCheck className="h-5 w-5" />
@@ -155,9 +163,12 @@ export function AdminLayout() {
 
       {/* Main Content Area */}
       <main className="flex-1 w-full flex flex-col min-w-0 pt-16 md:pt-0">
-        <div className="flex-1 overflow-y-auto px-1.5 sm:px-3 md:px-4 py-2 sm:py-3 w-full max-w-7xl mx-auto">
+        <div 
+          ref={adminContentRef}
+          className="flex-1 overflow-y-auto px-1.5 sm:px-3 md:px-4 py-2 sm:py-3 w-full max-w-7xl mx-auto"
+        >
           {/* Big bold red border with increased weight and shading */}
-          <div className="border-[5px] sm:border-[6px] border-rose-600 rounded-2xl sm:rounded-3xl p-1.5 sm:p-2.5 md:p-3.5 shadow-xl shadow-rose-600/20 bg-white/10 min-w-0 h-full">
+          <div className="border-[7px] sm:border-[8px] md:border-[10px] border-rose-600 rounded-2xl sm:rounded-3xl p-1.5 sm:p-2.5 md:p-3.5 shadow-xl shadow-rose-600/20 bg-white/10 min-w-0 h-full">
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}

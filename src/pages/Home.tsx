@@ -9,12 +9,16 @@ import { useArticles } from '../services/news/hooks';
 import { insforge } from '../lib/insforge';
 import { toast } from 'sonner';
 import { LiveScoresSection } from '../components/sports/LiveScoresSection';
+import { MatchdayCountdownWidget } from '../components/sports/MatchdayCountdownWidget';
+import { JirvinhoAdBanner } from '../components/ads/JirvinhoAdBanner';
+import heroEliteStrikers from '../assets/images/hero_elite_strikers_1793101072833.jpg';
+import heroMatchdayGoal from '../assets/images/hero_matchday_goal_1793101085530.jpg';
+import headerStarsDuel from '../assets/images/header_stars_duel_1793196097607.jpg';
+import headerStadiumRoar from '../assets/images/header_stadium_roar_1793196109962.jpg';
+import headerTrophyLift from '../assets/images/header_trophy_lift_1793196123407.jpg';
 import heroImage from '../assets/images/football_stars_hero_2026_1788809874968.jpg';
 import madridTrioHero from '../assets/images/madrid_trio_hero_1789305202373.jpg';
 import premiumHeroAlt from '../assets/images/premium_hero_players_alt_1789403921046.jpg';
-import nextgenStars2027 from '../assets/images/nextgen_stars_2027_1790182919231.jpg';
-import starsEra2027 from '../assets/images/stars_era_2027_1790182517204.jpg';
-import uclStars2027 from '../assets/images/ucl_stars_2027_1790182533293.jpg';
 import stadiumBg from '../assets/images/stadium_atmosphere_1789303106987.jpg';
 import premiumTexture from '../assets/images/premium_football_texture_1789303121778.jpg';
 import imgCel1 from '../assets/images/player_celebration_1_1788810962003.jpg';
@@ -184,22 +188,34 @@ export function Home() {
 
   const HERO_PRESETS = [
     {
-      id: 'stars-2027',
-      name: '2027 Superstars',
-      subtitle: 'Yamal · Mbappé · Haaland · Bellingham',
-      image: starsEra2027,
+      id: 'elite-strikers-2027',
+      name: 'Global Football Elite',
+      subtitle: 'Mbappé · Haaland · Kane · Vinicius Jr',
+      image: heroEliteStrikers,
     },
     {
-      id: 'nextgen-2027',
-      name: 'Next-Gen Stars',
-      subtitle: 'Vinicius Jr · Bukayo Saka · Jamal Musiala',
-      image: nextgenStars2027,
+      id: 'matchday-voltage',
+      name: 'Matchday Voltage',
+      subtitle: 'Live Drama · Stadium Atmosphere · Thrilling Goals',
+      image: heroMatchdayGoal,
     },
     {
-      id: 'ucl-clash',
-      name: 'Champions Arena',
-      subtitle: 'Yamal vs Bellingham European Duel',
-      image: uclStars2027,
+      id: 'stars-duel',
+      name: 'Clash of Titans',
+      subtitle: 'European Championship Duel · Floodlit Arena',
+      image: headerStarsDuel,
+    },
+    {
+      id: 'stadium-roar',
+      name: 'Matchday Victory',
+      subtitle: 'Team Glory · Roaring Stadium · Decisive Goals',
+      image: headerStadiumRoar,
+    },
+    {
+      id: 'trophy-glory',
+      name: 'Champions Glory',
+      subtitle: 'Silverware Triumph · Confetti & Celebration',
+      image: headerTrophyLift,
     },
   ];
   const [activeHeroPreset, setActiveHeroPreset] = useState(0);
@@ -297,40 +313,94 @@ export function Home() {
            
            {/* Mobile Bottom Blend: Clean gradient transition into the content below */}
            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent md:hidden pointer-events-none"></div>
+
+           {/* Mobile Slide Indicator Pill */}
+           <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/70 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold md:hidden shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+              <span>{HERO_PRESETS[activeHeroPreset]?.name || 'Matchday Arena'}</span>
+           </div>
         </div>
 
         {/* Content Box (Comfortable padding on mobile, smooth overlay on desktop) */}
-        <div className="relative z-10 w-full md:w-[70%] flex flex-col items-start justify-end p-5 sm:p-7 md:p-12 lg:p-16 md:mt-auto">
+        <div className="relative z-10 w-full md:w-[70%] flex flex-col items-start justify-end p-4 sm:p-6 md:p-12 lg:p-16 md:mt-auto">
           
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-50/90 backdrop-blur-md border border-cyan-200/80 mb-4 md:mb-6 w-max shadow-2xs animate-in fade-in slide-in-from-bottom-2 duration-700">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-50/90 backdrop-blur-md border border-rose-200/80 mb-3 md:mb-6 w-max shadow-2xs animate-in fade-in slide-in-from-bottom-2 duration-700">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
             </span>
-            <span className="text-xs font-black uppercase tracking-wider text-cyan-800">
+            <span className="text-xs font-black uppercase tracking-wider text-rose-800">
               Live Arena
             </span>
           </div>
           
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-3 md:mb-4 leading-[1.15] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-            <span className="text-slate-950">The </span>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-2.5 md:mb-4 leading-[1.15] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+            <span className="text-slate-900">The </span>
             <span className="text-rose-600 relative inline-block">
               Beautiful
               <svg className="absolute -bottom-1 md:-bottom-2 w-full h-2 md:h-3 text-rose-200 -z-10" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M0 15 Q 50 0 100 15" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/></svg>
             </span>
-            <span className="text-slate-950"> Game <br className="hidden md:block" /></span>
+            <span className="text-slate-900"> Game <br className="hidden md:block" /></span>
             <span className="bg-gradient-to-r from-rose-600 to-red-600 bg-clip-text text-transparent font-extrabold italic pr-1"> Unites </span>
-            <span className="text-slate-950">Us</span>
+            <span className="text-slate-900">Us</span>
           </h1>
           
-          <p className="text-base md:text-lg text-slate-700 font-medium mb-6 md:mb-8 max-w-lg leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 drop-shadow-xs">
-            Follow live matches, explore competitions, play quizzes and get the latest football updates all in one place.
+          <p className="text-xs sm:text-base md:text-lg text-slate-600 font-medium mb-4 md:mb-8 max-w-lg leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+            Follow live matches, explore competitions, play quizzes and get verified football updates all in one place.
           </p>
 
-          <div className="flex flex-wrap gap-3 md:gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 w-full sm:w-auto">
+          {/* MOBILE-ONLY NEW POSITIONING: High-Impact Twin Action Command Deck */}
+          <div className="grid grid-cols-2 gap-2.5 w-full md:hidden animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
             <Link 
               to="/livescore"
-              className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-bold rounded-2xl transition-all shadow-md shadow-cyan-600/25 hover:from-cyan-500 hover:to-teal-500 hover:-translate-y-0.5 whitespace-nowrap cursor-pointer"
+              className="flex flex-col justify-between p-3.5 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 text-white shadow-md shadow-blue-600/20 active:scale-[0.98] transition-all relative overflow-hidden group border border-blue-400/30"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/20 backdrop-blur-xs text-[10px] font-black uppercase tracking-wider text-white">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
+                  Live
+                </span>
+                <div className="p-1.5 rounded-xl bg-white/15 text-white">
+                  <Activity className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-black tracking-tight leading-tight flex items-center justify-between">
+                  <span>Explore Matches</span>
+                  <ArrowRight className="w-3.5 h-3.5 opacity-90 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                </p>
+                <p className="text-[11px] text-blue-100/90 font-medium mt-0.5">Scores & Fixtures</p>
+              </div>
+            </Link>
+
+            <Link 
+              to="/quiz"
+              className="flex flex-col justify-between p-3.5 rounded-2xl bg-gradient-to-br from-red-600 via-rose-600 to-red-700 text-white shadow-md shadow-red-600/20 active:scale-[0.98] transition-all relative overflow-hidden group border border-red-400/40"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/20 border border-white/30 text-[10px] font-black uppercase tracking-wider text-white">
+                  <Trophy className="w-2.5 h-2.5 text-amber-300" />
+                  Arena
+                </span>
+                <div className="p-1.5 rounded-xl bg-white/15 text-white">
+                  <Trophy className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-black tracking-tight leading-tight flex items-center justify-between text-white">
+                  <span>Play Quiz</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-white/90 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                </p>
+                <p className="text-[11px] text-red-100 font-medium mt-0.5">Trivia & Rewards</p>
+              </div>
+            </Link>
+          </div>
+
+          {/* DESKTOP BUTTONS: Elegant horizontal layout on md+ */}
+          <div className="hidden md:flex flex-wrap gap-3 md:gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 w-full sm:w-auto">
+            <Link 
+              to="/livescore"
+              className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white font-bold rounded-2xl transition-all shadow-md shadow-blue-600/25 hover:from-blue-500 hover:to-indigo-600 hover:-translate-y-0.5 whitespace-nowrap cursor-pointer"
             >
               <Activity className="w-4 h-4" />
               Explore Matches
@@ -338,13 +408,21 @@ export function Home() {
             </Link>
             <Link 
               to="/quiz"
-              className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-rose-600 via-rose-600 to-red-600 text-white font-bold rounded-2xl transition-all shadow-md shadow-rose-600/25 hover:from-rose-500 hover:to-red-500 hover:-translate-y-0.5 whitespace-nowrap cursor-pointer"
+              className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white font-bold rounded-2xl transition-all shadow-md shadow-red-600/25 hover:from-red-500 hover:to-rose-600 hover:-translate-y-0.5 whitespace-nowrap cursor-pointer border border-red-500/40"
             >
               <Trophy className="w-4 h-4 text-amber-300" />
-              Enter Arena
+              Play Quiz
             </Link>
           </div>
         </div>
+      </div>
+
+      {/* Upcoming Marquee Fixture / Derby Countdown */}
+      <MatchdayCountdownWidget />
+
+      {/* Sleek Sponsor Banner Under Match Countdown */}
+      <div className="w-full max-w-4xl mx-auto my-2">
+        <JirvinhoAdBanner variant="featured" badgeText="Official Matchday & Technology Partner" />
       </div>
 
       {/* Live Football Scores & Real-Time Matches */}

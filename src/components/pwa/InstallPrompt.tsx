@@ -88,7 +88,7 @@ export function InstallPrompt() {
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex flex-col p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
-            <img src="/pwa-192x192.png" alt="Maestro Arena" className="w-12 h-12 rounded-xl shadow-sm border border-gray-100" />
+            <img src="/logo.png" alt="Maestro Arena" className="w-12 h-12 rounded-xl object-contain" />
             <div>
               <h3 className="font-bold text-gray-900 leading-tight">Install Maestro Arena</h3>
               <p className="text-sm text-gray-500 mt-0.5">Get faster access and the full mobile app experience.</p>

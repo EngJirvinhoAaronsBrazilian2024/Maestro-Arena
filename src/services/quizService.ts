@@ -1,6 +1,7 @@
 import { QuizQuestion, QuizCategory, QuizDifficulty, QuizResult, QuizUserStats } from '../types/quiz';
 import { insforge } from '../lib/insforge';
 import { MOCK_QUESTIONS } from './mockQuestions';
+import { logActivity } from './activityLogger';
 
 // In-memory set to track recently played questions in the current session so players don't get repetitive questions
 const sessionPlayedQuestionKeys = new Set<string>();
@@ -281,6 +282,21 @@ export async function saveQuizResult(result: QuizResult): Promise<void> {
           last_played_at: Date.now()
         }]);
     }
+
+    // Real-time activity log dispatch
+    logActivity({
+      userId: result.userId,
+      action: 'QUIZ_PLAYED',
+      category: 'quiz',
+      description: `Completed ${result.category || 'Football'} Quiz (${result.difficulty || 'Medium'}) — Score: ${result.score} pts`,
+      details: {
+        score: result.score,
+        total: result.totalQuestions,
+        correctAnswers: result.correctAnswers,
+        category: result.category,
+        difficulty: result.difficulty
+      }
+    });
   } catch (err) {
     console.error('Error saving quiz result to DB:', err);
     // Fallback to local
@@ -416,149 +432,104 @@ export async function getLeaderboard(limitCount: number = 10, mode: 'solo' | 'h2
     // Filter valid results from real users (excluding automated test runners)
     const validResults = (results || []).filter((r: any) => !isTest(r.user_id));
 
-    if (mode === 'h2h') {
-      // Rivalry tab: rank by cumulative total points earned across all quiz play
-      const userTotals = new Map<string, QuizResult>();
+    // Aggregate and add EVERY point collected by each player across all games played
+    const userTotals = new Map<string, QuizResult>();
 
-      // Sum all quiz results per user
-      validResults.forEach((r: any) => {
-        const username = userMap.get(r.user_id) || r.username || 'Player';
-        const existing = userTotals.get(r.user_id) || {
-          userId: r.user_id,
+    validResults.forEach((r: any) => {
+      const username = userMap.get(r.user_id) || r.username || 'Player';
+      const score = Number(r.score) || 0;
+      const total = Number(r.total) || 10;
+      const correct = Math.round(score / 10);
+
+      const existing = userTotals.get(r.user_id) || {
+        userId: r.user_id,
+        username,
+        score: 0,
+        totalQuestions: 0,
+        correctAnswers: 0,
+        incorrectAnswers: 0,
+        timeTaken: 45,
+        category: r.category || 'All Themes',
+        difficulty: r.difficulty || 'Expert',
+        date: r.completed_at || Date.now()
+      };
+
+      // Add every single collected point to the cumulative total
+      existing.score += score;
+      existing.totalQuestions += total;
+      existing.correctAnswers += correct;
+      existing.incorrectAnswers += Math.max(0, total - correct);
+      existing.date = Math.max(existing.date || 0, r.completed_at || 0);
+      userTotals.set(r.user_id, existing);
+    });
+
+    // Also merge stats table cumulative totals if higher
+    (statsData || []).forEach((s: any) => {
+      if (!s.user_id || isTest(s.user_id)) return;
+      const username = userMap.get(s.user_id) || 'Player';
+      const statScore = Number(s.total_score) || 0;
+      const statCorrect = Number(s.correct_answers) || Math.round(statScore / 10);
+      const statQuizzes = Number(s.quizzes_taken) || 1;
+
+      if (userTotals.has(s.user_id)) {
+        const item = userTotals.get(s.user_id)!;
+        item.score = Math.max(item.score, statScore);
+        item.correctAnswers = Math.max(item.correctAnswers, statCorrect);
+        item.totalQuestions = Math.max(item.totalQuestions, statQuizzes * 10);
+      } else if (statScore > 0) {
+        userTotals.set(s.user_id, {
+          userId: s.user_id,
           username,
-          score: 0,
-          totalQuestions: 0,
-          correctAnswers: 0,
-          incorrectAnswers: 0,
+          score: statScore,
+          totalQuestions: statQuizzes * 10,
+          correctAnswers: statCorrect,
+          incorrectAnswers: Math.max(0, (statQuizzes * 10) - statCorrect),
           timeTaken: 45,
-          category: r.category || 'All Themes',
-          difficulty: r.difficulty || 'Expert',
-          date: r.completed_at || Date.now()
-        };
-        existing.score += Number(r.score) || 0;
-        existing.totalQuestions += Number(r.total) || 10;
-        userTotals.set(r.user_id, existing);
-      });
+          category: 'All Themes',
+          difficulty: 'Expert',
+          date: s.last_played_at || Date.now()
+        });
+      }
+    });
 
-      // Also merge stats table cumulative totals if higher
-      (statsData || []).forEach((s: any) => {
-        if (!s.user_id || isTest(s.user_id)) return;
-        const username = userMap.get(s.user_id) || 'Player';
-        const statScore = Number(s.total_score) || 0;
-        const statCorrect = Number(s.correct_answers) || 0;
-        if (userTotals.has(s.user_id)) {
-          const item = userTotals.get(s.user_id)!;
-          item.score = Math.max(item.score, statScore);
-          item.correctAnswers = Math.max(item.correctAnswers, statCorrect);
-        } else {
-          userTotals.set(s.user_id, {
-            userId: s.user_id,
-            username,
-            score: statScore,
-            totalQuestions: (Number(s.quizzes_taken) || 1) * 10,
-            correctAnswers: statCorrect,
-            incorrectAnswers: Math.max(0, ((Number(s.quizzes_taken) || 1) * 10) - statCorrect),
-            timeTaken: 45,
-            category: 'All Themes',
-            difficulty: 'Expert',
-            date: s.last_played_at || Date.now()
-          });
-        }
-      });
+    const userList = Array.from(userTotals.values()).filter(u => (Number(u.score) || 0) > 0);
 
-      const userList = Array.from(userTotals.values()).filter(u => (Number(u.score) || 0) > 0);
-
-      // Check local storage for any guest score
-      try {
-        const localStats = localStorage.getItem('quizStats');
-        if (localStats) {
-          const parsed = JSON.parse(localStats);
-          const guestScore = parsed.totalScore || parsed.bestScore || 0;
-          if (guestScore > 0 && parsed.userId) {
-            const matchedUser = userList.find(u => u.userId === parsed.userId);
-            if (matchedUser) {
-              matchedUser.score = Math.max(matchedUser.score, guestScore);
-            } else {
-              userList.push({
-                userId: parsed.userId,
-                username: parsed.username || 'You (Local)',
-                score: guestScore,
-                totalQuestions: parsed.totalQuestions || 10,
-                correctAnswers: parsed.correctAnswers || 10,
-                incorrectAnswers: 0,
-                timeTaken: 35,
-                category: 'Mixed Arena',
-                difficulty: 'Medium',
-                date: Date.now()
-              });
-            }
+    // Check local storage for any guest score and add to user totals
+    try {
+      const localStats = localStorage.getItem('quizStats');
+      if (localStats) {
+        const parsed = JSON.parse(localStats);
+        const guestScore = parsed.totalScore || parsed.bestScore || 0;
+        if (guestScore > 0 && parsed.userId) {
+          const matchedUser = userList.find(u => u.userId === parsed.userId);
+          if (matchedUser) {
+            matchedUser.score = Math.max(matchedUser.score, guestScore);
+          } else {
+            userList.push({
+              userId: parsed.userId,
+              username: parsed.username || 'You (Local)',
+              score: guestScore,
+              totalQuestions: parsed.totalQuestions || 10,
+              correctAnswers: parsed.correctAnswers || 10,
+              incorrectAnswers: 0,
+              timeTaken: 35,
+              category: 'Mixed Arena',
+              difficulty: 'Medium',
+              date: Date.now()
+            });
           }
         }
-      } catch (e) {}
+      }
+    } catch (e) {}
 
-      // STRICT SORT: Highest points strictly first
-      userList.sort((a, b) => {
-        const diff = (Number(b.score) || 0) - (Number(a.score) || 0);
-        if (diff !== 0) return diff;
-        return (Number(b.correctAnswers) || 0) - (Number(a.correctAnswers) || 0);
-      });
+    // STRICT SORT: Highest cumulative points strictly first
+    userList.sort((a, b) => {
+      const diff = (Number(b.score) || 0) - (Number(a.score) || 0);
+      if (diff !== 0) return diff;
+      return (Number(b.correctAnswers) || 0) - (Number(a.correctAnswers) || 0);
+    });
 
-      return userList.slice(0, limitCount);
-    } else {
-      // Solo match tab: rank by each registered user's best single quiz match score
-      const userBest = new Map<string, QuizResult>();
-
-      validResults.forEach((r: any) => {
-        const username = userMap.get(r.user_id) || r.username || 'Player';
-        const score = Number(r.score) || 0;
-        if (!userBest.has(r.user_id) || score > userBest.get(r.user_id)!.score) {
-          userBest.set(r.user_id, {
-            userId: r.user_id,
-            username,
-            score,
-            totalQuestions: Number(r.total) || 10,
-            correctAnswers: Math.round(score / 10),
-            incorrectAnswers: Math.max(0, (Number(r.total) || 10) - Math.round(score / 10)),
-            timeTaken: r.time_taken || 40,
-            category: r.category || 'Premier League',
-            difficulty: r.difficulty || 'Medium',
-            date: r.completed_at || Date.now()
-          });
-        }
-      });
-
-      // Also merge any registered user who has points in statsData
-      (statsData || []).forEach((s: any) => {
-        if (!s.user_id || isTest(s.user_id)) return;
-        const username = userMap.get(s.user_id) || 'Player';
-        const statScore = Number(s.total_score) || 0;
-        if (!userBest.has(s.user_id)) {
-          userBest.set(s.user_id, {
-            userId: s.user_id,
-            username,
-            score: statScore,
-            totalQuestions: 10,
-            correctAnswers: Math.min(10, Math.round(statScore / 10)),
-            incorrectAnswers: 0,
-            timeTaken: 40,
-            category: 'All Themes',
-            difficulty: 'Medium',
-            date: s.last_played_at || Date.now()
-          });
-        }
-      });
-
-      const userList = Array.from(userBest.values()).filter(u => (Number(u.score) || 0) > 0);
-
-      // STRICT SORT: Highest points first
-      userList.sort((a, b) => {
-        const diff = (Number(b.score) || 0) - (Number(a.score) || 0);
-        if (diff !== 0) return diff;
-        return (Number(b.correctAnswers) || 0) - (Number(a.correctAnswers) || 0);
-      });
-
-      return userList.slice(0, limitCount);
-    }
+    return userList.slice(0, limitCount);
   } catch (err) {
     console.error('Error fetching leaderboard:', err);
     return [];

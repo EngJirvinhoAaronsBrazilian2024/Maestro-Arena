@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import { getInsforgeAdmin } from '../insforgeAdmin.js';
+import { recordActivity, getActivityLogs, getActivityStats, clearActivityLogs, deleteActivityLogsByIds } from '../services/activityService.js';
+import { autoIngestFootballNews } from '../services/autoNewsService.js';
+
 
 const router = Router();
 
@@ -782,16 +785,32 @@ router.post('/quiz/seed', async (req, res) => {
   }
 });
 
-// -------------------------------------------------------------
-// 8. ARTICLES (NEWS) MANAGEMENT
-// -------------------------------------------------------------
+// Auto-sync endpoint triggered on news page load or 1-click sync
+router.all('/news/auto-sync', async (req, res) => {
+  try {
+    const force = req.query.force === 'true' || req.body?.force === true;
+    const result = await autoIngestFootballNews({ force, maxItems: 12 });
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.get('/articles', async (req, res) => {
   try {
     const admin = getInsforgeAdmin();
-    const { data, error } = await admin.database
+    let { data, error } = await admin.database
       .from('articles')
       .select('*')
       .order('published_at', { ascending: false });
+
+    // If database has very few articles or latest is older than 3 hours, trigger auto-ingest
+    const latestPub = data && data.length > 0 ? Number(data[0].published_at || 0) : 0;
+    const isOld = Date.now() - latestPub > 3 * 60 * 60 * 1000;
+    if (!data || data.length < 5 || isOld) {
+      autoIngestFootballNews({ maxItems: 10 }).catch((e) => console.warn('[AutoNews] Background check:', e));
+    }
+
     if (error) throw error;
 
     const normalized = (data || []).map((a: any) => ({
@@ -960,6 +979,132 @@ router.delete('/articles/:id', async (req, res) => {
   } catch (err: any) {
     console.error('Error in DELETE /api/admin/articles:', err);
     res.status(500).json({ error: err.message || 'Failed to delete article' });
+  }
+});
+
+// -------------------------------------------------------------
+// 9. ACTIVITY LOGS & APP USAGE MONITORING
+// -------------------------------------------------------------
+router.get('/activity-logs', async (req, res) => {
+  try {
+    const { category, search, action, limit, offset, sync } = req.query;
+    const result = await getActivityLogs({
+      category: category as string,
+      search: search as string,
+      action: action as string,
+      limit: limit ? parseInt(limit as string, 10) : 50,
+      offset: offset ? parseInt(offset as string, 10) : 0,
+      forceSync: sync === 'true'
+    });
+    const stats = await getActivityStats();
+    res.json({ ...result, stats });
+  } catch (err: any) {
+    console.error('Error fetching activity logs:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/activity-stats', async (req, res) => {
+  try {
+    const stats = await getActivityStats();
+    res.json(stats);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/activity-logs', async (req, res) => {
+  try {
+    const { userId, userEmail, userName, action, category, description, details } = req.body;
+    if (!action || !description) {
+      return res.status(400).json({ error: 'Action and description are required' });
+    }
+    const ip = req.headers['x-forwarded-for']?.toString().split(',')[0] || req.socket.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'Unknown Device';
+
+    const log = await recordActivity({
+      userId: userId || 'anonymous',
+      userEmail: userEmail || 'visitor@maestroarena.com',
+      userName: userName || userEmail?.split('@')[0] || 'App User',
+      action,
+      category: category || 'engagement',
+      description,
+      details,
+      ip,
+      userAgent
+    });
+
+    res.json({ success: true, log });
+  } catch (err: any) {
+    console.error('Error recording activity log:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/activity-logs', async (req, res) => {
+  try {
+    const { scope, ids } = req.body || {};
+    
+    // If specific log IDs are provided, delete them
+    if (Array.isArray(ids) && ids.length > 0) {
+      const result = await deleteActivityLogsByIds(ids);
+      return res.json(result);
+    }
+
+    // Otherwise clear by scope ('all' | 'older_24h' | 'older_7d' | 'keep_50')
+    const clearScope = (scope || req.query.scope || 'all') as 'all' | 'older_24h' | 'older_7d' | 'keep_50';
+    const result = await clearActivityLogs({ scope: clearScope });
+    res.json(result);
+  } catch (err: any) {
+    console.error('Error in DELETE /activity-logs:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/activity-logs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Log ID is required' });
+    const result = await deleteActivityLogsByIds([id]);
+    res.json(result);
+  } catch (err: any) {
+    console.error('Error in DELETE /activity-logs/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+router.get('/activity-logs/export', async (req, res) => {
+  try {
+    const { category, search, action } = req.query;
+    const { logs } = await getActivityLogs({
+      category: category as string,
+      search: search as string,
+      action: action as string,
+      limit: 5000,
+      offset: 0
+    });
+
+    // Generate CSV
+    const headers = ['Timestamp', 'Date & Time', 'User Name', 'User Email', 'Category', 'Action', 'Description', 'IP Address', 'User Agent'];
+    const rows = logs.map(l => [
+      l.timestamp,
+      new Date(l.timestamp).toISOString(),
+      `"${(l.userName || '').replace(/"/g, '""')}"`,
+      `"${(l.userEmail || '').replace(/"/g, '""')}"`,
+      l.category,
+      l.action,
+      `"${(l.description || '').replace(/"/g, '""')}"`,
+      l.ip || '',
+      `"${(l.userAgent || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="maestro_activity_logs_${Date.now()}.csv"`);
+    res.send(csvContent);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -150,11 +150,11 @@ export function Settings() {
               value={feedback}
               onChange={e => setFeedback(e.target.value)}
               placeholder="What's on your mind?" 
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px]"
+              className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px] text-sm text-slate-900"
             />
             <button 
               disabled={submitting}
-              className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-lg hover:bg-slate-800 transition font-bold disabled:opacity-50"
+              className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-lg hover:bg-slate-800 transition font-medium text-sm"
             >
               {submitting ? 'Sending...' : <><Send size={16} /> Submit Feedback</>}
             </button>

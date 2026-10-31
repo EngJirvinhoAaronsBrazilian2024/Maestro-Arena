@@ -208,7 +208,15 @@ export function AdminDashboard() {
       </div>
 
       {/* QUICK ACTIONS NAVIGATION */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <Link to="/admin/activity" className="p-3.5 bg-white rounded-2xl border border-slate-200/80 hover:border-emerald-300 hover:shadow-xs transition-all flex flex-col items-center text-center group cursor-pointer">
+          <div className="p-2 rounded-xl bg-teal-50 text-teal-600 group-hover:scale-110 transition-transform mb-2">
+            <Activity size={18} />
+          </div>
+          <span className="text-xs font-black text-slate-900">Activity Logs</span>
+          <span className="text-[10px] text-emerald-600 font-bold">Live Monitor</span>
+        </Link>
+
         <Link to="/admin/news" className="p-3.5 bg-white rounded-2xl border border-slate-200/80 hover:border-rose-300 hover:shadow-xs transition-all flex flex-col items-center text-center group cursor-pointer">
           <div className="p-2 rounded-xl bg-blue-50 text-blue-600 group-hover:scale-110 transition-transform mb-2">
             <FileText size={18} />

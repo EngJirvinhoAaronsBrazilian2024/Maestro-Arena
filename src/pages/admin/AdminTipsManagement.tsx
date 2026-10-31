@@ -608,6 +608,16 @@ export function AdminTipsManagement() {
                   Lost
                 </button>
                 <button
+                  onClick={() => handleQuickStatus(tip.id, 'void')}
+                  className={cn(
+                    "px-2 py-1 rounded-lg text-[10px] font-black uppercase transition-colors cursor-pointer",
+                    tip.status === 'void' ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300"
+                  )}
+                  title="Mark as Void / Refunded"
+                >
+                  Void
+                </button>
+                <button
                   onClick={() => handleQuickStatus(tip.id, 'pending')}
                   className={cn(
                     "px-2 py-1 rounded-lg text-[10px] font-black uppercase transition-colors cursor-pointer",

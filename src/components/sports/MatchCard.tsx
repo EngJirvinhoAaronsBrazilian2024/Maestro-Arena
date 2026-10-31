@@ -29,79 +29,82 @@ export function MatchCard({ match, className, onSelectMatch, isSelected }: Match
   const matchFavoriteId = `match_${match.id}`;
 
   const cardClasses = cn(
-    "flex flex-col relative rounded-[28px] border bg-white/80 backdrop-blur-xl p-5 shadow-[0_8px_32px_rgba(15,23,42,0.04)] transition-all overflow-hidden group text-left",
+    "flex flex-col relative rounded-[28px] border bg-white/70 backdrop-blur-md p-5 border-white/60 shadow-[0_8px_32px_rgba(15,23,42,0.04)] hover:shadow-emerald-500/10 hover:border-emerald-300/60 transition-all overflow-hidden group text-left",
     isSelected
-      ? "border-rose-400 ring-2 ring-rose-600 bg-rose-50/20 shadow-[0_12px_36px_rgba(225,29,72,0.12)]"
-      : "border-slate-200/80 hover:border-rose-200/80 hover:shadow-[0_12px_36px_rgba(225,29,72,0.08)]",
+      ? "border-emerald-500 ring-2 ring-emerald-500 bg-emerald-50/20 shadow-[0_12px_36px_rgba(16,185,129,0.15)]"
+      : "hover:border-emerald-300/80",
     className
   );
 
   const cardContent = (
     <>
-      {/* Live Indicator Pill (Centered Top) */}
+      {/* Dynamic Live Match Clock Badge / Status Ribbon (Centered Top) */}
       <div className="absolute top-3.5 left-1/2 -translate-x-1/2 z-10">
         {match.status === 'live' ? (
-          <div className="flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200 px-3 py-1 text-[10px] font-black text-rose-700 shadow-xs">
+          <div className="flex items-center gap-1.5 rounded-full bg-emerald-50/95 border border-emerald-300/80 px-3 py-1 text-[10px] font-black text-emerald-800 shadow-[0_0_12px_rgba(16,185,129,0.35)] backdrop-blur-md">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-80"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
             </span>
-            <span className="uppercase tracking-wider">Live {match.matchMinute || ""}</span>
+            <span className="uppercase tracking-wider font-mono">
+              {match.matchMinute ? `${match.matchMinute}' • ` : ''}LIVE
+            </span>
           </div>
         ) : match.status === 'scheduled' ? (
-          <div className="flex items-center gap-1 rounded-full bg-white/90 border border-slate-200/80 px-3 py-1 text-[10px] font-bold text-slate-600 shadow-xs">
+          <div className="flex items-center gap-1 rounded-full bg-slate-50/90 border border-slate-200/80 px-3 py-1 text-[10px] font-bold text-slate-700 shadow-2xs backdrop-blur-md">
             {formatTimeEAT(match.startTime)}
           </div>
         ) : (
-          <div className="flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-[10px] font-black uppercase text-slate-700 shadow-xs">
+          <div className="flex items-center gap-1 rounded-full bg-slate-100/90 border border-slate-200/80 px-3 py-1 text-[10px] font-black uppercase text-slate-800 shadow-2xs backdrop-blur-md">
             Full Time
           </div>
         )}
       </div>
 
       <div className="flex items-center justify-between mt-4">
-        {/* Home Team */}
-        <div className="flex flex-col items-center flex-1 gap-2 z-10">
+        {/* Home Team: Name Above Badge */}
+        <div className="flex flex-col items-center flex-1 gap-1.5 z-10 px-1 min-w-0">
+          <span className="text-xs sm:text-sm font-bold text-center text-slate-900 leading-tight group-hover:text-emerald-700 transition-colors truncate max-w-full">
+            {match.homeTeam?.name || 'Home'}
+          </span>
           {match.homeTeam?.logoUrl ? (
-            <img src={match.homeTeam.logoUrl} alt={match.homeTeam?.name || 'Home'} className="h-12 w-12 object-contain drop-shadow-xs transition-transform group-hover:scale-105" loading="lazy" />
+            <img src={match.homeTeam.logoUrl} alt={match.homeTeam?.name || 'Home'} className="h-14 w-14 sm:h-16 sm:w-16 object-contain drop-shadow-xs transition-transform group-hover:scale-105" loading="lazy" />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 border border-slate-200 text-slate-800 text-lg font-bold">
+            <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-slate-100 border border-slate-200 text-slate-800 text-lg font-bold">
               {match.homeTeam?.shortName || (match.homeTeam?.name ? match.homeTeam.name.charAt(0) : 'H')}
             </div>
           )}
-          <span className="text-sm font-bold text-center text-slate-900 leading-tight group-hover:text-rose-600 transition-colors">
-            {match.homeTeam?.name || 'Home'}
-            <span className="block text-[10px] text-slate-500 font-medium mt-0.5">Home</span>
-          </span>
+          <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Home</span>
         </div>
 
-        {/* Central Score Hex/Pill */}
-        <div className="flex flex-col items-center justify-center mx-2 z-10">
-          <div className="flex items-center justify-center gap-3 rounded-2xl bg-white/95 border border-slate-200/80 px-4 py-2.5 shadow-xs min-w-[88px]">
-            <span className="text-xl font-black text-slate-950">{match.homeScore !== null && match.homeScore !== undefined ? match.homeScore : '-'}</span>
+        {/* Central Glassmorphic Score Ribbon */}
+        <div className="flex flex-col items-center justify-center mx-2 z-10 shrink-0">
+          <div className="flex items-center justify-center gap-3 rounded-2xl bg-white/75 backdrop-blur-md border border-white/60 px-4 py-2.5 shadow-xs hover:shadow-emerald-500/10 transition-shadow min-w-[88px]">
+            <span className="text-xl font-black text-slate-950 font-mono">{match.homeScore !== null && match.homeScore !== undefined ? match.homeScore : '-'}</span>
             <span className="text-base font-semibold text-slate-300">:</span>
-            <span className="text-xl font-black text-slate-950">{match.awayScore !== null && match.awayScore !== undefined ? match.awayScore : '-'}</span>
+            <span className="text-xl font-black text-slate-950 font-mono">{match.awayScore !== null && match.awayScore !== undefined ? match.awayScore : '-'}</span>
           </div>
           {onSelectMatch && (
-            <span className="mt-1.5 text-[10px] font-bold text-rose-600 uppercase tracking-wider group-hover:underline">
+            <span className="mt-1.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wider group-hover:underline">
               Match Centre
             </span>
           )}
         </div>
 
-        {/* Away Team */}
-        <div className="flex flex-col items-center flex-1 gap-2 z-10">
+
+        {/* Away Team: Name Above Badge */}
+        <div className="flex flex-col items-center flex-1 gap-1.5 z-10 px-1 min-w-0">
+          <span className="text-xs sm:text-sm font-bold text-center text-slate-900 leading-tight group-hover:text-rose-600 transition-colors truncate max-w-full">
+            {match.awayTeam?.name || 'Away'}
+          </span>
           {match.awayTeam?.logoUrl ? (
-            <img src={match.awayTeam.logoUrl} alt={match.awayTeam?.name || 'Away'} className="h-12 w-12 object-contain drop-shadow-xs transition-transform group-hover:scale-105" loading="lazy" />
+            <img src={match.awayTeam.logoUrl} alt={match.awayTeam?.name || 'Away'} className="h-14 w-14 sm:h-16 sm:w-16 object-contain drop-shadow-xs transition-transform group-hover:scale-105" loading="lazy" />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 border border-slate-200 text-slate-800 text-lg font-bold">
+            <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-slate-100 border border-slate-200 text-slate-800 text-lg font-bold">
               {match.awayTeam?.shortName || (match.awayTeam?.name ? match.awayTeam.name.charAt(0) : 'A')}
             </div>
           )}
-          <span className="text-sm font-bold text-center text-slate-900 leading-tight group-hover:text-rose-600 transition-colors">
-            {match.awayTeam?.name || 'Away'}
-            <span className="block text-[10px] text-slate-500 font-medium mt-0.5">Away</span>
-          </span>
+          <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Away</span>
         </div>
       </div>
       

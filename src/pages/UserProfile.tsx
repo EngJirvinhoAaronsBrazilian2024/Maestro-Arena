@@ -34,26 +34,28 @@ export function UserProfile() {
               <User className="h-12 w-12" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">{profile.displayName || 'Sports Fan'}</h2>
+              <h2 className="text-xl font-bold text-slate-900">{profile.displayName || 'Sports Fan'}</h2>
               <div className="flex items-center justify-center gap-2 mt-1 text-sm text-slate-500">
                 <Mail className="h-4 w-4" />
-                {user.email}
+                <span>{user.email}</span>
               </div>
-              <div className="flex items-center justify-center gap-2 mt-1 text-sm text-slate-500">
-                <Shield className="h-4 w-4" />
-                Role: <span className="capitalize">{profile.role}</span>
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                  <Shield className="h-3 w-3" />
+                  {profile.role || 'Member'}
+                </span>
               </div>
             </div>
 
-            <div className="w-full space-y-2 pt-4 border-t border-slate-200">
+            <div className="w-full space-y-2 pt-4 border-t border-slate-100">
               {profile.role === 'admin' && (
-                <Link to="/admin" className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-50 text-red-700 px-4 py-2 text-sm font-medium hover:bg-red-100 transition-colors">
+                <Link to="/admin" className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-50 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-100">
                   <Shield className="h-4 w-4" />
                   Admin Dashboard
                 </Link>
               )}
               {(profile.role === 'admin' || profile.role === 'editor') && (
-                <Link to="/editor" className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-50 text-purple-700 px-4 py-2 text-sm font-medium hover:bg-purple-100 transition-colors">
+                <Link to="/editor" className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-50 text-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-100">
                   <User className="h-4 w-4" />
                   Editor Dashboard
                 </Link>
@@ -62,7 +64,7 @@ export function UserProfile() {
 
             <button 
               onClick={() => logout()}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
             >
               <LogOut className="h-4 w-4" />
               Sign Out
@@ -73,7 +75,7 @@ export function UserProfile() {
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Bookmark className="h-5 w-5 text-blue-500" />
+              <Bookmark className="h-5 w-5 text-blue-600" />
               Saved Articles ({bookmarks.length})
             </CardTitle>
           </CardHeader>
@@ -81,12 +83,12 @@ export function UserProfile() {
             {bookmarks.length > 0 ? (
               <div className="space-y-3">
                 {bookmarks.map((articleId) => (
-                  <div key={articleId} className="flex items-center justify-between rounded-lg border border-slate-200 p-4">
+                  <div key={articleId} className="flex items-center justify-between rounded-lg border border-slate-100 p-4 hover:border-slate-200">
                     <div>
-                      <Link to={`/news/${articleId}`} className="font-medium hover:text-blue-600 transition-colors">
+                      <Link to={`/news/${articleId}`} className="font-semibold text-slate-900 hover:text-blue-600">
                         View Saved Article
                       </Link>
-                      <p className="text-xs text-slate-500 mt-1">ID: {articleId}</p>
+                      <p className="text-xs text-slate-500">ID: {articleId}</p>
                     </div>
                   </div>
                 ))}

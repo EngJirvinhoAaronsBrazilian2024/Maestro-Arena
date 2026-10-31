@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from 'motion/react';
 export function AuthLayout() {
   const location = useLocation();
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-[#E6F0FA] via-[#D1E0F0] to-[#B8CCE4]">
-      <div className="w-full flex flex-col">
+    <div className="w-full min-h-screen bg-[#EAF7ED] flex flex-col">
+      <div className="w-full flex-1 flex flex-col">
         <AnimatePresence mode="wait">
         <motion.div
           key={location.pathname}
@@ -14,7 +14,7 @@ export function AuthLayout() {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
           transition={{ duration: 0.2 }}
-          className="w-full"
+          className="w-full min-h-full flex flex-col"
         >
           <Outlet />
         </motion.div>
