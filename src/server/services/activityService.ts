@@ -19,9 +19,14 @@ export interface ActivityLog {
 const DATA_DIR = path.resolve(process.cwd(), 'src/server/data');
 const DATA_FILE = path.join(DATA_DIR, 'activity_logs.json');
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+let isDiskWritable = true;
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch (err) {
+  isDiskWritable = false;
+  console.warn('Read-only filesystem detected (serverless mode); using in-memory activity logs cache.');
 }
 
 // Live real-time event cache
@@ -31,6 +36,7 @@ const SYNC_INTERVAL_MS = 15000; // Sync from InsForge database every 15s
 
 // Load saved live real-time logs from disk (ignoring any legacy fake seed logs)
 function loadRealTimeLogsFromDisk(): ActivityLog[] {
+  if (!isDiskWritable && !fs.existsSync(DATA_FILE)) return [];
   try {
     if (fs.existsSync(DATA_FILE)) {
       const content = fs.readFileSync(DATA_FILE, 'utf-8');
@@ -47,14 +53,17 @@ function loadRealTimeLogsFromDisk(): ActivityLog[] {
 }
 
 function saveRealTimeLogsToDisk(logs: ActivityLog[]) {
+  if (!isDiskWritable) return;
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(logs, null, 2), 'utf-8');
   } catch (err) {
-    console.error('Error saving real-time activity logs to disk:', err);
+    isDiskWritable = false;
+    console.warn('Notice saving activity logs to disk (retaining in-memory):', err);
   }
 }
 
 realTimeLogs = loadRealTimeLogsFromDisk();
+
 
 /**
  * Fetch and merge genuine user activities directly from InsForge database

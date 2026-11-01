@@ -8,12 +8,15 @@ const rawUrl =
 
 const insforgeUrl = rawUrl.replace(/\/+$/, '');
 
+const DEFAULT_ANON_KEY = 'anon_fc98b941a6711608bf6990d912cb96f57f19ef44a54d851bd8318b7ef870ecfc';
+
 const insforgeAnonKey =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_INSFORGE_ANON_KEY) ||
   (typeof process !== 'undefined' && process.env?.VITE_INSFORGE_ANON_KEY) ||
-  'dummy-anon-key';
+  DEFAULT_ANON_KEY;
 
 export const insforge = createClient({
   baseUrl: insforgeUrl,
   anonKey: insforgeAnonKey,
 });
+
