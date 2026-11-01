@@ -43,7 +43,7 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center p-0 sm:p-4 md:p-6 bg-slate-950 font-sans overflow-x-hidden">
+    <div className="h-[100dvh] w-full relative flex items-center justify-center p-0 sm:p-4 md:p-6 bg-slate-950 font-sans overflow-hidden">
       
       {/* Background: Santiago Bernabéu Stadium in HD */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -56,8 +56,8 @@ export function Login() {
         <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[1.5px]"></div>
       </div>
 
-      {/* Phone/Tablet Form Container with Light Green Theme */}
-      <div className="z-10 w-full max-w-[440px] sm:max-w-[460px] min-h-screen sm:min-h-0 bg-[#EAF7ED] sm:rounded-[40px] shadow-[0_25px_70px_rgba(0,0,0,0.65)] border border-emerald-200/80 overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-500">
+      {/* Phone/Tablet Form Container with Light Green Theme - Scaled to fit mobile screens perfectly without scrolling */}
+      <div className="z-10 w-full max-w-[440px] sm:max-w-[460px] bg-[#EAF7ED] rounded-[36px] sm:rounded-[40px] shadow-[0_25px_70px_rgba(0,0,0,0.65)] border border-emerald-200/80 overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-500 origin-center scale-[0.82] xs:scale-[0.88] sm:scale-100">
         
         {/* Top Hero Section: Superstars Header with Authentic Logo Shield */}
         <div className="relative w-full aspect-[949/560] shrink-0 overflow-hidden bg-[#EAF7ED]">

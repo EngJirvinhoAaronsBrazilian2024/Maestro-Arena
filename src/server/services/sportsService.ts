@@ -29,8 +29,9 @@ let lastSuspensionCheck = 0;
 const SUSPENSION_COOLDOWN_MS = 30 * 60 * 1000; // 30 mins cooldown when API reports errors
 
 export function getEffectiveSportsApiKey(): string | undefined {
-  const apiKey = process.env.SPORTS_API_KEY || "278254bf84a897c55de3a7f518d15f2e";
+  const apiKey = process.env.SPORTS_API_KEY;
   if (!apiKey || apiKey.trim() === '') return undefined;
+
   if (isApiKeySuspended) {
     if (Date.now() - lastSuspensionCheck > SUSPENSION_COOLDOWN_MS) {
       isApiKeySuspended = false;

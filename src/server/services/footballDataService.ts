@@ -74,12 +74,15 @@ const DEFAULT_LIVE_TTL_MS = 60 * 1000;       // 60 seconds when matches are LIVE
 const DEFAULT_REGULAR_TTL_MS = 180 * 1000;   // 3 minutes when no matches are live
 const MINIMUM_REFRESH_INTERVAL_MS = 15 * 1000; // Protect against spamming manual refresh
 
-function getApiKey(): string {
-  // Read from server-side environment variable with reliable default token
-  const defaultToken = 'bd016ef5ab6a414996e4a9b01c3f90ee';
-  const key = process.env.FOOTBALL_DATA_API_KEY || defaultToken;
+function getApiKey(): string | undefined {
+  // Read purely from server-side environment variable
+  const key = process.env.FOOTBALL_DATA_API_KEY;
+  if (!key || key.trim() === '') {
+    return undefined;
+  }
   return key.trim();
 }
+
 
 
 /**
@@ -186,8 +189,9 @@ function normalizeRawMatch(raw: any): NormalizedMatch {
 async function fetchFromFootballDataOrg(): Promise<MatchesResponseData> {
   const token = getApiKey();
   if (!token) {
-    throw new Error('FOOTBALL_DATA_API_KEY is not configured on the server.');
+    return getFallbackCuratedMatches();
   }
+
 
   const endpoint = 'https://api.football-data.org/v4/matches';
   const response = await fetch(endpoint, {
