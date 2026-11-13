@@ -18,9 +18,9 @@ export function Layout() {
   }, [location.pathname]);
   
   return (
-    <div className="w-full h-screen h-[100dvh] min-h-[100dvh] max-h-[100dvh] flex flex-col bg-gradient-to-br from-[#EAF7ED] via-[#D5EEDC] to-[#BFDEC8] overflow-hidden rounded-[22px] sm:rounded-[26px] md:rounded-[30px] border-[7px] sm:border-[8px] md:border-[10px] border-rose-600 box-border isolate shadow-[0_0_0_1px_rgba(225,29,72,0.3)]">
-      {/* Top Header at the extreme top of the enclosing red boundary */}
-      <div className="w-full shrink-0 z-40 bg-[#EAF7ED]/95 backdrop-blur-md rounded-t-[14px] sm:rounded-t-[18px]">
+    <div className="w-full h-screen h-[100dvh] min-h-[100dvh] max-h-[100dvh] flex flex-col bg-gradient-to-br from-[#EAF7ED] via-[#D5EEDC] to-[#BFDEC8] overflow-hidden">
+      {/* Top Header */}
+      <div className="w-full shrink-0 z-40 bg-[#EAF7ED]/95 backdrop-blur-md">
         <Header />
       </div>
 
@@ -52,8 +52,8 @@ export function Layout() {
               </AnimatePresence>
             </div>
 
-            {/* Bottom Navigation tabs at the bottom where the page tabs are */}
-            <div className="shrink-0 z-30 w-full rounded-b-[16px] sm:rounded-b-[20px] overflow-hidden">
+            {/* Bottom Navigation tabs */}
+            <div className="shrink-0 z-30 w-full overflow-hidden">
               <BottomNav />
             </div>
           </div>

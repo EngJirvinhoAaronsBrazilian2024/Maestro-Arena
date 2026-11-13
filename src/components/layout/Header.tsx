@@ -263,7 +263,7 @@ export function Header() {
 
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-emerald-200/70 bg-[#EAF7ED]/95 backdrop-blur-md rounded-t-[16px] sm:rounded-t-[20px]">
+    <header className="sticky top-0 z-50 w-full border-b border-emerald-200/70 bg-[#EAF7ED]/95 backdrop-blur-md">
       <div className="flex h-16 items-center px-4 md:px-6 relative">
         
         {mobileSearchOpen ? (

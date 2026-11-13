@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useArticle, useBookmarks } from '../services/news/hooks';
-import { toggleBookmark } from '../services/newsService';
+import { toggleBookmark, recordReadingHistory, getFullArticleById } from '../services/newsService';
 import { useAuth } from '../context/AuthContext';
 import { Bookmark, Share2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,23 +10,46 @@ import { JirvinhoAdBanner } from '../components/ads/JirvinhoAdBanner';
 
 export function ArticlePage() {
   const { id } = useParams<{ id: string }>();
-  const { article, isLoading } = useArticle(id || '');
+  const { article, isLoading, mutate } = useArticle(id || '');
   const { user } = useAuth();
-  const userId = user?.id || (user as any)?.uid;
+  const userId = user?.id || (user as any)?.uid || 'guest';
   const { bookmarks, mutate: mutateBookmarks } = useBookmarks(userId);
 
   const isBookmarked = bookmarks.includes(id || '');
 
+  useEffect(() => {
+    if (article && article.id) {
+      recordReadingHistory(article, userId);
+
+      const contentText = (article.content || '').trim();
+      const needsEnrichment =
+        contentText.length < 450 ||
+        contentText.includes('Follow live tactical reactions, line-ups, and post-match quotes on Maestro Arena.');
+
+      if (needsEnrichment) {
+        let active = true;
+        getFullArticleById(article.id).then((full) => {
+          if (active && full && full.content && full.content !== article.content) {
+            mutate(full, false);
+          }
+        });
+        return () => {
+          active = false;
+        };
+      }
+    }
+  }, [article?.id, userId]);
+
   const handleBookmark = async () => {
-    if (!userId || !id) return;
-    
-    // Optimistic update
-    const newBookmarks = isBookmarked 
-      ? bookmarks.filter(b => b !== id) 
+    if (!id) return;
+
+    const newBookmarks = isBookmarked
+      ? bookmarks.filter(b => b !== id)
       : [...bookmarks, id];
     mutateBookmarks(newBookmarks, false);
 
-    await toggleBookmark(userId, id, isBookmarked);
+    await toggleBookmark(userId, id, isBookmarked, article || undefined);
+    toast.success(isBookmarked ? 'Removed from Saved Stories' : 'Saved to Saved Stories', { duration: 2000 });
     mutateBookmarks();
   };
 

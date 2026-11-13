@@ -14,7 +14,7 @@ export default defineConfig(() => {
       react(), 
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
+        registerType: 'prompt',
         injectRegister: 'auto',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-icon.svg', 'logo.svg'],
         manifest: {
@@ -37,22 +37,10 @@ export default defineConfig(() => {
               purpose: 'any'
             },
             {
-              src: '/pwa-icon.svg',
-              sizes: 'any',
-              type: 'image/svg+xml',
-              purpose: 'maskable'
-            },
-            {
               src: '/pwa-192x192.png',
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any'
-            },
-            {
-              src: '/pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'maskable'
             },
             {
               src: '/pwa-512x512.png',
@@ -75,9 +63,22 @@ export default defineConfig(() => {
           globPatterns: ['**/*.{js,css,html}'],
           maximumFileSizeToCacheInBytes: 3000000,
           cleanupOutdatedCaches: true,
-          skipWaiting: true,
-          clientsClaim: true,
           runtimeCaching: [
+            {
+              urlPattern: /^\/api\/(matches|articles|sports\/transfers)/i,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'api-live-data-cache',
+                networkTimeoutSeconds: 4,
+                expiration: {
+                  maxEntries: 30,
+                  maxAgeSeconds: 24 * 60 * 60
+                },
+                cacheableResponse: {
+                  statuses: [0, 200]
+                }
+              }
+            },
             {
               urlPattern: /^https:\/\/media\.api-sports\.io\/.*/i,
               handler: 'CacheFirst',
@@ -118,6 +119,10 @@ export default defineConfig(() => {
               }
             }
           ]
+        },
+        devOptions: {
+          enabled: false,
+          type: 'module'
         }
       })
     ],

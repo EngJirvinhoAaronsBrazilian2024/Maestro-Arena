@@ -64,6 +64,10 @@ app.all("/api/articles/:id", (req, res, next) => {
   req.url = `/articles/${req.params.id}`;
   adminRoutes(req, res, next);
 });
+app.all("/api/articles/:id/full", (req, res, next) => {
+  req.url = `/articles/${req.params.id}/full`;
+  adminRoutes(req, res, next);
+});
 app.all("/api/news/articles", (req, res, next) => {
   req.url = "/articles";
   adminRoutes(req, res, next);
@@ -229,9 +233,21 @@ async function startServer() {
   const server = http.createServer(app);
 
   // WebSocket Server for Head-to-Head real-time synchronization
-  const wss = new WebSocketServer({ server, path: "/ws/h2h" });
+  const wss = new WebSocketServer({ noServer: true });
   wss.on("error", (err: any) => {
     console.warn("WebSocketServer error (handled):", err?.message || err);
+  });
+  server.on("upgrade", (req, socket, head) => {
+    try {
+      const pathname = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`).pathname;
+      if (pathname === "/ws/h2h") {
+        wss.handleUpgrade(req, socket, head, (ws) => {
+          wss.emit("connection", ws, req);
+        });
+      }
+    } catch {
+      socket.destroy();
+    }
   });
   wss.on("connection", (ws, req) => {
     try {
@@ -248,10 +264,26 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const disableHmr = process.env.DISABLE_HMR === "true";
     const vite = await createViteServer({
+      plugins: disableHmr
+        ? [
+            {
+              name: "disable-hmr-client-websocket",
+              transform(code, id) {
+                if (id.includes("vite/dist/client/client.mjs")) {
+                  return code.replace(
+                    "await wsTransport.connect(handlers);",
+                    "return;"
+                  );
+                }
+              },
+            },
+          ]
+        : [],
       server: { 
         middlewareMode: true,
-        hmr: process.env.DISABLE_HMR === "true" ? false : { server }
+        hmr: disableHmr ? false : { server }
       },
       appType: "spa",
     });

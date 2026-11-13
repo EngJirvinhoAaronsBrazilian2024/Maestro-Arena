@@ -167,8 +167,7 @@ export function AdminLayout() {
           ref={adminContentRef}
           className="flex-1 overflow-y-auto px-1.5 sm:px-3 md:px-4 py-2 sm:py-3 w-full max-w-7xl mx-auto"
         >
-          {/* Big bold red border with increased weight and shading */}
-          <div className="border-[7px] sm:border-[8px] md:border-[10px] border-rose-600 rounded-2xl sm:rounded-3xl p-1.5 sm:p-2.5 md:p-3.5 shadow-xl shadow-rose-600/20 bg-white/10 min-w-0 h-full">
+          <div className="p-1.5 sm:p-2.5 md:p-3.5 min-w-0 h-full">
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}

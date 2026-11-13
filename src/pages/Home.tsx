@@ -10,6 +10,7 @@ import { insforge } from '../lib/insforge';
 import { toast } from 'sonner';
 import { LiveScoresSection } from '../components/sports/LiveScoresSection';
 import { MatchdayCountdownWidget } from '../components/sports/MatchdayCountdownWidget';
+import { FavoriteTeamsBar } from '../components/sports/FavoriteTeamsBar';
 import { JirvinhoAdBanner } from '../components/ads/JirvinhoAdBanner';
 import heroEliteStrikers from '../assets/images/hero_elite_strikers_1793101072833.jpg';
 import heroMatchdayGoal from '../assets/images/hero_matchday_goal_1793101085530.jpg';
@@ -49,6 +50,23 @@ export function Home() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const topLeagues = [
+    {
+      name: 'National Teams',
+      teams: [
+        { id: 'team_nat_arg', type: 'team' as const, name: 'Argentina' },
+        { id: 'team_nat_bra', type: 'team' as const, name: 'Brazil' },
+        { id: 'team_nat_eng', type: 'team' as const, name: 'England' },
+        { id: 'team_nat_fra', type: 'team' as const, name: 'France' },
+        { id: 'team_nat_ger', type: 'team' as const, name: 'Germany' },
+        { id: 'team_nat_mar', type: 'team' as const, name: 'Morocco' },
+        { id: 'team_nat_nga', type: 'team' as const, name: 'Nigeria' },
+        { id: 'team_nat_por', type: 'team' as const, name: 'Portugal' },
+        { id: 'team_nat_sen', type: 'team' as const, name: 'Senegal' },
+        { id: 'team_nat_esp', type: 'team' as const, name: 'Spain' },
+        { id: 'team_nat_uga', type: 'team' as const, name: 'Uganda' },
+        { id: 'team_nat_usa', type: 'team' as const, name: 'USA' },
+      ]
+    },
     {
       name: 'Premier League',
       teams: [
@@ -424,6 +442,9 @@ export function Home() {
       <div className="w-full max-w-4xl mx-auto my-2">
         <JirvinhoAdBanner variant="featured" badgeText="Official Matchday & Technology Partner" />
       </div>
+
+      {/* Personalized Favorite Teams & Competitions Quick-Filter Bar */}
+      <FavoriteTeamsBar showMyFeedLink={true} />
 
       {/* Live Football Scores & Real-Time Matches */}
       <LiveScoresSection />

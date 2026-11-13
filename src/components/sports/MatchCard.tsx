@@ -3,8 +3,9 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Match } from '../../types/sports';
 import { cn, formatTimeEAT } from '../../lib/utils';
-import { Star, Bell } from 'lucide-react';
+import { Star, Bell, BellRing } from 'lucide-react';
 import { useFavorites } from '../../hooks/useFavorites';
+import { useNotifications } from '../../context/NotificationContext';
 
 interface MatchCardProps {
   match: Match;
@@ -16,6 +17,7 @@ interface MatchCardProps {
 
 export function MatchCard({ match, className, onSelectMatch, isSelected }: MatchCardProps) {
   const { toggleFavorite, isFavorite } = useFavorites();
+  const { toggleFollowMatch, isFollowing } = useNotifications();
 
   const handleFavoriteClick = (e: React.MouseEvent, type: 'team' | 'competition' | 'match', id: string | number, name: string, logo?: string) => {
     e.preventDefault();
@@ -23,10 +25,16 @@ export function MatchCard({ match, className, onSelectMatch, isSelected }: Match
     toggleFavorite({ id: `${type}_${id}`, type, name, logo });
   };
 
+  const handleAlertToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const label = `${match.homeTeam?.name || 'Home'} vs ${match.awayTeam?.name || 'Away'}`;
+    toggleFollowMatch(String(match.id), label);
+  };
+
   const compId = `competition_${match.competitionId}`;
-  const homeId = `team_${match.homeTeam.id}`;
-  const awayId = `team_${match.awayTeam.id}`;
   const matchFavoriteId = `match_${match.id}`;
+  const isAlertOn = isFollowing(String(match.id)) || isFavorite(matchFavoriteId);
 
   const cardClasses = cn(
     "flex flex-col relative rounded-[28px] border bg-white/70 backdrop-blur-md p-5 border-white/60 shadow-[0_8px_32px_rgba(15,23,42,0.04)] hover:shadow-emerald-500/10 hover:border-emerald-300/60 transition-all overflow-hidden group text-left",
@@ -114,20 +122,24 @@ export function MatchCard({ match, className, onSelectMatch, isSelected }: Match
          
          <div className="flex items-center gap-1.5">
            <button 
-             onClick={(e) => handleFavoriteClick(e, 'match', match.id, `${match.homeTeam?.name || 'Home'} vs ${match.awayTeam?.name || 'Away'}`)}
+             onClick={handleAlertToggle}
              className={cn(
                "transition-colors p-1.5 rounded-full border cursor-pointer",
-               isFavorite(matchFavoriteId) 
+               isAlertOn 
                  ? "bg-rose-50 border-rose-200 text-rose-600 shadow-2xs" 
                  : "bg-white/80 border-slate-200/60 text-slate-400 hover:text-rose-600 hover:bg-rose-50/50"
              )}
-             title="Follow Match"
+             title={isAlertOn ? "Match alerts enabled" : "Enable match reminders & goal alerts"}
            >
-             <Bell className={cn("h-3.5 w-3.5", isFavorite(matchFavoriteId) && "fill-rose-500 text-rose-500")} />
+             {isAlertOn ? (
+               <BellRing className="h-3.5 w-3.5 text-rose-600 animate-pulse" />
+             ) : (
+               <Bell className="h-3.5 w-3.5" />
+             )}
            </button>
            
            <button 
-             onClick={(e) => handleFavoriteClick(e, 'competition', match.competitionId, match.competitionName)}
+             onClick={(e) => handleFavoriteClick(e, 'competition', match.competitionId, match.competitionName || 'Competition')}
              className={cn(
                "transition-colors p-1.5 rounded-full border cursor-pointer",
                isFavorite(compId) 

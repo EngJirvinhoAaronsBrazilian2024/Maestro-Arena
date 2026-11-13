@@ -11,11 +11,16 @@ import {
   ChevronRight,
   Filter,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  Bell,
+  BellRing,
+  Star
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useFootballMatches, MatchFilterTab } from '../../hooks/useFootballMatches';
 import { NormalizedMatch } from '../../server/services/footballDataService';
+import { useNotifications } from '../../context/NotificationContext';
+import { useFavorites, isFavoriteTeamOrCompMatch } from '../../hooks/useFavorites';
 
 // Fallback component for team crest
 function TeamCrest({ crest, name, tla }: { crest: string | null; name: string; tla: string }) {
@@ -74,8 +79,10 @@ export function LiveScoresSection() {
     refresh,
   } = useFootballMatches();
 
-  const [activeTab, setActiveTab] = useState<MatchFilterTab>('all');
+  const [activeTab, setActiveTab] = useState<MatchFilterTab | 'pinned'>('all');
   const [selectedCompetition, setSelectedCompetition] = useState<string>('ALL');
+  const { isFollowing, toggleFollowMatch } = useNotifications();
+  const { favorites } = useFavorites();
 
   // Extract unique competitions from the match list
   const competitions = useMemo(() => {
@@ -108,6 +115,19 @@ export function LiveScoresSection() {
       list = list.filter((m) => m.status === 'UPCOMING');
     } else if (activeTab === 'finished') {
       list = list.filter((m) => m.status === 'FINISHED');
+    } else if (activeTab === 'pinned') {
+      list = list.filter((m) =>
+        Boolean(
+          isFavoriteTeamOrCompMatch(favorites, {
+            homeName: m.homeTeam.name,
+            awayName: m.awayTeam.name,
+            competitionName: m.competition.name,
+            homeId: m.homeTeam.id,
+            awayId: m.awayTeam.id,
+            competitionId: m.competition.id,
+          })
+        )
+      );
     }
 
     // Filter by competition
@@ -116,7 +136,7 @@ export function LiveScoresSection() {
     }
 
     return list;
-  }, [matches, activeTab, selectedCompetition]);
+  }, [matches, activeTab, selectedCompetition, favorites]);
 
   const lastUpdatedTime = useMemo(() => {
     if (!lastUpdated) return null;
@@ -158,7 +178,7 @@ export function LiveScoresSection() {
             </div>
             
             <p className="text-xs sm:text-sm text-slate-600 font-medium">
-              Real-time football scores across top European & world leagues powered by football-data.org
+              Real-time football scores across global leagues, cups & international tournaments
             </p>
           </div>
 
@@ -259,6 +279,21 @@ export function LiveScoresSection() {
             >
               Finished ({finishedCount})
             </button>
+
+            {favorites.length > 0 && (
+              <button
+                onClick={() => setActiveTab('pinned')}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap inline-flex items-center gap-1 cursor-pointer",
+                  activeTab === 'pinned'
+                    ? "bg-amber-500 text-white shadow-2xs"
+                    : "text-amber-700 hover:text-amber-900"
+                )}
+              >
+                <Star className={cn("w-3 h-3", activeTab === 'pinned' ? "fill-white" : "fill-amber-400 text-amber-500")} />
+                My Pinned
+              </button>
+            )}
           </div>
 
           {/* Competition Filter Pills */}
@@ -276,7 +311,7 @@ export function LiveScoresSection() {
                 All Leagues
               </button>
 
-              {competitions.slice(0, 6).map((comp) => (
+              {competitions.map((comp) => (
                 <button
                   key={comp.code}
                   onClick={() => setSelectedCompetition(comp.code)}
@@ -296,6 +331,12 @@ export function LiveScoresSection() {
                     />
                   )}
                   <span>{comp.name}</span>
+                  <span className={cn(
+                    "text-[10px] font-black px-1.5 py-0.2 rounded-full",
+                    selectedCompetition === comp.code ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                  )}>
+                    {comp.count}
+                  </span>
                 </button>
               ))}
             </div>
@@ -422,7 +463,9 @@ export function LiveScoresSection() {
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-80"></span>
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
                         </span>
-                        <span className="font-mono">{match.minute ? `${match.minute}' • ` : ''}LIVE</span>
+                        <span className="font-mono">
+                          {match.minute && match.minute !== 'LIVE' ? `${match.minute} • ` : ''}LIVE
+                        </span>
                       </div>
                     ) : match.status === 'FINISHED' ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-black uppercase tracking-wider">
@@ -483,7 +526,7 @@ export function LiveScoresSection() {
                       {match.isLive ? (
                         <span className="text-[10px] font-black text-emerald-600 mt-1.5 uppercase tracking-wider animate-pulse flex items-center gap-1 font-mono">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          {match.minute ? `${match.minute}'` : 'LIVE'}
+                          {match.minute || 'LIVE'}
                         </span>
                       ) : match.status === 'FINISHED' ? (
                         <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold mt-1.5 uppercase tracking-wider">
@@ -518,29 +561,65 @@ export function LiveScoresSection() {
                 </div>
 
                 {/* Card Footer */}
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-medium text-slate-500">
-                  <div className="flex items-center gap-1">
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px] font-medium text-slate-500">
+                  <div className="flex items-center gap-1 min-w-0">
                     {match.status === 'UPCOMING' ? (
-                      <span className="text-slate-500 flex items-center gap-1 font-semibold">
-                        <Calendar className="w-3 h-3 text-slate-400" />
+                      <span className="text-slate-500 flex items-center gap-1 font-semibold truncate">
+                        <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
                         {kickoff.date} · {kickoff.time}
                       </span>
                     ) : match.score.halfTimeHome !== null && match.score.halfTimeAway !== null ? (
-                      <span className="text-slate-500 font-medium">
+                      <span className="text-slate-500 font-medium truncate">
                         HT: {match.score.halfTimeHome} - {match.score.halfTimeAway}
                       </span>
                     ) : (
-                      <span className="text-slate-400">Regular time</span>
+                      <span className="text-slate-400 truncate">Regular time</span>
                     )}
                   </div>
 
-                  <Link
-                    to="/livescore"
-                    className="inline-flex items-center gap-0.5 font-bold text-rose-600 hover:text-rose-700 hover:underline transition-colors"
-                  >
-                    Match Centre
-                    <ChevronRight className="w-3 h-3" />
-                  </Link>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {match.status !== 'FINISHED' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleFollowMatch(
+                            String(match.id),
+                            `${match.homeTeam.shortName || match.homeTeam.name} vs ${match.awayTeam.shortName || match.awayTeam.name}`
+                          );
+                        }}
+                        className={cn(
+                          "inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold transition-all cursor-pointer",
+                          isFollowing(String(match.id))
+                            ? "bg-rose-50 border-rose-300 text-rose-700 shadow-2xs"
+                            : "bg-white border-slate-200 text-slate-600 hover:border-rose-300 hover:text-rose-600 hover:bg-rose-50/50"
+                        )}
+                        title={isFollowing(String(match.id)) ? "Turn off match alerts" : "Get 15m kick-off, goal, HT & FT alerts"}
+                        aria-label="Toggle match alerts"
+                      >
+                        {isFollowing(String(match.id)) ? (
+                          <>
+                            <BellRing className="w-3 h-3 text-rose-600 animate-pulse" />
+                            <span>Alerts On</span>
+                          </>
+                        ) : (
+                          <>
+                            <Bell className="w-3 h-3" />
+                            <span>Notify</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    <Link
+                      to="/livescore"
+                      className="inline-flex items-center gap-0.5 font-bold text-rose-600 hover:text-rose-700 hover:underline transition-colors"
+                    >
+                      Match Centre
+                      <ChevronRight className="w-3 h-3" />
+                    </Link>
+                  </div>
                 </div>
 
               </div>

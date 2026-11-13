@@ -16,6 +16,15 @@ const navItems = [
     dotColor: 'bg-rose-500'
   },
   { 
+    icon: Star, 
+    label: 'My Feed', 
+    path: '/my-feed', 
+    activeClass: 'bg-amber-50/90 text-amber-800 font-bold shadow-2xs border-l-4 border-amber-500 pl-3',
+    hoverClass: 'hover:text-amber-700 hover:bg-amber-50/40',
+    iconActiveColor: 'text-amber-500',
+    dotColor: 'bg-amber-500'
+  },
+  { 
     icon: Target, 
     label: 'Tips', 
     path: '/tips', 

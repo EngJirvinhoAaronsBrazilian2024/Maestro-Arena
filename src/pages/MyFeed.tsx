@@ -1,145 +1,246 @@
-import React, { useMemo } from 'react';
-import { useFavorites } from '../hooks/useFavorites';
-import { useLiveMatches, useUpcomingMatches, useFavoriteFixtures } from '../services/sports/hooks';
-import { useArticles } from '../services/news/hooks';
-import { MatchCard } from '../components/sports/MatchCard';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Star, Newspaper, X } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  Star,
+  Newspaper,
+  Bell,
+  BellRing,
+  Calendar,
+  Activity,
+  ChevronRight,
+  Clock
+} from 'lucide-react';
+import { useFavorites, FavoriteItem, isFavoriteTeamOrCompMatch, doesFavoriteMatchName } from '../hooks/useFavorites';
+import { useFootballMatches } from '../hooks/useFootballMatches';
+import { useArticles } from '../services/news/hooks';
+import { useNotifications } from '../context/NotificationContext';
+import { FavoriteTeamsBar } from '../components/sports/FavoriteTeamsBar';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { cn } from '../lib/utils';
 
 export function MyFeed() {
-  const { favorites, isFavorite } = useFavorites();
-  const { matches: liveMatches } = useLiveMatches();
-  const { matches: upcomingMatches } = useUpcomingMatches();
+  const { favorites } = useFavorites();
+  const { matches } = useFootballMatches();
   const { articles } = useArticles('published');
+  const { isFollowing, toggleFollowMatch } = useNotifications();
+  const [filteredFav, setFilteredFav] = useState<FavoriteItem | null>(null);
 
-  
-  const favoriteTeamIds = useMemo(() => favorites.filter(f => f.type === 'team').map(f => f.id.replace('team_', '')), [favorites]);
-  const { fixtures: favoriteFixtures } = useFavoriteFixtures(favoriteTeamIds);
-  
-  const favoriteMatches = favoriteFixtures || [];
-  
+  const scope = useMemo(
+    () => (filteredFav ? [filteredFav] : favorites),
+    [filteredFav, favorites]
+  );
 
-  const liveFavoriteMatches = favoriteMatches.filter(m => m.status === 'live');
-  const upcomingFavoriteMatches = favoriteMatches.filter(m => m.status === 'scheduled');
-
-  // Naive filter for articles: match title/content with favorite names
-  const favoriteArticles = useMemo(() => {
-    if (!articles) return [];
-    if (favorites.length === 0) return [];
-    return articles.filter(a => 
-      favorites.some(f => 
-        a.title.toLowerCase().includes(f.name.toLowerCase()) || 
-        (a.content && a.content.toLowerCase().includes(f.name.toLowerCase()))
+  const favoriteMatches = useMemo(() => {
+    if (!matches.length || scope.length === 0) return [];
+    return matches.filter((m) =>
+      Boolean(
+        isFavoriteTeamOrCompMatch(scope, {
+          homeName: m.homeTeam.name,
+          awayName: m.awayTeam.name,
+          competitionName: m.competition.name,
+          homeId: m.homeTeam.id,
+          awayId: m.awayTeam.id,
+          competitionId: m.competition.id,
+        })
       )
-    ).slice(0, 5);
-  }, [articles, favorites]);
+    );
+  }, [matches, scope]);
 
-  if (favorites.length === 0) {
+  const liveFavoriteMatches = useMemo(() => favoriteMatches.filter((m) => m.isLive), [favoriteMatches]);
+  const upcomingFavoriteMatches = useMemo(() => favoriteMatches.filter((m) => m.status === 'UPCOMING'), [favoriteMatches]);
+  const finishedFavoriteMatches = useMemo(() => favoriteMatches.filter((m) => m.status === 'FINISHED'), [favoriteMatches]);
+
+  const favoriteArticles = useMemo(() => {
+    if (!articles || scope.length === 0) return [];
+    return articles
+      .filter((a) =>
+        scope.some(
+          (f) =>
+            doesFavoriteMatchName(f.name, a.title) ||
+            a.title.toLowerCase().includes(f.name.toLowerCase()) ||
+            (a.summary && a.summary.toLowerCase().includes(f.name.toLowerCase())) ||
+            (a.content && a.content.toLowerCase().includes(f.name.toLowerCase()))
+        )
+      )
+      .slice(0, 8);
+  }, [articles, scope]);
+
+  const renderMatchRow = (match: typeof favoriteMatches[number]) => {
+    const followed = isFollowing(String(match.id));
+    const kickoff = new Date(match.utcDate);
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-        <Star className="h-16 w-16 text-slate-300 mb-4" />
-        <h2 className="text-2xl font-bold mb-2 text-slate-900">Your Feed is Empty</h2>
-        <p className="text-slate-500 max-w-md mx-auto mb-6">
-          You haven't added any favorites yet. Tap the star icon next to any team or competition on the live scores page to build your personal feed.
-        </p>
-        <Link to="/livescore" className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition">
-          Browse Matches
-        </Link>
+      <div
+        key={match.id}
+        className={cn(
+          'rounded-2xl border p-4 bg-white/90 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs',
+          match.isLive ? 'border-emerald-300 bg-emerald-50/30' : 'border-slate-200/90'
+        )}
+      >
+        <div className="space-y-1 min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
+            <span className="truncate">{match.competition.name}</span>
+            <span>·</span>
+            {match.isLive ? (
+              <span className="text-emerald-700 font-black uppercase">
+                {match.minute || 'LIVE'}
+              </span>
+            ) : match.status === 'FINISHED' ? (
+              <span className="text-slate-600 font-black">FT</span>
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {kickoff.toLocaleDateString([], { month: 'short', day: 'numeric' })} ·{' '}
+                {kickoff.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 text-sm sm:text-base font-black text-slate-900">
+            <span className="truncate">{match.homeTeam.name}</span>
+            <span className="px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 font-mono text-sm shrink-0">
+              {match.score.home !== null ? match.score.home : '-'} : {match.score.away !== null ? match.score.away : '-'}
+            </span>
+            <span className="truncate">{match.awayTeam.name}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {match.status !== 'FINISHED' && (
+            <button
+              type="button"
+              onClick={() =>
+                toggleFollowMatch(
+                  String(match.id),
+                  `${match.homeTeam.shortName || match.homeTeam.name} vs ${match.awayTeam.shortName || match.awayTeam.name}`
+                )
+              }
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer transition-colors',
+                followed
+                  ? 'bg-rose-50 border-rose-300 text-rose-700'
+                  : 'bg-white border-slate-200 text-slate-700 hover:border-rose-300 hover:text-rose-600'
+              )}
+            >
+              {followed ? <BellRing className="w-3.5 h-3.5 animate-pulse" /> : <Bell className="w-3.5 h-3.5" />}
+              <span>{followed ? 'Alerts On' : 'Remind Me'}</span>
+            </button>
+          )}
+          <Link
+            to="/livescore"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors"
+          >
+            <span>Live</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
     );
-  }
+  };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="max-w-5xl mx-auto space-y-6 pb-14 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">My Feed</h1>
-        <p className="text-slate-500 mb-6">Your personalized sports hub based on your favorites.</p>
-        
-        <div className="flex overflow-x-auto pb-4 hide-scrollbar gap-3">
-          {favorites.filter(f => f.type === 'team').map(team => (
-            <div key={team.id} className="flex-shrink-0 flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-200 pl-2 pr-1.5 py-1.5 rounded-full shadow-sm transition-all">
-              {team.logo ? (
-                <img src={team.logo} alt={team.name || 'Team'} className="w-6 h-6 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">{(team.name || 'T').charAt(0)}</div>
-              )}
-              <span className="text-sm font-bold text-slate-800">{team.name || 'Team'}</span>
-            </div>
-          ))}
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-black uppercase tracking-wider mb-2">
+          <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
+          Personalized Hub
         </div>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">My Feed</h1>
+        <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1">
+          Live scores, next fixtures, match reminders, and team-specific stories for everything you pin.
+        </p>
       </div>
 
-      <div className="flex flex-col gap-6 w-full max-w-4xl mx-auto">
-        <div className="space-y-6 w-full">
-          <section>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-              </span>
-              Live Favorites
-            </h2>
-            {liveFavoriteMatches.length > 0 ? (
-              <div className="flex flex-col gap-4 w-full">
-                {liveFavoriteMatches.map(match => (
-                  <MatchCard key={match.id} match={match} />
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="py-8 text-center text-slate-500">
-                  No live matches for your favorites right now.
-                </CardContent>
-              </Card>
-            )}
-          </section>
+      {/* Quick-Filter Bar & Personalized Strip */}
+      <FavoriteTeamsBar showMyFeedLink={false} onFilterChange={setFilteredFav} />
 
-          <section>
-            <h2 className="text-xl font-bold mb-4">Upcoming Favorites</h2>
-            {upcomingFavoriteMatches.length > 0 ? (
-              <div className="flex flex-col gap-4 w-full">
-                {upcomingFavoriteMatches.map(match => (
-                  <MatchCard key={match.id} match={match} />
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="py-8 text-center text-slate-500">
-                  No upcoming matches for your favorites.
-                </CardContent>
-              </Card>
-            )}
-          </section>
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Newspaper className="h-5 w-5 text-blue-500" />
-                Favorite News
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {favoriteArticles.length > 0 ? (
-                <div className="space-y-4">
-                  {favoriteArticles.map(article => (
-                    <Link key={article.id} to={`/news/${article.id}`} className="block group">
-                      <h3 className="font-semibold text-sm group-hover:text-blue-600 transition-colors line-clamp-2">
-                        {article.title}
-                      </h3>
-                      <p className="text-xs text-slate-500 mt-1">{new Date(article.publishedAt || (article as any).published_at || Date.now()).toLocaleDateString()}</p>
-                    </Link>
-                  ))}
-                </div>
+      {favorites.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-5">
+            {/* Live Matches */}
+            <section className="space-y-3">
+              <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-emerald-600" />
+                Live Right Now ({liveFavoriteMatches.length})
+              </h2>
+              {liveFavoriteMatches.length > 0 ? (
+                <div className="space-y-2.5">{liveFavoriteMatches.map(renderMatchRow)}</div>
               ) : (
-                <p className="text-sm text-slate-500 text-center py-4">No recent news about your favorites.</p>
+                <Card>
+                  <CardContent className="py-6 text-center text-xs sm:text-sm text-slate-500">
+                    None of your selected teams are playing right now.
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
+            </section>
+
+            {/* Upcoming Fixtures */}
+            <section className="space-y-3">
+              <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-rose-600" />
+                Upcoming Fixtures ({upcomingFavoriteMatches.length})
+              </h2>
+              {upcomingFavoriteMatches.length > 0 ? (
+                <div className="space-y-2.5">{upcomingFavoriteMatches.slice(0, 8).map(renderMatchRow)}</div>
+              ) : (
+                <Card>
+                  <CardContent className="py-6 text-center text-xs sm:text-sm text-slate-500">
+                    No upcoming fixtures scheduled in the active window.
+                  </CardContent>
+                </Card>
+              )}
+            </section>
+
+            {/* Recent Results */}
+            {finishedFavoriteMatches.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-base font-black text-slate-900">Recent Results ({finishedFavoriteMatches.length})</h2>
+                <div className="space-y-2.5">{finishedFavoriteMatches.slice(0, 6).map(renderMatchRow)}</div>
+              </section>
+            )}
+          </div>
+
+          {/* Tailored News Column */}
+          <div>
+            <Card className="bg-white/90 border border-slate-200/90">
+              <CardHeader className="pb-2 border-b border-slate-100">
+                <CardTitle className="text-base font-black flex items-center gap-2 text-slate-900">
+                  <Newspaper className="h-4 w-4 text-rose-600" />
+                  {filteredFav ? `${filteredFav.name} Stories` : 'Your Team News'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {favoriteArticles.length > 0 ? (
+                  <div className="space-y-3.5">
+                    {favoriteArticles.map((article) => (
+                      <Link
+                        key={article.id}
+                        to={`/news/${article.id}`}
+                        className="block group pb-3 border-b border-slate-100 last:border-0 last:pb-0"
+                      >
+                        <span className="text-[10px] font-black uppercase tracking-wider text-rose-600">
+                          {article.category || 'Football'}
+                        </span>
+                        <h3 className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-rose-600 transition-colors line-clamp-2 mt-0.5">
+                          {article.title}
+                        </h3>
+                        <p className="text-[11px] text-slate-400 mt-1">
+                          {new Date(article.publishedAt || Date.now()).toLocaleDateString()}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs sm:text-sm text-slate-500 text-center py-6">
+                    No recent stories found for your current selection.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
+
+export default MyFeed;

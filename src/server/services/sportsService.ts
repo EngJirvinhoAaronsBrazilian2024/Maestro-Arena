@@ -1,4 +1,7 @@
 import { Match, Competition, Team, MatchDetail, TeamDetail, PlayerDetail, MatchEvent, MatchStats, MatchLineup, Standing, Transfer, ApiFootballResponse, LeagueResponse } from "../../types/sports.js";
+import { getMatches as getGlobalMatches, NormalizedMatch } from "./footballDataService.js";
+import { getInsforgeAdmin } from "../insforgeAdmin.js";
+import { isFreshNewsTimestamp } from "./autoNewsService.js";
 
 const CACHE_TTL_LIVE = 120 * 1000; // 1 minute for live scores
 const CACHE_TTL_REGULAR = 30 * 60 * 1000; // 5 minutes for general info
@@ -51,130 +54,88 @@ function setCache(key: string, data: any, ttlMs: number) {
   cache.set(key, { expiry: Date.now() + ttlMs, data });
 }
 
-// Generate Mock Data as requested by Stage 4/5 fallback requirement
-function getMockLiveMatches(): Match[] {
-  return [
-    {
-      id: "mock_1",
-      competitionId: "39",
-      competitionName: "Premier League",
-      competitionCountry: "England",
-      competitionLogo: "https://media.api-sports.io/football/leagues/39.png",
-      homeTeam: { id: "42", name: "Arsenal", shortName: "ARS", logoUrl: "https://media.api-sports.io/football/teams/42.png" },
-      awayTeam: { id: "49", name: "Chelsea", shortName: "CHE", logoUrl: "https://media.api-sports.io/football/teams/49.png" },
-      homeScore: 2,
-      awayScore: 1,
-      status: "live",
-      startTime: Date.now() - 67 * 60 * 1000,
-      matchMinute: "67'",
-      isMock: true,
+function mapNormalizedToMatch(m: NormalizedMatch): Match {
+  const statusMap: Record<NormalizedMatch['status'], Match['status']> = {
+    LIVE: 'live',
+    UPCOMING: 'scheduled',
+    FINISHED: 'finished',
+    POSTPONED: 'postponed',
+    CANCELLED: 'postponed',
+  };
+  return {
+    id: String(m.id),
+    competitionId: String(m.competition.id),
+    competitionName: m.competition.name,
+    competitionCountry: m.competition.type === 'CUP' ? 'International / Cup' : 'World',
+    competitionLogo: m.competition.emblem || undefined,
+    homeTeam: {
+      id: String(m.homeTeam.id),
+      name: m.homeTeam.name,
+      shortName: m.homeTeam.tla || m.homeTeam.shortName,
+      logoUrl: m.homeTeam.crest || undefined,
     },
-    {
-      id: "mock_2",
-      competitionId: "140",
-      competitionName: "La Liga",
-      competitionCountry: "Spain",
-      competitionLogo: "https://media.api-sports.io/football/leagues/140.png",
-      homeTeam: { id: "541", name: "Real Madrid", shortName: "RMA", logoUrl: "https://media.api-sports.io/football/teams/541.png" },
-      awayTeam: { id: "529", name: "Barcelona", shortName: "FCB", logoUrl: "https://media.api-sports.io/football/teams/529.png" },
-      homeScore: 0,
-      awayScore: 0,
-      status: "live",
-      startTime: Date.now() - 22 * 60 * 1000,
-      matchMinute: "22'",
-      isMock: true,
-    }
-  ];
+    awayTeam: {
+      id: String(m.awayTeam.id),
+      name: m.awayTeam.name,
+      shortName: m.awayTeam.tla || m.awayTeam.shortName,
+      logoUrl: m.awayTeam.crest || undefined,
+    },
+    homeScore: m.score.home,
+    awayScore: m.score.away,
+    status: statusMap[m.status] || 'scheduled',
+    startTime: new Date(m.utcDate).getTime(),
+    matchMinute: m.minute,
+    isMock: false,
+  };
 }
 
-function getMockUpcomingMatches(): Match[] {
-  const now = Date.now();
-  return [
-    {
-      id: "match_pl_1",
-      competitionId: "39",
-      competitionName: "Premier League",
-      competitionCountry: "England",
-      competitionLogo: "https://media.api-sports.io/football/leagues/39.png",
-      homeTeam: { id: "40", name: "Liverpool", shortName: "LIV", logoUrl: "https://media.api-sports.io/football/teams/40.png" },
-      awayTeam: { id: "50", name: "Manchester City", shortName: "MCI", logoUrl: "https://media.api-sports.io/football/teams/50.png" },
-      homeScore: null,
-      awayScore: null,
-      status: "scheduled",
-      startTime: now + 3 * 3600 * 1000,
-      isMock: true,
-    },
-    {
-      id: "match_ll_1",
-      competitionId: "140",
-      competitionName: "La Liga",
-      competitionCountry: "Spain",
-      competitionLogo: "https://media.api-sports.io/football/leagues/140.png",
-      homeTeam: { id: "541", name: "Real Madrid", shortName: "RMA", logoUrl: "https://media.api-sports.io/football/teams/541.png" },
-      awayTeam: { id: "530", name: "Atletico Madrid", shortName: "ATM", logoUrl: "https://media.api-sports.io/football/teams/530.png" },
-      homeScore: null,
-      awayScore: null,
-      status: "scheduled",
-      startTime: now + 5 * 3600 * 1000,
-      isMock: true,
-    },
-    {
-      id: "match_pl_2",
-      competitionId: "39",
-      competitionName: "Premier League",
-      competitionCountry: "England",
-      competitionLogo: "https://media.api-sports.io/football/leagues/39.png",
-      homeTeam: { id: "42", name: "Arsenal", shortName: "ARS", logoUrl: "https://media.api-sports.io/football/teams/42.png" },
-      awayTeam: { id: "33", name: "Manchester United", shortName: "MUN", logoUrl: "https://media.api-sports.io/football/teams/33.png" },
-      homeScore: null,
-      awayScore: null,
-      status: "scheduled",
-      startTime: now + 7 * 3600 * 1000,
-      isMock: true,
-    },
-    {
-      id: "match_sa_1",
-      competitionId: "135",
-      competitionName: "Serie A",
-      competitionCountry: "Italy",
-      competitionLogo: "https://media.api-sports.io/football/leagues/135.png",
-      homeTeam: { id: "505", name: "Inter Milan", shortName: "INT", logoUrl: "https://media.api-sports.io/football/teams/505.png" },
-      awayTeam: { id: "496", name: "Juventus", shortName: "JUV", logoUrl: "https://media.api-sports.io/football/teams/496.png" },
-      homeScore: null,
-      awayScore: null,
-      status: "scheduled",
-      startTime: now + 9 * 3600 * 1000,
-      isMock: true,
-    },
-    {
-      id: "match_bl_1",
-      competitionId: "78",
-      competitionName: "Bundesliga",
-      competitionCountry: "Germany",
-      competitionLogo: "https://media.api-sports.io/football/leagues/78.png",
-      homeTeam: { id: "157", name: "Bayern Munich", shortName: "BAY", logoUrl: "https://media.api-sports.io/football/teams/157.png" },
-      awayTeam: { id: "165", name: "Borussia Dortmund", shortName: "BVB", logoUrl: "https://media.api-sports.io/football/teams/165.png" },
-      homeScore: null,
-      awayScore: null,
-      status: "scheduled",
-      startTime: now + 24 * 3600 * 1000,
-      isMock: true,
-    },
-    {
-      id: "match_ucl_1",
-      competitionId: "2",
-      competitionName: "Champions League",
-      competitionCountry: "World",
-      competitionLogo: "https://media.api-sports.io/football/leagues/2.png",
-      homeTeam: { id: "529", name: "Barcelona", shortName: "FCB", logoUrl: "https://media.api-sports.io/football/teams/529.png" },
-      awayTeam: { id: "85", name: "Paris Saint Germain", shortName: "PSG", logoUrl: "https://media.api-sports.io/football/teams/85.png" },
-      homeScore: null,
-      awayScore: null,
-      status: "scheduled",
-      startTime: now + 28 * 3600 * 1000,
-      isMock: true,
+async function getGlobalLiveMatchesFallback(): Promise<Match[]> {
+  try {
+    const res = await getGlobalMatches();
+    return res.matches.filter((m) => m.isLive).map(mapNormalizedToMatch);
+  } catch {
+    return [];
+  }
+}
+
+async function getGlobalUpcomingMatchesFallback(): Promise<Match[]> {
+  try {
+    const res = await getGlobalMatches();
+    return res.matches.filter((m) => m.status === 'UPCOMING').map(mapNormalizedToMatch);
+  } catch {
+    return [];
+  }
+}
+
+async function getGlobalRecentMatchesFallback(): Promise<Match[]> {
+  try {
+    const res = await getGlobalMatches();
+    return res.matches.filter((m) => m.status === 'FINISHED').map(mapNormalizedToMatch);
+  } catch {
+    return [];
+  }
+}
+
+async function getGlobalCompetitionsFallback(): Promise<Competition[]> {
+  try {
+    const res = await getGlobalMatches();
+    const map = new Map<string, Competition>();
+    for (const m of res.matches) {
+      const id = String(m.competition.id);
+      if (!map.has(id)) {
+        map.set(id, {
+          id,
+          name: m.competition.name,
+          country: m.competition.type === 'CUP' ? 'Tournament' : 'World',
+          logoUrl: m.competition.emblem || undefined,
+          type: m.competition.type === 'CUP' ? 'Cup' : 'League',
+        });
+      }
     }
-  ];
+    return Array.from(map.values());
+  } catch {
+    return [];
+  }
 }
 
 export async function getMatchDetails(id: string): Promise<MatchDetail | null> {
@@ -185,25 +146,19 @@ export async function getMatchDetails(id: string): Promise<MatchDetail | null> {
   const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
-  // Fallback to normalized match provider
+  // Fallback to normalized global multi-tournament feed
   if (!apiKey) {
-    const mockLive = getMockLiveMatches().find(m => m.id === id);
-    const mockUpcoming = getMockUpcomingMatches().find(m => m.id === id);
-    const baseMatch = mockLive || mockUpcoming;
-    if (baseMatch) {
-      const mockDetail: MatchDetail = {
-        ...baseMatch,
-        events: [
-          { time: { elapsed: 15 }, team: baseMatch.homeTeam, player: { id: "p1", name: "Striker 9" }, type: "Goal", detail: "Normal Goal" },
-          { time: { elapsed: 45 }, team: baseMatch.awayTeam, player: { id: "p2", name: "Defender 4" }, type: "Card", detail: "Yellow Card" }
-        ],
-        statistics: [
-          { team: baseMatch.homeTeam, statistics: [{ type: "Ball Possession", value: "60%" }, { type: "Total Shots", value: 12 }] },
-          { team: baseMatch.awayTeam, statistics: [{ type: "Ball Possession", value: "40%" }, { type: "Total Shots", value: 5 }] }
-        ]
+    const res = await getGlobalMatches();
+    const match = res.matches.find((m) => String(m.id) === id);
+    if (match) {
+      const mapped = mapNormalizedToMatch(match);
+      const detail: MatchDetail = {
+        ...mapped,
+        events: [],
+        statistics: [],
       };
-      setCache(cacheKey, mockDetail, CACHE_TTL_LIVE);
-      return mockDetail;
+      setCache(cacheKey, detail, CACHE_TTL_LIVE);
+      return detail;
     }
 
     return null;
@@ -388,7 +343,7 @@ export async function getLiveMatches(): Promise<Match[]> {
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
-    const data = getMockLiveMatches();
+    const data = await getGlobalLiveMatchesFallback();
     setCache(cacheKey, data, CACHE_TTL_LIVE);
     return data;
   }
@@ -403,7 +358,7 @@ export async function getLiveMatches(): Promise<Match[]> {
     if (!response.ok) {
       handleApiErrorResponse();
       const stale = getStaleCache<any>(cacheKey);
-      return stale || getMockLiveMatches();
+      return stale || (await getGlobalLiveMatchesFallback());
     }
     
     const data = await response.json();
@@ -411,7 +366,7 @@ export async function getLiveMatches(): Promise<Match[]> {
     if (data.errors && Object.keys(data.errors).length > 0) {
       handleApiErrorResponse(data.errors);
       const stale = getStaleCache<any>(cacheKey);
-      const fallback = stale || getMockLiveMatches();
+      const fallback = stale || (await getGlobalLiveMatchesFallback());
       setCache(cacheKey, fallback, CACHE_TTL_LIVE);
       return fallback;
     }
@@ -442,13 +397,19 @@ export async function getLiveMatches(): Promise<Match[]> {
       isMock: false
     }));
 
+    if (matches.length === 0) {
+      const globalLive = await getGlobalLiveMatchesFallback();
+      setCache(cacheKey, globalLive, CACHE_TTL_LIVE);
+      return globalLive;
+    }
+
     setCache(cacheKey, matches, CACHE_TTL_LIVE);
     return matches;
   } catch (error) {
     handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
-    return getMockLiveMatches();
+    return await getGlobalLiveMatchesFallback();
   }
 }
 
@@ -461,7 +422,7 @@ export async function getUpcomingMatches(): Promise<Match[]> {
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
-    const data = getMockUpcomingMatches();
+    const data = await getGlobalUpcomingMatchesFallback();
     setCache(cacheKey, data, CACHE_TTL_REGULAR);
     return data;
   }
@@ -479,14 +440,9 @@ export async function getUpcomingMatches(): Promise<Match[]> {
       const data = await response.json();
       if (!data.errors || Object.keys(data.errors).length === 0) {
         if (data.response && data.response.length > 0) {
-          const TOP_LEAGUE_IDS = [39, 140, 135, 78, 61, 2];
           const sorted = [...data.response]
             .filter((item: any) => item.fixture?.status?.short === "NS")
-            .sort((a: any, b: any) => {
-              const aIsTop = TOP_LEAGUE_IDS.includes(Number(a.league?.id)) ? 0 : 1;
-              const bIsTop = TOP_LEAGUE_IDS.includes(Number(b.league?.id)) ? 0 : 1;
-              return aIsTop - bIsTop;
-            });
+            .sort((a: any, b: any) => new Date(a.fixture.date).getTime() - new Date(b.fixture.date).getTime());
 
           if (sorted.length > 0) {
             const matches: Match[] = sorted.map((item: any) => ({
@@ -521,14 +477,14 @@ export async function getUpcomingMatches(): Promise<Match[]> {
       }
     }
 
-    const fallback = getMockUpcomingMatches();
+    const fallback = await getGlobalUpcomingMatchesFallback();
     setCache(cacheKey, fallback, CACHE_TTL_REGULAR);
     return fallback;
   } catch (error) {
     handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
     if (stale) return stale;
-    return getMockUpcomingMatches();
+    return await getGlobalUpcomingMatchesFallback();
   }
 }
 
@@ -540,19 +496,10 @@ export async function getCompetitions(): Promise<Competition[]> {
   const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
-  const TOP_LEAGUES = [39, 140, 135, 78, 61, 2, 3, 848, 94, 88];
-
-  const mockCompetitions: Competition[] = [
-    { id: "39", name: "Premier League", country: "England", logoUrl: "https://media.api-sports.io/football/leagues/39.png", countryFlag: "https://media.api-sports.io/flags/gb.svg", type: "League" },
-    { id: "140", name: "La Liga", country: "Spain", logoUrl: "https://media.api-sports.io/football/leagues/140.png", countryFlag: "https://media.api-sports.io/flags/es.svg", type: "League" },
-    { id: "135", name: "Serie A", country: "Italy", logoUrl: "https://media.api-sports.io/football/leagues/135.png", countryFlag: "https://media.api-sports.io/flags/it.svg", type: "League" },
-    { id: "78", name: "Bundesliga", country: "Germany", logoUrl: "https://media.api-sports.io/football/leagues/78.png", countryFlag: "https://media.api-sports.io/flags/de.svg", type: "League" },
-    { id: "61", name: "Ligue 1", country: "France", logoUrl: "https://media.api-sports.io/football/leagues/61.png", countryFlag: "https://media.api-sports.io/flags/fr.svg", type: "League" }
-  ];
-
   if (!apiKey) {
-    setCache(cacheKey, mockCompetitions, CACHE_TTL_LONG);
-    return mockCompetitions;
+    const globalComps = await getGlobalCompetitionsFallback();
+    setCache(cacheKey, globalComps, CACHE_TTL_REGULAR);
+    return globalComps;
   }
 
   try {
@@ -565,19 +512,20 @@ export async function getCompetitions(): Promise<Competition[]> {
     if (!response.ok) {
       handleApiErrorResponse();
       const stale = getStaleCache<any>(cacheKey);
-      return stale || mockCompetitions;
+      return stale || (await getGlobalCompetitionsFallback());
     }
 
     const data: ApiFootballResponse<LeagueResponse> = await response.json();
 
     if (data.errors && Object.keys(data.errors).length > 0) {
       handleApiErrorResponse(data.errors);
-      setCache(cacheKey, mockCompetitions, CACHE_TTL_LONG);
-      return mockCompetitions;
+      const fallback = await getGlobalCompetitionsFallback();
+      setCache(cacheKey, fallback, CACHE_TTL_REGULAR);
+      return fallback;
     }
 
     const competitions: Competition[] = (data.response || [])
-      .filter((item) => TOP_LEAGUES.includes(item.league.id))
+      .slice(0, 80)
       .map((item) => ({
         id: String(item.league.id),
         name: item.league.name,
@@ -592,7 +540,7 @@ export async function getCompetitions(): Promise<Competition[]> {
   } catch (error) {
     handleApiErrorResponse(error);
     const stale = getStaleCache<any>(cacheKey);
-    return stale || mockCompetitions;
+    return stale || (await getGlobalCompetitionsFallback());
   }
 }
 
@@ -647,54 +595,147 @@ export async function getStandings(competitionId: string): Promise<Standing[]> {
   }
 }
 
+function classifyTransferHeadline(title: string, summary: string, category: string): { type: 'Confirmed' | 'Rumour'; fee?: string } {
+  const combined = `${title} ${summary}`.toLowerCase();
+  const confirmedPattern = /\b(official|confirmed|signs|signed|completes|completed|agrees permanent|unveiled|announces signing|announced signing|done deal|joins|permanent move)\b/i;
+  const rumourPattern = /\b(rumour|rumor|linked|talks|interest|interested|bid|offer|target|wants|eyes|monitoring|considering|close to|chasing|race for|could leave|set to|loan)\b/i;
+
+  const feeMatch = `${title} ${summary}`.match(/(£\s?\d+(?:\.\d+)?\s?(?:m|million|k)|€\s?\d+(?:\.\d+)?\s?(?:m|million|k)|\$\s?\d+(?:\.\d+)?\s?(?:m|million|k)|free transfer|loan deal)/i);
+  const fee = feeMatch ? feeMatch[0].replace(/\s+/g, '') : undefined;
+
+  if (confirmedPattern.test(combined) && !rumourPattern.test(title.toLowerCase())) {
+    return { type: 'Confirmed', fee };
+  }
+  if (category.toLowerCase().includes('confirmed')) {
+    return { type: 'Confirmed', fee };
+  }
+  return { type: 'Rumour', fee };
+}
+
+function extractTransferClubs(title: string): { from?: string; to?: string } {
+  const knownClubs = [
+    'Arsenal', 'Aston Villa', 'Barcelona', 'Real Madrid', 'Atletico Madrid',
+    'Liverpool', 'Manchester City', 'Man City', 'Manchester United', 'Man Utd', 'Man United',
+    'Chelsea', 'Tottenham', 'Spurs', 'Newcastle', 'West Ham', 'Brighton', 'Everton',
+    'Bayern Munich', 'Bayern', 'Borussia Dortmund', 'Dortmund', 'Bayer Leverkusen', 'Leverkusen',
+    'Juventus', 'AC Milan', 'Inter Milan', 'Inter', 'Napoli', 'Roma', 'PSG',
+    'Crystal Palace', 'Fulham', 'Brentford', 'Bournemouth', 'Wolves', 'Nottingham Forest',
+    'Al Hilal', 'Al Nassr', 'Inter Miami', 'Sporting', 'Benfica', 'Porto', 'Ajax'
+  ];
+
+  const found: string[] = [];
+  const lower = title.toLowerCase();
+  for (const club of knownClubs) {
+    if (lower.includes(club.toLowerCase())) {
+      const canonical =
+        club === 'Man Utd' || club === 'Man United' ? 'Manchester United' :
+        club === 'Man City' ? 'Manchester City' :
+        club === 'Spurs' ? 'Tottenham' :
+        club === 'Dortmund' ? 'Borussia Dortmund' :
+        club === 'Leverkusen' ? 'Bayer Leverkusen' :
+        club === 'Bayern' ? 'Bayern Munich' : club;
+      if (!found.includes(canonical)) found.push(canonical);
+    }
+  }
+  return {
+    to: found[0],
+    from: found[1],
+  };
+}
+
 export async function getTransfers(): Promise<Transfer[]> {
-  const cacheKey = `transfers_latest`;
+  const cacheKey = `transfers_latest_v2`;
   const cached = getCached<Transfer[]>(cacheKey);
   if (cached) return cached;
 
+  const transfers: Transfer[] = [];
+  const seenIds = new Set<string>();
+
+  // 1. Live Transfer News & Deals from InsForge published articles
+  try {
+    const admin = getInsforgeAdmin();
+    const { data } = await admin.database
+      .from('articles')
+      .select('id, title, summary, content, category, author_name, image_url, published_at')
+      .eq('status', 'published')
+      .order('published_at', { ascending: false })
+      .limit(100);
+
+    const transferKeywords = /\b(transfer|transfers|sign|signing|signed|deal|loan|bid|contract|move|target|linked|rumour|rumor|window|free agent|release clause|unveil|joins)\b/i;
+
+    for (const row of data || []) {
+      const pubTs = Number(row.published_at || 0);
+      if (!isFreshNewsTimestamp(pubTs)) continue;
+
+      const cat = String(row.category || '');
+      const title = String(row.title || '');
+      const summary = String(row.summary || '');
+      const isTransferStory = cat.toLowerCase().includes('transfer') || transferKeywords.test(title) || transferKeywords.test(summary);
+      if (!isTransferStory) continue;
+
+      const { type, fee } = classifyTransferHeadline(title, summary, cat);
+      const clubs = extractTransferClubs(title);
+      const id = `art_${row.id}`;
+      if (seenIds.has(id)) continue;
+      seenIds.add(id);
+
+      transfers.push({
+        id,
+        date: pubTs,
+        type,
+        player: { id: id, name: title.split(/[:\-–|]/)[0].trim() || title },
+        fromTeam: clubs.from ? { id: clubs.from.toLowerCase().replace(/\s+/g, '_'), name: clubs.from } : undefined,
+        toTeam: clubs.to ? { id: clubs.to.toLowerCase().replace(/\s+/g, '_'), name: clubs.to } : undefined,
+        fee,
+        title,
+        summary: summary || (row.content ? String(row.content).slice(0, 160) : ''),
+        source: row.author_name || 'Sports Desk',
+        articleId: row.id,
+        league: cat || 'Transfers',
+        imageUrl: row.image_url || undefined,
+      });
+    }
+  } catch (dbErr) {
+    console.warn('Transfer tracker DB scan notice:', dbErr);
+  }
+
+  // 2. Supplement with API-Sports transfers if key is configured
   const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
-
-  if (!apiKey) {
-    const mockTransfers: Transfer[] = [
-      { id: "t1", date: Date.now() - 86400000, type: 'Confirmed', player: { id: "p1", name: "Kylian Mbappé" }, fromTeam: { id: "psg", name: "PSG" }, toTeam: { id: "rma", name: "Real Madrid" }, fee: "Free Transfer" },
-      { id: "t2", date: Date.now() - 172800000, type: 'Rumour', player: { id: "p2", name: "Jude Bellingham" }, fromTeam: { id: "rma", name: "Real Madrid" }, toTeam: { id: "mci", name: "Manchester City" }, fee: "€150m" }
-    ];
-    setCache(cacheKey, mockTransfers, CACHE_TTL_LONG);
-    return mockTransfers;
-  }
-
-  try {
-    // API-sports transfers endpoint is /transfers. It's heavily paginated, so we just get a recent general fetch if possible,
-    // or fallback to mocks. We'll use mock transfers even with API key for simplicity here if endpoint complex, 
-    // but we can try to fetch team transfers. For global, we might just return mock.
-    // For now, let's return a basic real API call mapping if possible, otherwise just mock.
-    const res = await fetch(`${apiUrl}/transfers?team=39`, { headers: { "x-apisports-key": apiKey }});
-    const data = await res.json();
-    if (!data.response || data.response.length === 0) return [];
-
-    let transfers: Transfer[] = [];
-    data.response.forEach((item: any) => {
-      item.transfers.slice(0, 5).forEach((t: any) => {
-        transfers.push({
-          id: `${item.player.id}_${t.date}`,
-          date: new Date(t.date).getTime(),
-          type: t.type.includes("Loan") ? 'Rumour' : 'Confirmed', // rough mapping
-          player: { id: String(item.player.id), name: item.player.name },
-          fromTeam: { id: String(t.teams.out.id), name: t.teams.out.name, logoUrl: t.teams.out.logo },
-          toTeam: { id: String(t.teams.in.id), name: t.teams.in.name, logoUrl: t.teams.in.logo },
+  if (apiKey) {
+    try {
+      const res = await fetch(`${apiUrl}/transfers?team=39`, { headers: { "x-apisports-key": apiKey }});
+      const data = await res.json();
+      if (Array.isArray(data.response)) {
+        data.response.slice(0, 8).forEach((item: any) => {
+          (item.transfers || []).slice(0, 2).forEach((t: any) => {
+            const ts = new Date(t.date).getTime();
+            if (!isFreshNewsTimestamp(ts)) return;
+            const id = `api_${item.player.id}_${t.date}`;
+            if (seenIds.has(id)) return;
+            seenIds.add(id);
+            transfers.push({
+              id,
+              date: ts,
+              type: String(t.type || '').toLowerCase().includes("loan") ? 'Rumour' : 'Confirmed',
+              player: { id: String(item.player.id), name: item.player.name },
+              fromTeam: t.teams?.out ? { id: String(t.teams.out.id), name: t.teams.out.name, logoUrl: t.teams.out.logo } : undefined,
+              toTeam: t.teams?.in ? { id: String(t.teams.in.id), name: t.teams.in.name, logoUrl: t.teams.in.logo } : undefined,
+              fee: t.type || undefined,
+              source: 'API-Football',
+              league: 'Transfer Window',
+            });
+          });
         });
-      });
-    });
-
-    setCache(cacheKey, transfers, CACHE_TTL_LONG);
-    return transfers;
-  } catch (error) {
-    handleApiErrorResponse(error);
-    const stale = getStaleCache<any>(cacheKey);
-    if (stale) return stale;
-    return [];
+      }
+    } catch (error) {
+      handleApiErrorResponse(error);
+    }
   }
+
+  transfers.sort((a, b) => Number(b.date || 0) - Number(a.date || 0));
+  setCache(cacheKey, transfers, 5 * 60 * 1000);
+  return transfers;
 }
 
 export async function getCompetitionResults(competitionId: string): Promise<Match[]> {
@@ -921,48 +962,7 @@ export async function getRecentMatches(): Promise<Match[]> {
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
-    // Generate some mock recent matches
-    const data: Match[] = [
-      {
-        id: "rec_1",
-        competitionId: "39",
-        competitionName: "Premier League",
-        competitionCountry: "England",
-        homeTeam: { id: "team_42", name: "Arsenal", shortName: "ARS" },
-        awayTeam: { id: "team_49", name: "Chelsea", shortName: "CHE" },
-        homeScore: 3,
-        awayScore: 1,
-        status: "finished",
-        startTime: Date.now() - 86400000,
-        isMock: true
-      },
-      {
-        id: "rec_2",
-        competitionId: "140",
-        competitionName: "La Liga",
-        competitionCountry: "Spain",
-        homeTeam: { id: "team_86", name: "Real Madrid", shortName: "RMA" },
-        awayTeam: { id: "team_81", name: "Barcelona", shortName: "BAR" },
-        homeScore: 2,
-        awayScore: 2,
-        status: "finished",
-        startTime: Date.now() - 172800000,
-        isMock: true
-      },
-      {
-        id: "rec_3",
-        competitionId: "135",
-        competitionName: "Serie A",
-        competitionCountry: "Italy",
-        homeTeam: { id: "team_109", name: "Juventus", shortName: "JUV" },
-        awayTeam: { id: "team_113", name: "AC Milan", shortName: "MIL" },
-        homeScore: 1,
-        awayScore: 0,
-        status: "finished",
-        startTime: Date.now() - 259200000,
-        isMock: true
-      }
-    ];
+    const data = await getGlobalRecentMatchesFallback();
     setCache(cacheKey, data, CACHE_TTL_REGULAR);
     return data;
   }
@@ -1077,7 +1077,7 @@ export async function getFavoriteFixtures(teamIds: string[]): Promise<Match[]> {
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
   if (!apiKey) {
-    return getMockUpcomingMatches();
+    return await getGlobalUpcomingMatchesFallback();
   }
 
   try {
@@ -1141,25 +1141,41 @@ export async function searchAll(query: string): Promise<any> {
   const apiKey = getEffectiveSportsApiKey();
   const apiUrl = process.env.SPORTS_API_URL || "https://v3.football.api-sports.io";
 
-  if (!apiKey) { 
-    const mockTeams = [
-      { id: 'team_42', name: 'Arsenal', country: 'England', logoUrl: 'https://media.api-sports.io/football/teams/42.png', type: 'team' },
-      { id: 'team_33', name: 'Manchester United', country: 'England', logoUrl: 'https://media.api-sports.io/football/teams/33.png', type: 'team' },
-      { id: 'team_81', name: 'Barcelona', country: 'Spain', logoUrl: 'https://media.api-sports.io/football/teams/81.png', type: 'team' }
-    ].filter(t => t.name.toLowerCase().includes(query.toLowerCase()));
+  if (!apiKey) {
+    const qLower = query.toLowerCase();
+    const res = await getGlobalMatches();
+    const teamMap = new Map<string, any>();
+    const compMap = new Map<string, any>();
 
-    const mockPlayers = [
-      { id: 'player_874', name: 'Cristiano Ronaldo', country: 'Portugal', logoUrl: 'https://media.api-sports.io/football/players/874.png', type: 'player' },
-      { id: 'player_154', name: 'Lionel Messi', country: 'Argentina', logoUrl: 'https://media.api-sports.io/football/players/154.png', type: 'player' }
-    ].filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
+    for (const m of res.matches) {
+      for (const t of [m.homeTeam, m.awayTeam]) {
+        if (t.name.toLowerCase().includes(qLower) && !teamMap.has(String(t.id))) {
+          teamMap.set(String(t.id), {
+            id: `team_${t.id}`,
+            name: t.name,
+            country: m.competition.name,
+            logoUrl: t.crest,
+            type: 'team',
+          });
+        }
+      }
+      if (m.competition.name.toLowerCase().includes(qLower) && !compMap.has(String(m.competition.id))) {
+        compMap.set(String(m.competition.id), {
+          id: `competition_${m.competition.id}`,
+          name: m.competition.name,
+          country: m.competition.type === 'CUP' ? 'Tournament' : 'League',
+          logoUrl: m.competition.emblem,
+          type: 'competition',
+        });
+      }
+    }
 
-    const mockComps = [
-      { id: 'competition_39', name: 'Premier League', country: 'England', logoUrl: 'https://media.api-sports.io/football/leagues/39.png', type: 'competition' },
-      { id: 'competition_140', name: 'La Liga', country: 'Spain', logoUrl: 'https://media.api-sports.io/football/leagues/140.png', type: 'competition' }
-    ].filter(c => c.name.toLowerCase().includes(query.toLowerCase()));
-
-    return { teams: mockTeams, players: mockPlayers, competitions: mockComps };
- }
+    return {
+      teams: Array.from(teamMap.values()).slice(0, 8),
+      players: [],
+      competitions: Array.from(compMap.values()).slice(0, 8),
+    };
+  }
 
   try {
     const q = encodeURIComponent(query);

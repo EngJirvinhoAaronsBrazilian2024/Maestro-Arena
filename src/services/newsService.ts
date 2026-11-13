@@ -2,55 +2,69 @@ import { insforge } from '../lib/insforge';
 import { Article } from '../types/sports';
 import { getImageUrl } from './storageService';
 
-const CACHE_KEY = 'sportshub_articles_cache';
+const CACHE_KEY = 'sportshub_articles_cache_v2';
+const MAX_NEWS_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+const DEPRECATED_AUTHORS = new Set(['Sky Sports Transfer Centre', 'Marca Football']);
 
-const SEED_ARTICLES: Article[] = [
-  {
-    id: '50404b0f-257d-480f-8cec-557a5bdc76dc',
-    title: 'Manchester united grab their first win of the Women Super League.',
-    content: 'Manchester united through Andrea Medina and Elizabeth Terland have scooped a 2-1 victory over Westham United at home as they keep their eyes on European football come next season under Coach Eva Olid.',
-    summary: 'Eva Olid coming back to winning ways at Manchester united.',
-    imageUrl: 'https://gci83gu5.us-east.insforge.app/api/storage/buckets/images/objects/1790527440883-1001262153.jpg',
-    authorId: '2886ae6d-b563-44a3-b4b8-ae932cc188ad',
-    authorName: 'Jirvinho Brazilian sports maestro',
-    status: 'published',
-    category: 'Women premier league ',
-    publishedAt: 1790527342550
-  },
-  {
-    id: 'c89d7268-6ddc-41b6-b93a-f197302ed8ba',
-    title: 'Halaand meets his idol in a tight game tonight 🔥',
-    content: 'Today at exactly 9:45pm, a game between the goal machine currently, Halaand and the all time goal machine face Ronaldo meet in the second game of the UEFA Nations league tension emerge to CR7 fans to the critisms from haters over Jorge Jesus starting the old man in the game.Lets wait to seen whether he starts in the second consecutive game under the new manager.',
-    summary: 'Today at exactly 9:45pm, a game between the goal machine currently, Halaand and the all time goal machine face Ronaldo meet in the second game of the UEFA Nations league tension em...',
-    imageUrl: 'https://gci83gu5.us-east.insforge.app/api/storage/buckets/images/objects/1790526541744-1001262147.jpg',
-    authorId: '2886ae6d-b563-44a3-b4b8-ae932cc188ad',
-    authorName: 'Jirvinho Brazilian sports maestro',
-    status: 'published',
-    category: 'Trending news',
-    publishedAt: 1790526783374
+function isFreshClientArticle(a: Partial<Article>): boolean {
+  const author = String(a.authorName || '');
+  if (DEPRECATED_AUTHORS.has(author)) return false;
+
+  const ts = Number(a.publishedAt || 0);
+  if (!Number.isFinite(ts) || ts <= 0) return false;
+
+  const now = Date.now();
+  if (ts > now + 6 * 60 * 60 * 1000) return false;
+  if (now - ts > MAX_NEWS_AGE_MS) return false;
+
+  const nowDate = new Date(now);
+  const pubDate = new Date(ts);
+  const currentYear = nowDate.getUTCFullYear();
+  const pubYear = pubDate.getUTCFullYear();
+  const isEarlyJan = nowDate.getUTCMonth() === 0 && nowDate.getUTCDate() <= 14;
+  if (pubYear < currentYear && !(isEarlyJan && pubYear === currentYear - 1)) {
+    return false;
   }
-];
+
+  return true;
+}
+
+function sanitizeAndDedupeArticles(list: Article[]): Article[] {
+  const seen = new Set<string>();
+  const sorted = [...list].sort((a, b) => Number(b.publishedAt || 0) - Number(a.publishedAt || 0));
+  const result: Article[] = [];
+
+  for (const a of sorted) {
+    if (a.status === 'published' && !isFreshClientArticle(a)) continue;
+    const key = (a.title || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
+    result.push(a);
+  }
+  return result;
+}
 
 function getCachedArticles(): Article[] {
-  if (typeof window === 'undefined') return SEED_ARTICLES;
+  if (typeof window === 'undefined') return [];
   try {
+    localStorage.removeItem('sportshub_articles_cache');
     const raw = localStorage.getItem(CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return sanitizeAndDedupeArticles(parsed);
       }
     }
   } catch (e) {
     // ignore localStorage errors
   }
-  return SEED_ARTICLES;
+  return [];
 }
 
 function saveCachedArticles(articles: Article[]) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(articles));
+    localStorage.setItem(CACHE_KEY, JSON.stringify(sanitizeAndDedupeArticles(articles)));
   } catch (e) {
     // ignore
   }
@@ -59,7 +73,6 @@ function saveCachedArticles(articles: Article[]) {
 export async function getArticles(status: 'draft' | 'published' = 'published'): Promise<Article[]> {
   // 1. Prioritize backend routes (uses service role admin client to bypass client RLS/key restrictions)
   try {
-    // Try /api/articles or fallback to /api/admin/articles
     let res = await fetch('/api/articles').catch(() => null);
     if (!res || !res.ok) {
       res = await fetch('/api/admin/articles').catch(() => null);
@@ -78,26 +91,27 @@ export async function getArticles(status: 'draft' | 'published' = 'published'): 
           authorName: a.authorName || a.author_name || 'Jirvinho Brazilian sports maestro',
           status: a.status,
           category: a.category || 'Football',
-          publishedAt: Number(a.publishedAt || a.published_at || Date.now())
+          publishedAt: Number(a.publishedAt || a.published_at || 0)
         }));
 
-        // Cache all articles for offline / instant availability
-        saveCachedArticles(normalized);
+        const clean = sanitizeAndDedupeArticles(normalized);
+        saveCachedArticles(clean);
 
-        return normalized.filter(a => a.status === status);
+        return clean.filter(a => a.status === status);
       }
     }
   } catch (routeErr) {
-    // Quiet warning, continue to secondary fallback
     console.warn('Backend articles fetch notice:', routeErr);
   }
 
   // 2. Secondary fallback: direct InsForge SDK query (if client credentials are valid)
   try {
+    const cutoff = Date.now() - MAX_NEWS_AGE_MS;
     const { data, error } = await insforge.database
       .from('articles')
       .select('*')
       .eq('status', status)
+      .gte('published_at', cutoff)
       .order('published_at', { ascending: false });
 
     if (!error && Array.isArray(data)) {
@@ -111,18 +125,19 @@ export async function getArticles(status: 'draft' | 'published' = 'published'): 
         authorName: a.author_name || 'Jirvinho Brazilian sports maestro',
         status: a.status,
         category: a.category || 'Football',
-        publishedAt: Number(a.published_at || Date.now())
+        publishedAt: Number(a.published_at || 0)
       }));
 
-      if (parsed.length > 0) {
-        return parsed;
+      const clean = sanitizeAndDedupeArticles(parsed);
+      if (clean.length > 0) {
+        return clean;
       }
     }
   } catch (sdkErr) {
     // InsForge direct query not available in browser client
   }
 
-  // 3. Resilient cache fallback: return cached or seed articles smoothly
+  // 3. Resilient cache fallback: return only fresh cached articles
   const cached = getCachedArticles();
   return cached.filter(a => a.status === status);
 }
@@ -186,8 +201,44 @@ export async function getArticleById(id: string): Promise<Article | null> {
     // Ignore
   }
 
-  // 3. Fallback to cached match or seed
-  return cachedMatch || SEED_ARTICLES.find(a => a.id === id) || null;
+  // 3. Fallback to cached match
+  return cachedMatch || null;
+}
+
+export async function getFullArticleById(id: string): Promise<Article | null> {
+  try {
+    let res = await fetch(`/api/articles/${encodeURIComponent(id)}/full`).catch(() => null);
+    if (!res || !res.ok) {
+      res = await fetch(`/api/admin/articles/${encodeURIComponent(id)}/full`).catch(() => null);
+    }
+    if (res && res.ok) {
+      const a = await res.json();
+      if (a && a.id) {
+        const enriched: Article = {
+          id: a.id,
+          title: a.title,
+          content: a.content || '',
+          summary: a.summary || (a.content ? a.content.slice(0, 180) + '...' : ''),
+          imageUrl: a.imageUrl || a.image_url ? getImageUrl(a.imageUrl || a.image_url) : undefined,
+          authorId: a.authorId || a.author_id || '',
+          authorName: a.authorName || a.author_name || 'Jirvinho Brazilian sports maestro',
+          status: a.status || 'published',
+          category: a.category || 'Football',
+          publishedAt: Number(a.publishedAt || a.published_at || Date.now()),
+        };
+
+        // Update cached list so reopening this story stays full & instant
+        const existingCache = getCachedArticles();
+        if (existingCache.length > 0) {
+          saveCachedArticles(existingCache.map(item => (item.id === enriched.id ? enriched : item)));
+        }
+        return enriched;
+      }
+    }
+  } catch {
+    // Fallback to standard lookup
+  }
+  return getArticleById(id);
 }
 
 export async function createArticle(article: Omit<Article, 'id'>): Promise<string> {
@@ -317,39 +368,198 @@ export async function deleteArticle(id: string): Promise<void> {
   }
 }
 
-// Bookmarks
+// Bookmarks & Saved Article Snapshots
+const BOOKMARKS_UPDATED_EVENT = 'sportshub_bookmarks_updated';
+const READING_HISTORY_UPDATED_EVENT = 'sportshub_reading_history_updated';
+
+function getBookmarksKey(userId?: string) {
+  return `sportshub_bookmarks_${userId || 'guest'}`;
+}
+
+function getBookmarkSnapshotsKey(userId?: string) {
+  return `sportshub_bookmark_snapshots_${userId || 'guest'}`;
+}
+
+function getHistoryKey(userId?: string) {
+  return `sportshub_reading_history_${userId || 'guest'}`;
+}
+
+export interface ReadingHistoryItem {
+  id: string;
+  title: string;
+  summary?: string;
+  category?: string;
+  authorName?: string;
+  imageUrl?: string;
+  publishedAt: number;
+  readAt: number;
+}
+
+export function getLocalBookmarks(userId?: string): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(getBookmarksKey(userId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalBookmarks(userId: string | undefined, ids: string[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    const unique = Array.from(new Set(ids));
+    localStorage.setItem(getBookmarksKey(userId), JSON.stringify(unique));
+    window.dispatchEvent(new CustomEvent(BOOKMARKS_UPDATED_EVENT));
+  } catch {
+    // ignore
+  }
+}
+
+export function getSavedArticleSnapshots(userId?: string): Article[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(getBookmarkSnapshotsKey(userId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function upsertSavedArticleSnapshot(userId: string | undefined, article: Article, remove = false) {
+  if (typeof window === 'undefined' || !article?.id) return;
+  try {
+    const current = getSavedArticleSnapshots(userId).filter((a) => a.id !== article.id);
+    const updated = remove ? current : [article, ...current].slice(0, 60);
+    localStorage.setItem(getBookmarkSnapshotsKey(userId), JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+}
+
 export async function getBookmarks(userId: string): Promise<string[]> {
+  const local = getLocalBookmarks(userId);
+  if (!userId || userId === 'guest') return local;
+
   try {
     const { data, error } = await insforge.database
       .from('bookmarks')
       .select('article_id')
       .eq('user_id', userId);
-      
-    if (error) return [];
-    return (data || []).map(b => b.article_id);
-  } catch (error) {
+
+    if (error) return local;
+    const remote = (data || []).map((b: any) => b.article_id).filter(Boolean);
+    const merged = Array.from(new Set([...remote, ...local]));
+    if (merged.length !== local.length) {
+      saveLocalBookmarks(userId, merged);
+    }
+    return merged;
+  } catch {
+    return local;
+  }
+}
+
+export async function toggleBookmark(
+  userId: string | undefined,
+  articleId: string,
+  isBookmarked: boolean,
+  articleSnapshot?: Article
+): Promise<string[]> {
+  const effectiveUser = userId || 'guest';
+  const current = getLocalBookmarks(effectiveUser);
+  const next = isBookmarked
+    ? current.filter((id) => id !== articleId)
+    : Array.from(new Set([articleId, ...current]));
+
+  saveLocalBookmarks(effectiveUser, next);
+  if (articleSnapshot) {
+    upsertSavedArticleSnapshot(effectiveUser, articleSnapshot, isBookmarked);
+  }
+
+  if (userId && userId !== 'guest') {
+    try {
+      if (isBookmarked) {
+        await insforge.database
+          .from('bookmarks')
+          .delete()
+          .eq('user_id', userId)
+          .eq('article_id', articleId);
+      } else {
+        await insforge.database
+          .from('bookmarks')
+          .insert([{
+            user_id: userId,
+            article_id: articleId,
+            created_at: Date.now(),
+          }]);
+      }
+    } catch (error) {
+      console.warn('Bookmark remote sync notice (saved locally):', error);
+    }
+  }
+
+  return next;
+}
+
+// Reading History
+export function getReadingHistory(userId?: string): ReadingHistoryItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(getHistoryKey(userId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.sort((a, b) => Number(b.readAt || 0) - Number(a.readAt || 0));
+  } catch {
     return [];
   }
 }
 
-export async function toggleBookmark(userId: string, articleId: string, isBookmarked: boolean): Promise<void> {
+export function recordReadingHistory(article: Article, userId?: string): ReadingHistoryItem[] {
+  if (typeof window === 'undefined' || !article?.id) return [];
   try {
-    if (isBookmarked) {
-      await insforge.database
-        .from('bookmarks')
-        .delete()
-        .eq('user_id', userId)
-        .eq('article_id', articleId);
-    } else {
-      await insforge.database
-        .from('bookmarks')
-        .insert([{
-          user_id: userId,
-          article_id: articleId,
-          created_at: Date.now()
-        }]);
-    }
-  } catch (error) {
-    console.error('Error toggling bookmark:', error);
+    const current = getReadingHistory(userId).filter((item) => item.id !== article.id);
+    const entry: ReadingHistoryItem = {
+      id: article.id,
+      title: article.title,
+      summary: article.summary,
+      category: article.category,
+      authorName: article.authorName,
+      imageUrl: article.imageUrl,
+      publishedAt: Number(article.publishedAt || Date.now()),
+      readAt: Date.now(),
+    };
+    const updated = [entry, ...current].slice(0, 40);
+    localStorage.setItem(getHistoryKey(userId), JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent(READING_HISTORY_UPDATED_EVENT));
+    return updated;
+  } catch {
+    return [];
   }
 }
+
+export function removeReadingHistoryItem(articleId: string, userId?: string): ReadingHistoryItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const updated = getReadingHistory(userId).filter((item) => item.id !== articleId);
+    localStorage.setItem(getHistoryKey(userId), JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent(READING_HISTORY_UPDATED_EVENT));
+    return updated;
+  } catch {
+    return [];
+  }
+}
+
+export function clearReadingHistory(userId?: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(getHistoryKey(userId));
+    window.dispatchEvent(new CustomEvent(READING_HISTORY_UPDATED_EVENT));
+  } catch {
+    // ignore
+  }
+}
+
+export { BOOKMARKS_UPDATED_EVENT, READING_HISTORY_UPDATED_EVENT };
+

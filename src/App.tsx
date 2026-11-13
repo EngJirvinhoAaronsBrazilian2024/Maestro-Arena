@@ -16,6 +16,7 @@ import { AuthLayout } from './components/layout/AuthLayout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { AdminLayout } from './components/layout/AdminLayout';
 import { InstallPrompt } from './components/pwa/InstallPrompt';
+import { PWAStatusBanners } from './components/pwa/PWAStatusBanners';
 
 // Safe dynamic import with automatic retry for Vite module loading
 function lazyWithRetry<T extends React.ComponentType<any> = React.ComponentType<any>>(
@@ -64,6 +65,7 @@ const DailyTrivia = lazyWithRetry(() => import('./pages/DailyTrivia').then(m => 
 
 const Tips = lazyWithRetry(() => import('./pages/Tips').then(m => ({ default: (m as any).Tips || (m as any).default })));
 const Livescore = lazyWithRetry(() => import('./pages/Livescore').then(m => ({ default: (m as any).Livescore || (m as any).default })));
+const MyFeed = lazyWithRetry(() => import('./pages/MyFeed').then(m => ({ default: (m as any).MyFeed || (m as any).default })));
 const UserProfile = lazyWithRetry(() => import('./pages/UserProfile').then(m => ({ default: (m as any).UserProfile || (m as any).default })));
 const Settings = lazyWithRetry(() => import('./pages/Settings').then(m => ({ default: (m as any).Settings || (m as any).default })));
 const TermsOfService = lazyWithRetry(() => import('./pages/TermsOfService').then(m => ({ default: (m as any).TermsOfService || (m as any).default })));
@@ -168,6 +170,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <NotificationProvider>
+        <PWAStatusBanners />
         <InstallPrompt />
         <Toaster 
           position={isMobile ? "top-center" : "top-right"} 
@@ -239,7 +242,7 @@ export default function App() {
                     <Route path="terms" element={<TermsOfService />} />
                     <Route path="privacy" element={<PrivacyPolicy />} />
                     
-                    <Route path="my-feed" element={<Navigate to="/tips" replace />} />
+                    <Route path="my-feed" element={<MyFeed />} />
                     <Route path="*" element={<PlaceholderPage title="Page Not Found" />} />
                   </Route>
                 </Route>

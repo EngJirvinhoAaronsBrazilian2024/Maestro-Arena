@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { getInsforgeAdmin } from '../insforgeAdmin.js';
 import { recordActivity, getActivityLogs, getActivityStats, clearActivityLogs, deleteActivityLogsByIds } from '../services/activityService.js';
-import { autoIngestFootballNews } from '../services/autoNewsService.js';
+import { autoIngestFootballNews, DEPRECATED_STALE_SOURCES, isFreshNewsTimestamp, normalizeNewsHeadline, resolveAndEnrichArticleContent } from '../services/autoNewsService.js';
 
 
 const router = Router();
@@ -799,32 +799,62 @@ router.all('/news/auto-sync', async (req, res) => {
 router.get('/articles', async (req, res) => {
   try {
     const admin = getInsforgeAdmin();
-    let { data, error } = await admin.database
+    const { data, error } = await admin.database
       .from('articles')
       .select('*')
-      .order('published_at', { ascending: false });
-
-    // If database has very few articles or latest is older than 3 hours, trigger auto-ingest
-    const latestPub = data && data.length > 0 ? Number(data[0].published_at || 0) : 0;
-    const isOld = Date.now() - latestPub > 3 * 60 * 60 * 1000;
-    if (!data || data.length < 5 || isOld) {
-      autoIngestFootballNews({ maxItems: 10 }).catch((e) => console.warn('[AutoNews] Background check:', e));
-    }
+      .order('published_at', { ascending: false })
+      .limit(400);
 
     if (error) throw error;
 
-    const normalized = (data || []).map((a: any) => ({
-      id: a.id,
-      title: a.title,
-      content: a.content,
-      summary: a.summary || (a.content ? a.content.slice(0, 180) + '...' : ''),
-      imageUrl: a.image_url || a.imageUrl,
-      authorId: a.author_id,
-      authorName: a.author_name || 'Jirvinho Brazilian sports maestro',
-      status: a.status,
-      category: a.category || 'general',
-      publishedAt: Number(a.published_at || Date.now())
-    }));
+    const rows = data || [];
+    const MAX_DISPLAY_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+    const seenHeadlines = new Set<string>();
+    let foundStaleOrDeprecated = false;
+
+    const normalized: any[] = [];
+    for (const a of rows) {
+      const author = String(a.author_name || a.authorName || '');
+      const pubTime = Number(a.published_at || a.publishedAt || 0);
+      const normTitle = normalizeNewsHeadline(a.title || '');
+
+      if (DEPRECATED_STALE_SOURCES.includes(author)) {
+        foundStaleOrDeprecated = true;
+        continue;
+      }
+
+      if (a.status === 'published' && !isFreshNewsTimestamp(pubTime, MAX_DISPLAY_AGE_MS)) {
+        foundStaleOrDeprecated = true;
+        continue;
+      }
+
+      if (normTitle && seenHeadlines.has(normTitle)) {
+        continue;
+      }
+      if (normTitle) {
+        seenHeadlines.add(normTitle);
+      }
+
+      normalized.push({
+        id: a.id,
+        title: a.title,
+        content: a.content,
+        summary: a.summary || (a.content ? a.content.slice(0, 180) + '...' : ''),
+        imageUrl: a.image_url || a.imageUrl,
+        authorId: a.author_id,
+        authorName: author || 'Jirvinho Brazilian sports maestro',
+        status: a.status,
+        category: a.category || 'general',
+        publishedAt: pubTime || Date.now()
+      });
+    }
+
+    const latestPub = normalized.length > 0 ? Number(normalized[0].publishedAt || 0) : 0;
+    const isOld = Date.now() - latestPub > 60 * 60 * 1000;
+    if (foundStaleOrDeprecated || normalized.length < 10 || isOld) {
+      autoIngestFootballNews({ maxItems: 20 }).catch((e) => console.warn('[AutoNews] Background check:', e));
+    }
+
     res.json(normalized);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -856,6 +886,37 @@ router.get('/articles/:id', async (req, res) => {
       status: a.status,
       category: a.category || 'general',
       publishedAt: Number(a.published_at || Date.now())
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/articles/:id/full', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const admin = getInsforgeAdmin();
+    const { data, error } = await admin.database
+      .from('articles')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error || !data) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    const fullContent = await resolveAndEnrichArticleContent(data);
+    res.json({
+      id: data.id,
+      title: data.title,
+      content: fullContent,
+      summary: data.summary || (fullContent ? fullContent.slice(0, 180) + '...' : ''),
+      imageUrl: data.image_url || data.imageUrl,
+      authorId: data.author_id,
+      authorName: data.author_name || 'Jirvinho Brazilian sports maestro',
+      status: data.status,
+      category: data.category || 'general',
+      publishedAt: Number(data.published_at || Date.now()),
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

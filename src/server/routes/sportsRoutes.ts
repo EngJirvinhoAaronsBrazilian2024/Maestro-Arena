@@ -161,6 +161,16 @@ router.get("/competitions/:id/statistics", async (req, res) => {
 
 
 
+router.get("/transfers", async (req, res) => {
+  try {
+    const transfers = await getTransfers();
+    res.json(transfers);
+  } catch (error) {
+    console.error("Error fetching transfers:", error);
+    res.status(500).json({ error: "Failed to fetch transfers" });
+  }
+});
+
 router.get("/favorites/fixtures", async (req, res) => {
   try {
     const teamsStr = req.query.teams as string;

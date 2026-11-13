@@ -145,6 +145,12 @@ export interface Transfer {
   fromTeam?: { id: string; name: string; logoUrl?: string };
   toTeam?: { id: string; name: string; logoUrl?: string };
   fee?: string;
+  title?: string;
+  summary?: string;
+  source?: string;
+  articleId?: string;
+  league?: string;
+  imageUrl?: string;
 }
 
 export interface Article {

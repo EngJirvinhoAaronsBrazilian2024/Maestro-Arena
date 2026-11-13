@@ -4,17 +4,17 @@ import { Home, Calendar, Newspaper, Trophy, HelpCircle, Target } from 'lucide-re
 import { cn } from '../../lib/utils';
 
 const navItems = [
-  { icon: Home, label: 'Home', path: '/', activeGradient: 'bg-gradient-to-br from-rose-600 via-rose-600 to-red-700 shadow-rose-600/30' },
-  { icon: Calendar, label: 'Live', path: '/livescore', activeGradient: 'bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 shadow-blue-600/30' },
-  { icon: Target, label: 'Tips', path: '/tips', activeGradient: 'bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 shadow-emerald-600/30' },
-  { icon: HelpCircle, label: 'Quiz', path: '/quiz', activeGradient: 'bg-gradient-to-br from-amber-500 via-amber-600 to-yellow-600 shadow-amber-500/30 text-white' },
-  { icon: Newspaper, label: 'News', path: '/news', activeGradient: 'bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 shadow-indigo-600/30' },
+  { icon: Home, label: 'Home', path: '/' },
+  { icon: Calendar, label: 'Live', path: '/livescore' },
+  { icon: Target, label: 'Tips', path: '/tips' },
+  { icon: HelpCircle, label: 'Quiz', path: '/quiz' },
+  { icon: Newspaper, label: 'News', path: '/news' },
 ];
 
 export function BottomNav() {
   const location = useLocation();
   return (
-    <div className="w-full border-t border-emerald-200/70 bg-[#EAF7ED]/95 backdrop-blur-xl shadow-[0_-6px_25px_rgba(15,23,42,0.06)] rounded-b-[16px] sm:rounded-b-[20px] pb-[max(0.35rem,env(safe-area-inset-bottom))]">
+    <div className="w-full border-t border-emerald-200/70 bg-[#EAF7ED]/95 backdrop-blur-xl shadow-[0_-6px_25px_rgba(15,23,42,0.06)] pb-[max(0.35rem,env(safe-area-inset-bottom))]">
       <nav className="flex h-16 items-center justify-around px-2 sm:px-4 max-w-lg mx-auto">
         {navItems.map((item) => (
           <NavLink
@@ -25,8 +25,8 @@ export function BottomNav() {
               return cn(
                 'relative flex flex-col items-center justify-center w-13 h-12 rounded-xl transition-all duration-200',
                 isActive
-                  ? cn(item.activeGradient, 'text-white shadow-md scale-105')
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-100/60 bg-transparent'
+                  ? 'bg-gradient-to-br from-red-600 via-red-600 to-red-700 text-white shadow-md shadow-red-600/30 scale-105'
+                  : 'text-slate-600 hover:text-red-600 hover:bg-red-50/70 bg-transparent'
               );
             }}
           >

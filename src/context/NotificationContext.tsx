@@ -127,7 +127,38 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, []);
 
-  // Add notification to inbox with optional immediate popup
+  const triggerPushNotification = useCallback(async (title: string, body: string, tag?: string, url?: string) => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200))
+        ]);
+        if (reg && typeof reg.showNotification === 'function') {
+          await reg.showNotification(title, {
+            body,
+            icon: '/pwa-192x192.png',
+            badge: '/pwa-192x192.png',
+            tag,
+            data: { url: url || '/' },
+          });
+          return;
+        }
+      }
+      new Notification(title, {
+        body,
+        icon: '/pwa-192x192.png',
+        tag,
+      });
+    } catch {
+      // Fallback safely if browser blocks Notification API in iframe/webview
+    }
+  }, []);
+
+  // Add notification to inbox with optional immediate popup + browser/PWA push
   const addNotification = useCallback((
     notif: Omit<AppNotification, 'read'> & { read?: boolean },
     showToast: boolean = false
@@ -148,9 +179,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (showToast && !notifiedIdsRef.current.has(notif.id)) {
       notifiedIdsRef.current.add(notif.id);
       saveNotifiedIds();
-      toast.info(`${notif.title}: ${notif.body}`, { duration: 3500 });
+      toast.info(`${notif.title}: ${notif.body}`, { duration: 4000 });
+      void triggerPushNotification(notif.title, notif.body, notif.id, notif.link);
     }
-  }, [saveNotifiedIds]);
+  }, [saveNotifiedIds, triggerPushNotification]);
 
   // Check for newly published updates (Admin broadcasts, breaking news articles, betting tips)
   useEffect(() => {
@@ -337,19 +369,29 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   // Follow / Unfollow Match
   const toggleFollowMatch = useCallback((matchId: string, matchTitle: string) => {
+    const cleanId = String(matchId).replace(/^match_/, '');
+    const alreadyFollowed = followedMatches.includes(cleanId) || followedMatches.includes(`match_${cleanId}`);
+
+    if (!alreadyFollowed && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+
     setFollowedMatches(prev => {
-      if (prev.includes(matchId)) {
-        toast.info(`Unfollowed match: ${matchTitle}`, { duration: 2500 });
-        return prev.filter(id => id !== matchId);
+      if (prev.includes(cleanId) || prev.includes(`match_${cleanId}`)) {
+        toast.info(`Match alerts turned off: ${matchTitle}`, { duration: 2500 });
+        return prev.filter(id => id !== cleanId && id !== `match_${cleanId}`);
       } else {
-        toast.success(`You will now receive notifications for: ${matchTitle}`, { duration: 2500 });
-        setMatchTitles(prevTitles => ({ ...prevTitles, [matchId]: matchTitle }));
-        return [...prev, matchId];
+        toast.success(`Alerts on for ${matchTitle} (15m kick-off, Goals, HT & FT)`, { duration: 3000 });
+        setMatchTitles(prevTitles => ({ ...prevTitles, [cleanId]: matchTitle }));
+        return [...prev, cleanId];
       }
     });
-  }, []);
+  }, [followedMatches]);
 
-  const isFollowing = useCallback((matchId: string) => followedMatches.includes(matchId), [followedMatches]);
+  const isFollowing = useCallback((matchId: string) => {
+    const cleanId = String(matchId).replace(/^match_/, '');
+    return followedMatches.includes(cleanId) || followedMatches.includes(`match_${cleanId}`);
+  }, [followedMatches]);
 
   // Mark all notifications as read
   const markAllRead = useCallback(() => {
