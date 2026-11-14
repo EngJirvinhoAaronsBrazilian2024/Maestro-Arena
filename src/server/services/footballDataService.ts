@@ -6,6 +6,9 @@ export interface NormalizedTeam {
   shortName: string;
   tla: string;
   crest: string | null;
+  form?: string;
+  record?: string;
+  rank?: number;
 }
 
 export interface NormalizedScore {
@@ -38,6 +41,8 @@ export interface NormalizedMatch {
   awayTeam: NormalizedTeam;
   score: NormalizedScore;
   matchday?: number;
+  stage?: string;
+  roundNote?: string;
   lastUpdated: string;
 }
 
@@ -248,7 +253,12 @@ function normalizeRawMatch(raw: any): NormalizedMatch {
       winner: raw.score?.winner ?? null,
       duration: raw.score?.duration || 'REGULAR',
     },
-    matchday: raw.matchday,
+    matchday: typeof raw.matchday === 'number' ? raw.matchday : undefined,
+    stage: typeof raw.stage === 'string' && raw.stage.trim() ? raw.stage.trim() : undefined,
+    roundNote:
+      typeof raw.group === 'string' && raw.group.trim()
+        ? raw.group.trim()
+        : undefined,
     lastUpdated: raw.lastUpdated || new Date().toISOString(),
   };
 }
@@ -358,6 +368,37 @@ function normalizeEspnEvent(event: any, leagueMeta: any): NormalizedMatch | null
     const homeName = home.team?.displayName || home.team?.name || 'Home Team';
     const awayName = away.team?.displayName || away.team?.name || 'Away Team';
 
+    const extractCompetitorExtras = (c: any) => {
+      const form = typeof c?.form === 'string' && c.form.trim() ? c.form.trim() : undefined;
+      const recordsArr: any[] = Array.isArray(c?.records) ? c.records : [];
+      const overallRecord =
+        recordsArr.find((r) => r?.type === 'total' || r?.name === 'overall' || r?.name === 'All Splits') ||
+        recordsArr[0];
+      const record =
+        typeof overallRecord?.summary === 'string' && overallRecord.summary.trim()
+          ? overallRecord.summary.trim()
+          : undefined;
+      const rawRank = c?.curatedRank?.current ?? c?.rank;
+      const rank =
+        typeof rawRank === 'number' && Number.isFinite(rawRank) && rawRank > 0 && rawRank < 99
+          ? rawRank
+          : undefined;
+      return { form, record, rank };
+    };
+
+    const homeExtras = extractCompetitorExtras(home);
+    const awayExtras = extractCompetitorExtras(away);
+
+    const noteHeadline =
+      Array.isArray(comp?.notes) && comp.notes.length > 0
+        ? comp.notes.map((n: any) => n?.headline).filter(Boolean).join(' · ')
+        : undefined;
+    const roundNote =
+      noteHeadline ||
+      (typeof comp?.series?.title === 'string' && comp.series.title.trim() ? comp.series.title.trim() : undefined);
+    const seasonSlug =
+      typeof event?.season?.slug === 'string' && event.season.slug.trim() ? event.season.slug.trim() : undefined;
+
     return {
       id: toNumericId(event.id, 800000),
       competition: {
@@ -379,6 +420,7 @@ function normalizeEspnEvent(event: any, leagueMeta: any): NormalizedMatch | null
         shortName: home.team?.shortDisplayName || homeName,
         tla: home.team?.abbreviation || homeName.substring(0, 3).toUpperCase(),
         crest: home.team?.logo || null,
+        ...homeExtras,
       },
       awayTeam: {
         id: toNumericId(away.team?.id || awayName, 400000),
@@ -386,6 +428,7 @@ function normalizeEspnEvent(event: any, leagueMeta: any): NormalizedMatch | null
         shortName: away.team?.shortDisplayName || awayName,
         tla: away.team?.abbreviation || awayName.substring(0, 3).toUpperCase(),
         crest: away.team?.logo || null,
+        ...awayExtras,
       },
       score: {
         home: homeScore,
@@ -395,6 +438,8 @@ function normalizeEspnEvent(event: any, leagueMeta: any): NormalizedMatch | null
         winner,
         duration: 'REGULAR',
       },
+      stage: seasonSlug,
+      roundNote,
       lastUpdated: new Date().toISOString(),
     };
   } catch {

@@ -16,8 +16,10 @@ import h2hRoutes from "./src/server/routes/h2hRoutes.js";
 import scorebatRoutes from "./src/server/routes/scorebatRoutes.js";
 import fotmobRoutes from "./src/server/routes/fotmobRoutes.js";
 import besoccerRoutes from "./src/server/routes/besoccerRoutes.js";
+import pushRoutes from "./src/server/routes/pushRoutes.js";
 import { registerMatchSocket } from "./src/server/services/h2hManager.js";
 import { autoIngestFootballNews } from "./src/server/services/autoNewsService.js";
+import { startPushBackgroundMonitor } from "./src/server/services/pushService.js";
 
 // Clean up tsx injected relative globals which break Vite ESM plugins (like vite-plugin-pwa)
 if (typeof (globalThis as any).__dirname !== "undefined") {
@@ -89,6 +91,7 @@ app.use("/api/h2h", h2hRoutes);
 app.use("/api/scorebat", scorebatRoutes);
 app.use("/api/fotmob", fotmobRoutes);
 app.use("/api/besoccer", besoccerRoutes);
+app.use("/api/push", pushRoutes);
 
 // Proxy FotMob dynamic data & API endpoints (translationmapping, data, leagues, matches, search, player, etc.)
 // so all league tabs, tables, fixtures and matches load client-side with zero issues
@@ -272,10 +275,9 @@ async function startServer() {
               name: "disable-hmr-client-websocket",
               transform(code, id) {
                 if (id.includes("vite/dist/client/client.mjs")) {
-                  return code.replace(
-                    "await wsTransport.connect(handlers);",
-                    "return;"
-                  );
+                  return code
+                    .replace("await wsTransport.connect(handlers);", "return;")
+                    .replace("ws.send(JSON.stringify(data));", "if (ws && ws.readyState === 1) ws.send(JSON.stringify(data));");
                 }
               },
             },
@@ -317,6 +319,9 @@ async function startServer() {
         console.warn("[AutoNews] Periodic sync notice:", err)
       );
     }, 90 * 60 * 1000);
+
+    // Start background Web Push monitor for followed matches and favorites
+    startPushBackgroundMonitor();
   });
 
   server.on("error", (err: any) => {

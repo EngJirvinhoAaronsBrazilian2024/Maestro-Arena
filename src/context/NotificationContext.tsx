@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { insforge } from '../lib/insforge';
+import {
+  subscribeToWebPush,
+  syncPushPreferences,
+  readStoredFavorites,
+  readStoredMatchAlertsEnabled,
+} from '../lib/pushClient';
 
 export interface AppNotification {
   id: string;
@@ -98,6 +104,32 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     localStorage.setItem('matchTitles', JSON.stringify(matchTitles));
   }, [followedMatches, matchTitles]);
 
+  // Keep Web Push subscription & preferences synced whenever followed matches or pinned favorites change
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') {
+      return;
+    }
+
+    const syncAll = () => {
+      void subscribeToWebPush(
+        {
+          followedMatches,
+          favorites: readStoredFavorites(),
+          matchAlertsEnabled: readStoredMatchAlertsEnabled(),
+        },
+        false
+      );
+    };
+
+    syncAll();
+    window.addEventListener('sportshub_favorites_updated', syncAll);
+    window.addEventListener('storage', syncAll);
+    return () => {
+      window.removeEventListener('sportshub_favorites_updated', syncAll);
+      window.removeEventListener('storage', syncAll);
+    };
+  }, [followedMatches]);
+
   // Save inbox notifications
   useEffect(() => {
     const seen = new Set<string>();
@@ -179,8 +211,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (showToast && !notifiedIdsRef.current.has(notif.id)) {
       notifiedIdsRef.current.add(notif.id);
       saveNotifiedIds();
-      toast.info(`${notif.title}: ${notif.body}`, { duration: 4000 });
-      void triggerPushNotification(notif.title, notif.body, notif.id, notif.link);
+      if (readStoredMatchAlertsEnabled()) {
+        toast.info(`${notif.title}: ${notif.body}`, { duration: 4000 });
+        void triggerPushNotification(notif.title, notif.body, notif.id, notif.link);
+      }
     }
   }, [saveNotifiedIds, triggerPushNotification]);
 
@@ -371,21 +405,31 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const toggleFollowMatch = useCallback((matchId: string, matchTitle: string) => {
     const cleanId = String(matchId).replace(/^match_/, '');
     const alreadyFollowed = followedMatches.includes(cleanId) || followedMatches.includes(`match_${cleanId}`);
+    const nextList = alreadyFollowed
+      ? followedMatches.filter(id => id !== cleanId && id !== `match_${cleanId}`)
+      : [...followedMatches.filter(id => id !== cleanId), cleanId];
 
-    if (!alreadyFollowed && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().catch(() => {});
+    setFollowedMatches(nextList);
+
+    if (alreadyFollowed) {
+      toast.info(`Match alerts turned off: ${matchTitle}`, { duration: 2500 });
+      void syncPushPreferences({
+        followedMatches: nextList,
+        favorites: readStoredFavorites(),
+        matchAlertsEnabled: readStoredMatchAlertsEnabled(),
+      });
+    } else {
+      toast.success(`Alerts on for ${matchTitle} (15m kick-off, Goals, HT & FT)`, { duration: 3000 });
+      setMatchTitles(prevTitles => ({ ...prevTitles, [cleanId]: matchTitle }));
+      void subscribeToWebPush(
+        {
+          followedMatches: nextList,
+          favorites: readStoredFavorites(),
+          matchAlertsEnabled: readStoredMatchAlertsEnabled(),
+        },
+        true
+      );
     }
-
-    setFollowedMatches(prev => {
-      if (prev.includes(cleanId) || prev.includes(`match_${cleanId}`)) {
-        toast.info(`Match alerts turned off: ${matchTitle}`, { duration: 2500 });
-        return prev.filter(id => id !== cleanId && id !== `match_${cleanId}`);
-      } else {
-        toast.success(`Alerts on for ${matchTitle} (15m kick-off, Goals, HT & FT)`, { duration: 3000 });
-        setMatchTitles(prevTitles => ({ ...prevTitles, [cleanId]: matchTitle }));
-        return [...prev, cleanId];
-      }
-    });
   }, [followedMatches]);
 
   const isFollowing = useCallback((matchId: string) => {

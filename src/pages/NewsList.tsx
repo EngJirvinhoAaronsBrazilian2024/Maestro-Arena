@@ -9,6 +9,7 @@ import {
   getFullArticleById,
   recordReadingHistory,
 } from '../services/newsService';
+import { sanitizeNewsText } from '../lib/newsText';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent } from '../components/ui/Card';
 import {
@@ -328,12 +329,17 @@ export function NewsList() {
     const isSaved = bookmarks.includes(article.id);
     const isExpanded = expandedArticleId === article.id;
     const isFetchingFull = loadingFullId === article.id;
-    const resolvedFullContent = (fullContentCache[article.id] || article.content || article.summary || '')
-      .replace(/\n*Full reporting and coverage from .*?Maestro Arena\./is, '')
-      .trim();
+    const resolvedFullContent = sanitizeNewsText(
+      (fullContentCache[article.id] || article.content || article.summary || '')
+        .replace(/\n*Full reporting and coverage from .*?Maestro Arena\./is, '')
+        .trim(),
+      true
+    );
     const fullParagraphs = resolvedFullContent
       ? resolvedFullContent.split(/\n{2,}/).map((p: string) => p.trim()).filter(Boolean)
       : [];
+    const cleanHeadline = sanitizeNewsText(article.title || '', false);
+    const cleanSummary = sanitizeNewsText(article.summary || '', false);
 
     return (
       <React.Fragment key={article.id}>
@@ -434,12 +440,12 @@ export function NewsList() {
                     isExpanded ? 'text-xl sm:text-2xl mb-4' : 'text-base sm:text-lg line-clamp-2'
                   )}
                 >
-                  {article.title}
+                  {cleanHeadline}
                 </h3>
 
                 {!isExpanded ? (
                   <p className="text-xs sm:text-sm text-slate-600 line-clamp-3 leading-relaxed">
-                    {article.summary || (resolvedFullContent ? resolvedFullContent.slice(0, 160) + '...' : '')}
+                    {cleanSummary || (resolvedFullContent ? resolvedFullContent.slice(0, 160) + '...' : '')}
                   </p>
                 ) : (
                   <div className="space-y-4 text-sm sm:text-base text-slate-700 leading-relaxed pt-2 border-t border-slate-100 animate-in fade-in duration-300">

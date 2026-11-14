@@ -69,10 +69,10 @@ export function Register() {
   };
 
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center p-0 sm:p-4 md:p-6 bg-slate-950 font-sans overflow-x-hidden">
+    <div className="min-h-[100dvh] w-full relative flex items-center justify-center p-0 sm:p-4 md:p-6 bg-[#EAF7ED] sm:bg-slate-950 font-sans overflow-x-hidden">
       
       {/* Background: Santiago Bernabéu Stadium in HD */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      <div className="hidden sm:block fixed inset-0 overflow-hidden pointer-events-none z-0">
         <img 
           src="/assets/images/santiago_bernabeu_stadium.jpg" 
           alt="Santiago Bernabéu Stadium in HD" 
@@ -83,7 +83,7 @@ export function Register() {
       </div>
 
       {/* Phone/Tablet Form Container matching Login Screen */}
-      <div className="z-10 w-full max-w-[440px] sm:max-w-[460px] min-h-screen sm:min-h-0 bg-[#EAF7ED] sm:rounded-[40px] shadow-[0_25px_70px_rgba(0,0,0,0.65)] border border-emerald-200/80 overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-500">
+      <div className="z-10 w-full min-h-[100dvh] sm:min-h-0 sm:max-w-[460px] bg-[#EAF7ED] rounded-none sm:rounded-[40px] sm:shadow-[0_25px_70px_rgba(0,0,0,0.65)] sm:border sm:border-emerald-200/80 overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-500">
         
         {/* Top Hero Section: Superstars Header with Authentic Logo Shield */}
         <div className="relative w-full aspect-[949/560] shrink-0 overflow-hidden bg-[#EAF7ED]">
@@ -254,10 +254,23 @@ export function Register() {
               </div>
             </div>
 
-            {/* Legal Footnote */}
-            <p className="text-center text-[11px] text-slate-500 pt-1">
-              Official membership with synchronized sports live scores & trivia rankings.
-            </p>
+            {/* Legal Footnote & Developer Copyright */}
+            <div className="space-y-1 text-center pt-1">
+              <p className="text-[11px] text-slate-500">
+                Official membership with synchronized sports live scores & trivia rankings.
+              </p>
+              <p className="text-[11px] font-bold text-slate-600">
+                &copy; {new Date().getFullYear()} Maestro Arena · Developed by{' '}
+                <a
+                  href="https://eng-aaron-portifolio.vercel.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-red-600 hover:text-red-700 underline underline-offset-2 font-extrabold transition-colors"
+                >
+                  Eng Kisakye Aaron
+                </a>
+              </p>
+            </div>
           </form>
 
           {/* Bottom Dynamic Red Brush Stroke Graphics */}

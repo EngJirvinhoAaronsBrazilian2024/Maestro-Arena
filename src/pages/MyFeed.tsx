@@ -151,7 +151,7 @@ export function MyFeed() {
       </div>
 
       {/* Quick-Filter Bar & Personalized Strip */}
-      <FavoriteTeamsBar showMyFeedLink={false} onFilterChange={setFilteredFav} />
+      <FavoriteTeamsBar showMyFeedLink={false} showInlineFeed={false} onFilterChange={setFilteredFav} />
 
       {favorites.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

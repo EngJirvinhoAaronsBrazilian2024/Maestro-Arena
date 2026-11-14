@@ -486,6 +486,7 @@ export function Header() {
                     <UserAvatar
                       name={userData?.displayName}
                       email={user?.email}
+                      avatarUrl={userData?.avatarUrl || user?.profile?.avatar_url || user?.user_metadata?.avatar_url}
                       size="sm"
                       className="h-7 w-7 border border-white"
                     />
@@ -497,6 +498,7 @@ export function Header() {
                         <UserAvatar
                           name={userData?.displayName}
                           email={user?.email}
+                          avatarUrl={userData?.avatarUrl || user?.profile?.avatar_url || user?.user_metadata?.avatar_url}
                           size="md"
                           className="h-9 w-9"
                         />

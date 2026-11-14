@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 import { Link } from 'react-router-dom';
 import { useFootballMatches } from '../../hooks/useFootballMatches';
 import { NormalizedMatch } from '../../server/services/footballDataService';
+import { scoreFixtureImportance } from '../../lib/fixtureRanking';
 
 // Known iconic stadiums for premier clubs
 const STADIUM_MAP: Record<string, string> = {
@@ -24,35 +25,6 @@ const STADIUM_MAP: Record<string, string> = {
   'juventus': 'Allianz Stadium, Turin',
   'atletico': 'Cívitas Metropolitano, Madrid',
   'napoli': 'Stadio Diego Armando Maradona, Naples',
-};
-
-// Elite club scoring dictionary
-const ELITE_TEAMS: Record<string, number> = {
-  'real madrid': 100,
-  'manchester city': 100,
-  'bayern munich': 95,
-  'bayern münchen': 95,
-  'barcelona': 95,
-  'liverpool': 95,
-  'arsenal': 92,
-  'paris saint-germain': 90,
-  'psg': 90,
-  'inter': 88,
-  'internazionale': 88,
-  'inter milan': 88,
-  'ac milan': 86,
-  'milan': 86,
-  'juventus': 86,
-  'manchester united': 86,
-  'chelsea': 85,
-  'atletico madrid': 85,
-  'atlético de madrid': 85,
-  'borussia dortmund': 84,
-  'bayer leverkusen': 84,
-  'tottenham': 80,
-  'napoli': 80,
-  'aston villa': 75,
-  'newcastle': 75,
 };
 
 // Fallback fixture if API returns no upcoming or live games
@@ -79,55 +51,25 @@ const DEFAULT_FALLBACK_FIXTURE = {
   },
 };
 
-function getTeamWeight(teamName: string): number {
-  const lower = teamName.toLowerCase();
-  for (const [key, weight] of Object.entries(ELITE_TEAMS)) {
-    if (lower.includes(key)) return weight;
-  }
-  return 30; // base rating
-}
+function calculateCountdownCandidateScore(match: NormalizedMatch): number {
+  const ranked = scoreFixtureImportance(match);
+  let score = ranked.importanceScore;
 
-function calculateMatchScore(match: NormalizedMatch): number {
-  let score = 0;
-  const compCode = (match.competition?.code || '').toLowerCase();
-  const compName = (match.competition?.name || '').toLowerCase();
-
-  // 1. Competition weight
-  if (compCode === 'cl' || compName.includes('champions league')) score += 160;
-  else if (compCode === 'pl' || compName.includes('premier league')) score += 130;
-  else if (compCode === 'pd' || compName.includes('primera') || compName.includes('la liga')) score += 115;
-  else if (compCode === 'sa' || compName.includes('serie a')) score += 95;
-  else if (compCode === 'bl1' || compName.includes('bundesliga')) score += 95;
-  else if (compCode === 'fl1' || compName.includes('ligue 1')) score += 85;
-  else score += 50;
-
-  // 2. Elite teams weight
-  const homeWeight = getTeamWeight(match.homeTeam.name);
-  const awayWeight = getTeamWeight(match.awayTeam.name);
-  score += homeWeight + awayWeight;
-
-  // 3. Blockbuster derby clash bonus (both teams elite)
-  if (homeWeight >= 80 && awayWeight >= 80) {
-    score += 200; // Giant clash (e.g., Arsenal vs Man City, El Clásico, Real vs Bayern)
-  } else if (homeWeight >= 70 && awayWeight >= 70) {
-    score += 120;
-  }
-
-  // 4. Time proximity
+  // Preserve live & upcoming kickoff proximity boost for the countdown widget
   const matchTime = new Date(match.utcDate).getTime();
   const now = Date.now();
   const diffHours = (matchTime - now) / (1000 * 60 * 60);
 
   if (match.isLive) {
-    score += 150; // In play right now
+    score += 18;
   } else if (diffHours >= 0 && diffHours <= 6) {
-    score += 100; // Kickoff today in a few hours
+    score += 14;
   } else if (diffHours > 6 && diffHours <= 24) {
-    score += 75; // Tomorrow
+    score += 10;
   } else if (diffHours > 24 && diffHours <= 72) {
-    score += 50; // Within 3 days
+    score += 6;
   } else if (diffHours > 72 && diffHours <= 168) {
-    score += 25; // Within 1 week
+    score += 3;
   }
 
   return score;
@@ -154,7 +96,9 @@ export const MatchdayCountdownWidget: React.FC = () => {
     const pool = candidates.length > 0 ? candidates : matches;
 
     // Sort by calculated marquee blockbuster score descending
-    const sorted = [...pool].sort((a, b) => calculateMatchScore(b) - calculateMatchScore(a));
+    const sorted = [...pool].sort(
+      (a, b) => calculateCountdownCandidateScore(b) - calculateCountdownCandidateScore(a)
+    );
     const topMatch = sorted[0];
 
     if (!topMatch) {

@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { getInsforgeAdmin } from '../insforgeAdmin.js';
 import { recordActivity, getActivityLogs, getActivityStats, clearActivityLogs, deleteActivityLogsByIds } from '../services/activityService.js';
-import { autoIngestFootballNews, DEPRECATED_STALE_SOURCES, isFreshNewsTimestamp, normalizeNewsHeadline, resolveAndEnrichArticleContent } from '../services/autoNewsService.js';
+import { autoIngestFootballNews, cleanPlainEnglishText, DEPRECATED_STALE_SOURCES, isFreshNewsTimestamp, normalizeNewsHeadline, resolveAndEnrichArticleContent } from '../services/autoNewsService.js';
+import { broadcastPushNotification } from '../services/pushService.js';
 
 
 const router = Router();
@@ -204,7 +205,15 @@ router.post('/notifications', async (req, res) => {
       }])
       .select('*');
     if (error) throw error;
-    res.json(data?.[0] || { success: true });
+    const createdNotif = data?.[0];
+    const broadcastId = createdNotif?.id || Date.now();
+    void broadcastPushNotification({
+      title: String(title).trim(),
+      body: String(message).trim(),
+      url: '/',
+      tag: `broadcast_${broadcastId}`,
+    });
+    res.json(createdNotif || { success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -835,11 +844,21 @@ router.get('/articles', async (req, res) => {
         seenHeadlines.add(normTitle);
       }
 
+      const cleanTitle = cleanPlainEnglishText(a.title || '', false);
+      const cleanContent = cleanPlainEnglishText(a.content || '', true);
+      const rawSummary = a.summary ? cleanPlainEnglishText(a.summary, false) : '';
+      const cleanSummary =
+        rawSummary && rawSummary.length >= 20
+          ? rawSummary
+          : cleanContent
+          ? (cleanContent.length > 180 ? cleanContent.slice(0, 177).trimEnd() + '...' : cleanContent)
+          : '';
+
       normalized.push({
         id: a.id,
-        title: a.title,
-        content: a.content,
-        summary: a.summary || (a.content ? a.content.slice(0, 180) + '...' : ''),
+        title: cleanTitle,
+        content: cleanContent,
+        summary: cleanSummary,
         imageUrl: a.image_url || a.imageUrl,
         authorId: a.author_id,
         authorName: author || 'Jirvinho Brazilian sports maestro',
@@ -875,11 +894,21 @@ router.get('/articles/:id', async (req, res) => {
     }
 
     const a = data;
+    const cleanTitle = cleanPlainEnglishText(a.title || '', false);
+    const cleanContent = cleanPlainEnglishText(a.content || '', true);
+    const rawSummary = a.summary ? cleanPlainEnglishText(a.summary, false) : '';
+    const cleanSummary =
+      rawSummary && rawSummary.length >= 20
+        ? rawSummary
+        : cleanContent
+        ? (cleanContent.length > 180 ? cleanContent.slice(0, 177).trimEnd() + '...' : cleanContent)
+        : '';
+
     res.json({
       id: a.id,
-      title: a.title,
-      content: a.content,
-      summary: a.summary || (a.content ? a.content.slice(0, 180) + '...' : ''),
+      title: cleanTitle,
+      content: cleanContent,
+      summary: cleanSummary,
       imageUrl: a.image_url || a.imageUrl,
       authorId: a.author_id,
       authorName: a.author_name || 'Jirvinho Brazilian sports maestro',
@@ -905,12 +934,21 @@ router.get('/articles/:id/full', async (req, res) => {
       return res.status(404).json({ error: 'Article not found' });
     }
 
-    const fullContent = await resolveAndEnrichArticleContent(data);
+    const fullContent = cleanPlainEnglishText(await resolveAndEnrichArticleContent(data), true);
+    const cleanTitle = cleanPlainEnglishText(data.title || '', false);
+    const rawSummary = data.summary ? cleanPlainEnglishText(data.summary, false) : '';
+    const cleanSummary =
+      rawSummary && rawSummary.length >= 20
+        ? rawSummary
+        : fullContent
+        ? (fullContent.length > 180 ? fullContent.slice(0, 177).trimEnd() + '...' : fullContent)
+        : '';
+
     res.json({
       id: data.id,
-      title: data.title,
+      title: cleanTitle,
       content: fullContent,
-      summary: data.summary || (fullContent ? fullContent.slice(0, 180) + '...' : ''),
+      summary: cleanSummary,
       imageUrl: data.image_url || data.imageUrl,
       authorId: data.author_id,
       authorName: data.author_name || 'Jirvinho Brazilian sports maestro',
@@ -981,6 +1019,15 @@ router.post('/articles', async (req, res) => {
       publishedAt: Number(data[0].published_at)
     } : { ...newArticle, id: 'art_' + Date.now() };
 
+    if (created.status === 'published') {
+      void broadcastPushNotification({
+        title: 'Breaking Football News',
+        body: created.title,
+        url: `/news/${created.id}`,
+        tag: `news_${created.id}`,
+      });
+    }
+
     res.json(created);
   } catch (err: any) {
     console.error('Error in POST /api/admin/articles:', err);
@@ -1009,10 +1056,24 @@ router.put('/articles/:id', async (req, res) => {
       updates.published_at = Number(publishedAt !== undefined ? publishedAt : published_at);
     }
 
-    const { error } = await admin.database.from('articles').update(updates).eq('id', id);
+    const { data: updatedRows, error } = await admin.database
+      .from('articles')
+      .update(updates)
+      .eq('id', id)
+      .select('id, title, status');
     if (error) {
       console.error('Error updating article in InsForge:', error);
       return res.status(500).json({ error: error.message || 'Failed to update article' });
+    }
+    const updatedRow = updatedRows?.[0];
+    if (status === 'published') {
+      const headline = updatedRow?.title || title || 'New Football Story';
+      void broadcastPushNotification({
+        title: 'Breaking Football News',
+        body: String(headline),
+        url: `/news/${id}`,
+        tag: `news_${id}`,
+      });
     }
     res.json({ success: true });
   } catch (err: any) {

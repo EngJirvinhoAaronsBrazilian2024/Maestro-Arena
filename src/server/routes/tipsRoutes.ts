@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getInsforgeAdmin } from '../insforgeAdmin.js';
+import { broadcastPushNotification } from '../services/pushService.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -146,6 +147,12 @@ router.post('/', async (req, res) => {
     }
 
     const created = data?.[0] ? normalizeTipFromDb(data[0]) : normalizeTipFromDb(dbPayload);
+    void broadcastPushNotification({
+      title: `New ${normalizedCategory.toUpperCase()} Tip Posted`,
+      body: 'Check out today’s latest football prediction & analysis.',
+      url: '/tips',
+      tag: `tip_${created.id}`,
+    });
     res.json(created);
   } catch (error: any) {
     console.error('Error in POST /api/tips:', error);

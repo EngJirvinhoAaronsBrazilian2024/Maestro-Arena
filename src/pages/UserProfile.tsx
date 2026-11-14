@@ -3,11 +3,12 @@ import { useAuth } from '../context/AuthContext';
 import { useBookmarks } from '../services/news/hooks';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Bookmark, User, Mail, Shield, LogOut } from 'lucide-react';
+import { Bookmark, User, Mail, Shield, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { UserAvatar } from '../components/ui/UserAvatar';
 
 export function UserProfile() {
   const { user, profile, logout } = useAuth();
-  const { bookmarks } = useBookmarks(user?.uid);
+  const { bookmarks } = useBookmarks(user?.id || user?.uid);
 
   if (!user || !profile) {
     return (
@@ -30,9 +31,13 @@ export function UserProfile() {
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="md:col-span-1 h-fit">
           <CardContent className="p-6 flex flex-col items-center text-center space-y-4">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-green-100 text-blue-600">
-              <User className="h-12 w-12" />
-            </div>
+            <UserAvatar
+              name={profile.displayName}
+              email={user.email}
+              avatarUrl={profile.avatarUrl || user?.profile?.avatar_url || user?.user_metadata?.avatar_url}
+              size="xl"
+              className="h-24 w-24 text-2xl border-2 border-slate-200"
+            />
             <div>
               <h2 className="text-xl font-bold text-slate-900">{profile.displayName || 'Sports Fan'}</h2>
               <div className="flex items-center justify-center gap-2 mt-1 text-sm text-slate-500">
@@ -40,7 +45,7 @@ export function UserProfile() {
                 <span>{user.email}</span>
               </div>
               <div className="flex items-center justify-center gap-2 mt-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700 border border-rose-200">
                   <Shield className="h-3 w-3" />
                   {profile.role || 'Member'}
                 </span>
@@ -48,6 +53,13 @@ export function UserProfile() {
             </div>
 
             <div className="w-full space-y-2 pt-4 border-t border-slate-100">
+              <Link
+                to="/settings"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 text-slate-700 px-4 py-2 text-sm font-semibold hover:bg-slate-200 transition-colors"
+              >
+                <SettingsIcon className="h-4 w-4 text-rose-600" />
+                Edit Photo &amp; Settings
+              </Link>
               {profile.role === 'admin' && (
                 <Link to="/admin" className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-50 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-100">
                   <Shield className="h-4 w-4" />

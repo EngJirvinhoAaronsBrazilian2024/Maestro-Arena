@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
+import { syncPushPreferences } from '../lib/pushClient';
 
 export interface FavoriteItem {
   id: string; // e.g. "team_33" or "competition_2001"
@@ -135,8 +136,12 @@ export function useFavorites() {
       : [...current, item];
     setFavorites(updated);
     saveFavorites(updated);
+    void syncPushPreferences({
+      userId: user?.id,
+      favorites: updated.map(f => ({ id: f.id, type: f.type, name: f.name })),
+    });
     toast.success(exists ? `Unpinned ${item.name}` : `Pinned ${item.name} to your feed`, { duration: 2000 });
-  }, [readFavorites, saveFavorites]);
+  }, [readFavorites, saveFavorites, user?.id]);
 
   const isFavorite = useCallback((id: string, name?: string, type?: FavoriteItem['type']) => {
     return favorites.some(f =>

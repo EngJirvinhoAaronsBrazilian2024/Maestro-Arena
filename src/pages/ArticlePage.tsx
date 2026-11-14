@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useArticle, useBookmarks } from '../services/news/hooks';
 import { toggleBookmark, recordReadingHistory, getFullArticleById } from '../services/newsService';
+import { sanitizeNewsText } from '../lib/newsText';
 import { useAuth } from '../context/AuthContext';
 import { Bookmark, Share2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
@@ -99,12 +100,12 @@ export function ArticlePage() {
         </div>
         
         <h1 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight text-slate-950 leading-tight md:leading-[1.15]">
-          {article.title}
+          {sanitizeNewsText(article.title, false)}
         </h1>
         
         {article.summary && (
           <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium">
-            {article.summary}
+            {sanitizeNewsText(article.summary, false)}
           </p>
         )}
 
@@ -158,7 +159,7 @@ export function ArticlePage() {
       )}
 
       <div className="prose prose-slate max-w-none text-base sm:text-lg leading-relaxed text-slate-700 font-medium space-y-4">
-        {article.content.split('\n\n').map((paragraph, i) => (
+        {sanitizeNewsText(article.content || article.summary || '', true).split('\n\n').map((paragraph, i) => (
           <p key={i}>{paragraph}</p>
         ))}
       </div>

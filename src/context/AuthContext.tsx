@@ -5,6 +5,7 @@ export interface UserData {
   id?: string;
   email: string;
   displayName: string;
+  avatarUrl?: string;
   role: 'user' | 'editor' | 'moderator' | 'admin';
   createdAt: number;
   favoriteTeams?: string[];
@@ -72,10 +73,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
            data.role = 'admin';
         }
         
+        const resolvedAvatar =
+          currentUser.profile?.avatar_url ||
+          currentUser.user_metadata?.avatar_url ||
+          data.avatar_url ||
+          '';
+
         const mappedData: UserData = {
           id: data.id || currentUser.id,
           email: data.email,
-          displayName: data.display_name,
+          displayName: data.display_name || currentUser.profile?.name || data.email?.split('@')[0] || 'User',
+          avatarUrl: resolvedAvatar,
           role: data.role as any,
           favoriteTeams: data.favorite_teams || [],
           createdAt: data.created_at,
@@ -89,6 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Automatically provision their public.users profile row
         const role = isSpecialAdmin ? 'admin' : 'user';
         const displayName = currentUser.profile?.name || currentUser.user_metadata?.display_name || currentUser.email?.split('@')[0] || 'User';
+        const avatarUrl = currentUser.profile?.avatar_url || currentUser.user_metadata?.avatar_url || '';
         const newUserData = {
           id: currentUser.id,
           email: (currentUser.email || '').toLowerCase(),
@@ -106,6 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: newUserData.id,
           email: newUserData.email,
           displayName: newUserData.display_name,
+          avatarUrl,
           role: role as any,
           favoriteTeams: [],
           createdAt: newUserData.created_at
@@ -151,19 +161,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateUserData = async (updates: Partial<UserData>) => {
     if (!user) return;
     try {
-      const dbUpdates: any = {};
+      // 1. Update InsForge Auth profile (persists avatar_url & name across sessions)
+      const authProfileUpdates: Record<string, unknown> = {};
+      if (updates.displayName !== undefined) authProfileUpdates.name = updates.displayName;
+      if (updates.avatarUrl !== undefined) authProfileUpdates.avatar_url = updates.avatarUrl;
+
+      if (Object.keys(authProfileUpdates).length > 0) {
+        const { data: profileRes, error: profileError } = await insforge.auth.setProfile(authProfileUpdates);
+        if (profileError) {
+          throw profileError;
+        }
+        setUser((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                profile: {
+                  ...(prev.profile || {}),
+                  ...(profileRes?.profile || {}),
+                  ...authProfileUpdates,
+                },
+              }
+            : prev
+        );
+      }
+
+      // 2. Sync public.users display_name / role
+      const dbUpdates: Record<string, unknown> = {};
       if (updates.displayName !== undefined) dbUpdates.display_name = updates.displayName;
       if (updates.role !== undefined) dbUpdates.role = updates.role;
-      
-      const { error } = await insforge.database
-        .from('users')
-        .update(dbUpdates)
-        .eq('id', user.id);
-      if (!error && userData) {
-        setUserData({ ...userData, ...updates });
+
+      if (Object.keys(dbUpdates).length > 0) {
+        await insforge.database.from('users').update(dbUpdates).eq('id', user.id);
+      }
+
+      if (userData) {
+        const nextUserData = { ...userData, ...updates };
+        setUserData(nextUserData);
+        try {
+          localStorage.setItem('insforge_user', JSON.stringify(nextUserData));
+        } catch {}
       }
     } catch (e) {
       console.error('Failed to update user data', e);
+      throw e;
     }
   };
 

@@ -98,6 +98,7 @@ export function H2HQuiz() {
   const [timeLeft, setTimeLeft] = useState<number>(60);
   const [opponentHasAnswered, setOpponentHasAnswered] = useState<boolean>(false);
   const [startingCountdown, setStartingCountdown] = useState<number>(3);
+  const [confirmingLeave, setConfirmingLeave] = useState<boolean>(false);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const timerIntervalRef = useRef<any>(null);
@@ -402,13 +403,17 @@ export function H2HQuiz() {
 
   const handleLeaveMatch = async () => {
     if (!match || !currentUserId) return;
-    if (confirm("Are you sure you want to leave this match?")) {
-      await leaveH2HMatch(currentUserId, match.id);
-      setMatch(null);
-      setSelectedOption(null);
-      setHasSubmitted(false);
-      loadLobbyData();
+    if (!confirmingLeave) {
+      setConfirmingLeave(true);
+      setTimeout(() => setConfirmingLeave(false), 3500);
+      return;
     }
+    setConfirmingLeave(false);
+    await leaveH2HMatch(currentUserId, match.id);
+    setMatch(null);
+    setSelectedOption(null);
+    setHasSubmitted(false);
+    loadLobbyData();
   };
 
   const handleCopyCode = () => {
@@ -513,7 +518,7 @@ export function H2HQuiz() {
           </div>
 
           <div className="py-4">
-            <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-3xl bg-gradient-to-tr from-rose-600 via-rose-600 to-red-600 text-white font-black text-6xl shadow-2xl shadow-rose-600/35 animate-bounce">
+            <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-3xl bg-gradient-to-tr from-rose-600 via-rose-600 to-red-600 text-white font-black text-6xl shadow-xl shadow-rose-600/30 tabular-nums">
               {startingCountdown > 0 ? startingCountdown : "GO!"}
             </div>
           </div>
@@ -615,7 +620,7 @@ export function H2HQuiz() {
                     )
                   )}
                 </div>
-                <div className="text-base sm:text-lg font-black text-rose-600">
+                <div className="text-base sm:text-lg font-black text-rose-600 tabular-nums">
                   {match.player1.score.toLocaleString()} <span className="text-[10px] font-bold text-slate-400">pts</span>
                 </div>
               </div>
@@ -658,7 +663,7 @@ export function H2HQuiz() {
                     )
                   )}
                 </div>
-                <div className="text-base sm:text-lg font-black text-slate-700">
+                <div className="text-base sm:text-lg font-black text-slate-700 tabular-nums">
                   {match.player2?.score.toLocaleString() || 0} <span className="text-[10px] font-bold text-slate-400">pts</span>
                 </div>
               </div>
@@ -761,10 +766,16 @@ export function H2HQuiz() {
           {/* LEAVE MATCH LINK */}
           <div className="flex items-center justify-between pt-2">
             <button
+              type="button"
               onClick={handleLeaveMatch}
-              className="text-xs font-bold text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+              className={cn(
+                "text-xs font-bold transition-colors cursor-pointer",
+                confirmingLeave
+                  ? "px-3 py-1 rounded-lg bg-rose-600 text-white"
+                  : "text-slate-400 hover:text-rose-600"
+              )}
             >
-              Forfeit / Exit Match
+              {confirmingLeave ? "Tap again to confirm forfeit" : "Forfeit / Exit Match"}
             </button>
             <span className="text-xs font-semibold text-slate-400">
               Room: <strong className="font-mono text-slate-600">{match.roomCode}</strong>
@@ -1062,15 +1073,23 @@ export function H2HQuiz() {
   // RENDER: MAIN LOBBY SCREEN (CREATE, JOIN, QUICK MATCH, HISTORY)
   // -------------------------------------------------------------
   return (
-    <div className="mx-auto max-w-5xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16">
+    <div className="mx-auto max-w-5xl space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16">
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-50 border border-rose-200/80 mb-3 shadow-2xs">
-            <Swords className="w-3.5 h-3.5 text-rose-600" />
-            <span className="text-[10px] font-black uppercase tracking-wider text-rose-700">Live 1v1 Arena</span>
+          <Link
+            to="/quiz"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-rose-600 transition-colors mb-2.5"
+          >
+            <ArrowLeft size={14} /> Back to Quiz Arena
+          </Link>
+          <div className="block">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-rose-50 border border-rose-200/80 mb-2">
+              <Swords className="w-3.5 h-3.5 text-rose-600" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-700">Live 1v1 Arena</span>
+            </div>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950">Head-to-Head Multi Quiz</h1>
+          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-950">Head-to-Head Multi Quiz</h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
             Real-time multiplayer football quiz battle with synchronized rounds, live scoreboard, and validated scoring.
           </p>
@@ -1080,7 +1099,7 @@ export function H2HQuiz() {
           onClick={loadLobbyData}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200/90 rounded-xl text-xs sm:text-sm font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 shadow-2xs transition-all cursor-pointer self-start sm:self-auto"
         >
-          <RefreshCw size={14} className={loading || historyLoading ? "animate-spin" : ""} />
+          <RefreshCw size={14} className={loading || historyLoading ? "animate-spin text-rose-600" : ""} />
           Refresh Lobby
         </button>
       </div>
@@ -1088,12 +1107,12 @@ export function H2HQuiz() {
       {/* THREE MAIN ACTION CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* 1. Quick Match */}
-        <Card className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm flex flex-col justify-between hover:border-rose-300 transition-all hover:shadow-md">
+        <Card className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm flex flex-col justify-between hover:border-rose-300 transition-all">
           <div className="space-y-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-rose-600 to-red-600 text-white shadow-md shadow-rose-600/20">
               <Zap className="h-6 w-6" />
             </div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">Quick Match</h3>
+            <h3 className="text-lg font-black text-slate-950 tracking-tight">Quick Match</h3>
             <p className="text-xs text-slate-500 font-medium leading-relaxed">
               Find an open public match or create one instantly. Jump straight into the battle!
             </p>
@@ -1109,12 +1128,12 @@ export function H2HQuiz() {
         </Card>
 
         {/* 2. Create Private Room */}
-        <Card className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm flex flex-col justify-between hover:border-rose-300 transition-all hover:shadow-md">
+        <Card className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm flex flex-col justify-between hover:border-rose-300 transition-all">
           <div className="space-y-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 shadow-2xs">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 border border-rose-200">
               <Lock className="h-6 w-6" />
             </div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">Create Private Room</h3>
+            <h3 className="text-lg font-black text-slate-950 tracking-tight">Create Private Room</h3>
             <p className="text-xs text-slate-500 font-medium leading-relaxed">
               Customize categories, difficulty, question count, and invite a friend with a room code.
             </p>
@@ -1129,12 +1148,12 @@ export function H2HQuiz() {
         </Card>
 
         {/* 3. Join with Code */}
-        <Card className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm flex flex-col justify-between hover:border-rose-300 transition-all hover:shadow-md">
+        <Card className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm flex flex-col justify-between hover:border-rose-300 transition-all">
           <div className="space-y-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-2xs">
-              <LogIn className="h-6 w-6" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-800 border border-slate-200">
+              <LogIn className="h-6 w-6 text-rose-600" />
             </div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">Join with Room Code</h3>
+            <h3 className="text-lg font-black text-slate-950 tracking-tight">Join with Room Code</h3>
             <p className="text-xs text-slate-500 font-medium leading-relaxed">
               Have a 6-letter room code from a friend? Enter it below to join their lobby directly.
             </p>

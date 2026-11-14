@@ -1,10 +1,36 @@
 import { insforge } from '../lib/insforge';
+import { sanitizeNewsText } from '../lib/newsText';
 import { Article } from '../types/sports';
 import { getImageUrl } from './storageService';
 
-const CACHE_KEY = 'sportshub_articles_cache_v2';
+const CACHE_KEY = 'sportshub_articles_cache_v3';
 const MAX_NEWS_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 const DEPRECATED_AUTHORS = new Set(['Sky Sports Transfer Centre', 'Marca Football']);
+
+function normalizeArticleRecord(a: any): Article {
+  const cleanTitle = sanitizeNewsText(a.title || '', false);
+  const cleanContent = sanitizeNewsText(a.content || '', true);
+  const rawSummary = a.summary ? sanitizeNewsText(a.summary, false) : '';
+  const cleanSummary =
+    rawSummary && rawSummary.length >= 20
+      ? rawSummary
+      : cleanContent
+      ? (cleanContent.length > 180 ? cleanContent.slice(0, 177).trimEnd() + '...' : cleanContent)
+      : '';
+
+  return {
+    id: a.id,
+    title: cleanTitle,
+    content: cleanContent,
+    summary: cleanSummary,
+    imageUrl: a.imageUrl || a.image_url ? getImageUrl(a.imageUrl || a.image_url) : undefined,
+    authorId: a.authorId || a.author_id || '',
+    authorName: a.authorName || a.author_name || 'Jirvinho Brazilian sports maestro',
+    status: a.status || 'published',
+    category: a.category || 'Football',
+    publishedAt: Number(a.publishedAt || a.published_at || 0),
+  };
+}
 
 function isFreshClientArticle(a: Partial<Article>): boolean {
   const author = String(a.authorName || '');
@@ -48,11 +74,12 @@ function getCachedArticles(): Article[] {
   if (typeof window === 'undefined') return [];
   try {
     localStorage.removeItem('sportshub_articles_cache');
+    localStorage.removeItem('sportshub_articles_cache_v2');
     const raw = localStorage.getItem(CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return sanitizeAndDedupeArticles(parsed);
+        return sanitizeAndDedupeArticles(parsed.map(normalizeArticleRecord));
       }
     }
   } catch (e) {
@@ -81,18 +108,7 @@ export async function getArticles(status: 'draft' | 'published' = 'published'): 
     if (res && res.ok) {
       const rawData = await res.json();
       if (Array.isArray(rawData)) {
-        const normalized: Article[] = rawData.map((a: any) => ({
-          id: a.id,
-          title: a.title,
-          content: a.content || '',
-          summary: a.summary || (a.content ? a.content.slice(0, 180) + '...' : ''),
-          imageUrl: a.imageUrl || a.image_url ? getImageUrl(a.imageUrl || a.image_url) : undefined,
-          authorId: a.authorId || a.author_id,
-          authorName: a.authorName || a.author_name || 'Jirvinho Brazilian sports maestro',
-          status: a.status,
-          category: a.category || 'Football',
-          publishedAt: Number(a.publishedAt || a.published_at || 0)
-        }));
+        const normalized: Article[] = rawData.map(normalizeArticleRecord);
 
         const clean = sanitizeAndDedupeArticles(normalized);
         saveCachedArticles(clean);
@@ -115,18 +131,7 @@ export async function getArticles(status: 'draft' | 'published' = 'published'): 
       .order('published_at', { ascending: false });
 
     if (!error && Array.isArray(data)) {
-      const parsed: Article[] = data.map(a => ({
-        id: a.id,
-        title: a.title,
-        content: a.content || '',
-        summary: a.summary || (a.content ? a.content.slice(0, 180) + '...' : ''),
-        imageUrl: a.image_url ? getImageUrl(a.image_url) : undefined,
-        authorId: a.author_id,
-        authorName: a.author_name || 'Jirvinho Brazilian sports maestro',
-        status: a.status,
-        category: a.category || 'Football',
-        publishedAt: Number(a.published_at || 0)
-      }));
+      const parsed: Article[] = data.map(normalizeArticleRecord);
 
       const clean = sanitizeAndDedupeArticles(parsed);
       if (clean.length > 0) {
@@ -157,18 +162,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
       const list = await res.json();
       const found = (list || []).find((a: any) => a.id === id);
       if (found) {
-        return {
-          id: found.id,
-          title: found.title,
-          content: found.content || '',
-          summary: found.summary || (found.content ? found.content.slice(0, 180) + '...' : ''),
-          imageUrl: found.imageUrl || found.image_url ? getImageUrl(found.imageUrl || found.image_url) : undefined,
-          authorId: found.authorId || found.author_id,
-          authorName: found.authorName || found.author_name || 'Jirvinho Brazilian sports maestro',
-          status: found.status,
-          category: found.category || 'Football',
-          publishedAt: Number(found.publishedAt || found.published_at || Date.now())
-        };
+        return normalizeArticleRecord({ ...found, publishedAt: found.publishedAt || found.published_at || Date.now() });
       }
     }
   } catch (e) {
@@ -184,18 +178,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
       .single();
 
     if (!error && data) {
-      return {
-        id: data.id,
-        title: data.title,
-        content: data.content || '',
-        summary: data.summary || (data.content ? data.content.slice(0, 180) + '...' : ''),
-        imageUrl: data.image_url ? getImageUrl(data.image_url) : undefined,
-        authorId: data.author_id,
-        authorName: data.author_name || 'Jirvinho Brazilian sports maestro',
-        status: data.status,
-        category: data.category || 'Football',
-        publishedAt: Number(data.published_at || Date.now())
-      };
+      return normalizeArticleRecord({ ...data, published_at: data.published_at || Date.now() });
     }
   } catch (directErr) {
     // Ignore
@@ -214,18 +197,10 @@ export async function getFullArticleById(id: string): Promise<Article | null> {
     if (res && res.ok) {
       const a = await res.json();
       if (a && a.id) {
-        const enriched: Article = {
-          id: a.id,
-          title: a.title,
-          content: a.content || '',
-          summary: a.summary || (a.content ? a.content.slice(0, 180) + '...' : ''),
-          imageUrl: a.imageUrl || a.image_url ? getImageUrl(a.imageUrl || a.image_url) : undefined,
-          authorId: a.authorId || a.author_id || '',
-          authorName: a.authorName || a.author_name || 'Jirvinho Brazilian sports maestro',
-          status: a.status || 'published',
-          category: a.category || 'Football',
-          publishedAt: Number(a.publishedAt || a.published_at || Date.now()),
-        };
+        const enriched = normalizeArticleRecord({
+          ...a,
+          publishedAt: a.publishedAt || a.published_at || Date.now(),
+        });
 
         // Update cached list so reopening this story stays full & instant
         const existingCache = getCachedArticles();
@@ -422,7 +397,7 @@ export function getSavedArticleSnapshots(userId?: string): Article[] {
   try {
     const raw = localStorage.getItem(getBookmarkSnapshotsKey(userId));
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(normalizeArticleRecord) : [];
   } catch {
     return [];
   }
@@ -510,7 +485,13 @@ export function getReadingHistory(userId?: string): ReadingHistoryItem[] {
     const raw = localStorage.getItem(getHistoryKey(userId));
     const parsed = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
-    return parsed.sort((a, b) => Number(b.readAt || 0) - Number(a.readAt || 0));
+    return parsed
+      .map((item: any) => ({
+        ...item,
+        title: sanitizeNewsText(item.title || '', false),
+        summary: item.summary ? sanitizeNewsText(item.summary, false) : item.summary,
+      }))
+      .sort((a, b) => Number(b.readAt || 0) - Number(a.readAt || 0));
   } catch {
     return [];
   }

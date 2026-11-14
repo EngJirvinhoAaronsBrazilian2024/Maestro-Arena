@@ -1,21 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { QuizQuestion, QuizCategory } from '../../types/quiz';
 import { cn } from '../../lib/utils';
-import { 
-  CheckCircle2, 
-  XCircle, 
-  HelpCircle, 
-  Clock, 
-  ChevronRight, 
-  Trophy, 
-  Flame, 
+import {
+  CheckCircle2,
+  XCircle,
+  HelpCircle,
+  ChevronRight,
+  Trophy,
+  Flame,
   Sparkles,
-  Shield,
-  Globe,
-  Users,
-  BookOpen,
-  Flag,
-  Award
+  Award,
 } from 'lucide-react';
 
 interface QuizQuestionCardProps {
@@ -32,15 +26,6 @@ interface QuizQuestionCardProps {
   onNextQuestion: () => void;
 }
 
-const getCategoryIcon = (cat: string) => {
-  if (cat.includes('World') || cat.includes('FIFA')) return Globe;
-  if (cat.includes('League') || cat.includes('Liga') || cat.includes('Serie') || cat.includes('Clubs') || cat.includes('Bundesliga')) return Shield;
-  if (cat.includes('Players') || cat.includes('Managers')) return Users;
-  if (cat.includes('History') || cat.includes('Records') || cat.includes('Rules')) return BookOpen;
-  if (cat.includes('African')) return Flag;
-  return Trophy;
-};
-
 export function QuizQuestionCard({
   question,
   currentNumber,
@@ -52,7 +37,7 @@ export function QuizQuestionCard({
   difficulty = 'Medium',
   userAnswersHistory = [],
   onAnswerSubmit,
-  onNextQuestion
+  onNextQuestion,
 }: QuizQuestionCardProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
@@ -65,18 +50,17 @@ export function QuizQuestionCard({
     setShowHint(false);
     setAnimatingOut(false);
     setImageError(false);
-    // Shuffle options cleanly once per question
     setShuffledOptions([...question.options].sort(() => 0.5 - Math.random()));
   }, [question]);
 
   useEffect(() => {
     if (timeRemaining === 0 && !selectedAnswer) {
-      handleOptionClick('__TIMEOUT__'); 
+      handleOptionClick('__TIMEOUT__');
     }
   }, [timeRemaining, selectedAnswer]);
 
   const handleOptionClick = (option: string) => {
-    if (selectedAnswer) return; 
+    if (selectedAnswer) return;
     setSelectedAnswer(option);
     onAnswerSubmit(option);
   };
@@ -91,80 +75,81 @@ export function QuizQuestionCard({
   const isAnswerCorrect = selectedAnswer === question.correctAnswer;
   const progressPercent = (currentNumber / totalQuestions) * 100;
   const isTimeLow = timeRemaining !== null && timeRemaining <= 5;
-  const isAmberTime = timeRemaining !== null && timeRemaining > 5 && timeRemaining <= 10;
-  const CategoryIcon = getCategoryIcon(category);
+  const isAmberTime =
+    timeRemaining !== null && timeRemaining > 5 && timeRemaining <= 10;
 
   // SVG Circular countdown geometry
   const radius = 20;
   const circumference = 2 * Math.PI * radius;
-  const timeProgress = timeRemaining !== null ? Math.max(0, Math.min(1, timeRemaining / (maxTime || 25))) : 1;
+  const timeProgress =
+    timeRemaining !== null
+      ? Math.max(0, Math.min(1, timeRemaining / (maxTime || 25)))
+      : 1;
   const strokeOffset = circumference * (1 - timeProgress);
 
-  // Color transition: green (>=10s) -> amber (6-10s) -> urgent pulsing red (<5s)
-  const timerStrokeColor = isTimeLow ? '#EF4444' : isAmberTime ? '#F59E0B' : '#10B981';
+  const timerStrokeColor = isTimeLow
+    ? '#E11D48'
+    : isAmberTime
+      ? '#F59E0B'
+      : '#059669';
 
   const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 
   return (
-    <div className={cn(
-      "w-full transition-all duration-300",
-      animatingOut ? "opacity-0 -translate-x-6 scale-[0.98]" : "animate-in fade-in slide-in-from-right-6 duration-400"
-    )}>
-      
-      {/* RESPONSIVE FOOTBALL ARENA QUESTION CARD (Mobile & Desktop) */}
-      <div className="w-full max-w-4xl mx-auto space-y-4 sm:space-y-6">
-      {/* 1. BROADCAST-STYLE QUIZ HEADER */}
-      <div className="relative overflow-hidden rounded-[28px] bg-white/90 backdrop-blur-xl border border-white/90 text-slate-900 shadow-[0_8px_32px_rgba(15,23,42,0.06)]">
-        {/* Pitch line graphics & subtle brand glow */}
-        <div className="absolute top-0 right-1/4 w-72 h-72 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute -bottom-10 -left-10 w-60 h-60 bg-rose-500/5 rounded-full blur-3xl pointer-events-none"></div>
-
-        <div className="relative z-10 p-5 md:p-6">
+    <div
+      className={cn(
+        'w-full transition-all duration-300',
+        animatingOut
+          ? 'opacity-0 -translate-x-6 scale-[0.98]'
+          : 'animate-in fade-in slide-in-from-right-6 duration-300'
+      )}
+    >
+      <div className="w-full max-w-4xl mx-auto space-y-4 sm:space-y-5 pb-12">
+        {/* 1. MATCHDAY TELEMETRY HEADER & PITCH PROGRESS */}
+        <div className="rounded-2xl sm:rounded-3xl bg-white border border-slate-200/90 text-slate-900 shadow-sm p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-            {/* Title & Brand */}
-            <div className="flex items-center gap-3.5">
-              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-600 to-red-700 text-white shadow-md shadow-rose-600/25 border border-rose-400/30">
-                <Trophy className="h-6 w-6 text-amber-300" />
-                <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                </span>
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-rose-600 to-red-700 text-white shadow-md shadow-rose-600/20">
+                <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-amber-300" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-1.5">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight text-slate-950 truncate">
                     Maestro Match Pitch
                   </h1>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
-                    Live Broadcast
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200">
+                    {difficulty}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 font-semibold flex items-center gap-2 mt-0.5">
-                  <span>Matchday Arena</span>
-                  <span className="text-slate-300">•</span>
-                  <span className="text-rose-600 font-bold">{difficulty}</span>
+                <p className="text-xs text-slate-500 font-semibold truncate mt-0.5">
+                  {category === 'All' ? 'Mixed Arena' : category}
                 </p>
               </div>
             </div>
 
-            {/* Score & Animated Circular Countdown Timer */}
-            <div className="flex items-center gap-4 self-end sm:self-center">
-              {/* Current Score Tag - Gold Accent */}
-              <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-amber-50/80 border border-amber-200/80 shadow-2xs backdrop-blur-md">
-                <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-600">
-                  <Flame className="w-4 h-4 fill-amber-500 text-amber-500" />
+            {/* Score & Circular Timer */}
+            <div className="flex items-center gap-3.5 self-end sm:self-center tabular-nums">
+              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-rose-50/70 border border-rose-200/80">
+                <div className="w-8 h-8 rounded-xl bg-white border border-rose-200 flex items-center justify-center text-rose-600">
+                  <Flame className="w-4 h-4 fill-rose-600 text-rose-600" />
                 </div>
                 <div className="text-left">
-                  <div className="text-[10px] font-black uppercase tracking-wider text-amber-800">Score</div>
-                  <div className="text-lg font-black leading-none text-slate-950">{currentScore} <span className="text-xs font-bold text-amber-700">pts</span></div>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-rose-700">
+                    Score
+                  </div>
+                  <div className="text-base sm:text-lg font-black leading-none text-slate-950">
+                    {currentScore}{' '}
+                    <span className="text-xs font-bold text-rose-600">pts</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Animated Countdown Clock with Color Transition (Green -> Amber -> Urgent Pulsing Red) */}
               {timeRemaining !== null && (
                 <div className="relative flex items-center justify-center">
-                  <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 54 54">
-                    {/* Background track */}
+                  <svg
+                    className="w-14 h-14 transform -rotate-90"
+                    viewBox="0 0 54 54"
+                  >
                     <circle
                       cx="27"
                       cy="27"
@@ -173,7 +158,6 @@ export function QuizQuestionCard({
                       strokeWidth="4"
                       fill="transparent"
                     />
-                    {/* Countdown track with dynamic color transition */}
                     <circle
                       cx="27"
                       cy="27"
@@ -187,80 +171,96 @@ export function QuizQuestionCard({
                       className="transition-all duration-1000 ease-linear"
                     />
                   </svg>
-                  <div className={cn(
-                    "absolute flex flex-col items-center justify-center transition-all",
-                    isTimeLow ? "scale-110 text-rose-600 animate-pulse drop-shadow-[0_0_8px_rgba(239,68,68,0.7)]" : 
-                    isAmberTime ? "text-amber-600 font-black" : "text-emerald-600 font-black"
-                  )}>
-                    <span className="text-sm font-black leading-none">{timeRemaining}</span>
-                    <span className="text-[8px] font-black uppercase leading-none mt-0.5">sec</span>
+                  <div
+                    className={cn(
+                      'absolute flex flex-col items-center justify-center transition-all',
+                      isTimeLow
+                        ? 'scale-110 text-rose-600 animate-pulse'
+                        : isAmberTime
+                          ? 'text-amber-600'
+                          : 'text-emerald-700'
+                    )}
+                  >
+                    <span className="text-sm font-black leading-none">
+                      {timeRemaining}
+                    </span>
+                    <span className="text-[8px] font-black uppercase leading-none mt-0.5">
+                      sec
+                    </span>
                   </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* DYNAMIC FOOTBALL PITCH TIMELINE (e.g. Question 4 of 10) */}
-          <div className="mt-4 pt-3 border-t border-slate-100">
-            <div className="flex items-center justify-between text-xs font-black mb-2">
+          {/* Stadium Pitch Progress Strip */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-xs font-bold mb-2 tabular-nums">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-900 text-emerald-100 border border-emerald-700 font-black uppercase tracking-wider text-[10px]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                  Pitch Timeline
-                </span>
-                <span className="text-slate-800 font-extrabold text-xs sm:text-sm">
-                  Question <strong className="text-emerald-700 font-black">{currentNumber}</strong> of {totalQuestions}
+                <span className="text-slate-900 font-black">
+                  Question{' '}
+                  <span className="text-rose-600">{currentNumber}</span> of{' '}
+                  {totalQuestions}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-bold">
-                <span className="text-slate-400 uppercase tracking-wider text-[10px]">Match Time:</span>
+              <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+                <span className="uppercase tracking-wider text-[10px] font-bold text-slate-400">
+                  Match Min:
+                </span>
                 <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-900 font-black">
-                  {Math.min(90, Math.round((currentNumber / totalQuestions) * 90))}'
+                  {Math.min(
+                    90,
+                    Math.round((currentNumber / totalQuestions) * 90)
+                  )}
+                  &apos;
                 </span>
               </div>
             </div>
 
-            {/* Stadium Pitch Shape with Turf & Pitch Markings */}
-            <div className="relative h-11 sm:h-12 w-full rounded-2xl overflow-hidden bg-gradient-to-r from-emerald-950 via-emerald-800 to-emerald-950 border-2 border-emerald-600/70 shadow-inner flex items-center select-none">
+            <div className="relative h-10 sm:h-11 w-full rounded-xl overflow-hidden bg-gradient-to-r from-emerald-900 via-emerald-800 to-emerald-900 border border-emerald-700/70 shadow-inner flex items-center select-none">
               {/* Pitch Grass Stripes */}
               <div className="absolute inset-0 opacity-20 flex pointer-events-none">
                 {Array.from({ length: 10 }).map((_, i) => (
-                  <div key={i} className={cn("flex-1 h-full", i % 2 === 0 ? "bg-black/40" : "bg-white/20")} />
+                  <div
+                    key={i}
+                    className={cn(
+                      'flex-1 h-full',
+                      i % 2 === 0 ? 'bg-black/35' : 'bg-white/15'
+                    )}
+                  />
                 ))}
               </div>
 
-              {/* Pitch Markings: Penalty Boxes & Halfway Line */}
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-12 sm:w-16 h-8 border-r-2 border-y-2 border-white/35 pointer-events-none" />
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-5 sm:w-7 h-4 border-r-2 border-y-2 border-white/30 pointer-events-none" />
-              
-              <div className="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 bg-white/40 pointer-events-none" />
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 border-white/35 pointer-events-none" />
+              {/* Pitch Markings */}
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-10 sm:w-14 h-7 border-r border-y border-white/30 pointer-events-none" />
+              <div className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2 bg-white/35 pointer-events-none" />
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full border border-white/30 pointer-events-none" />
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-10 sm:w-14 h-7 border-l border-y border-white/30 pointer-events-none" />
 
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-12 sm:w-16 h-8 border-l-2 border-y-2 border-white/35 pointer-events-none" />
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-5 sm:w-7 h-4 border-l-2 border-y-2 border-white/30 pointer-events-none" />
-
-              {/* Progress illumination fill along the pitch */}
-              <div 
-                className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-emerald-500/40 via-emerald-400/50 to-emerald-300/60 backdrop-brightness-125 transition-all duration-500 ease-out border-r-2 border-emerald-300 shadow-[0_0_15px_rgba(52,211,153,0.6)]"
+              {/* Progress fill */}
+              <div
+                className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-emerald-500/35 to-emerald-400/50 transition-all duration-500 ease-out border-r-2 border-white/80"
                 style={{ width: `${progressPercent}%` }}
               />
 
-              {/* Step Checkpoints along the pitch timeline */}
+              {/* Checkpoints */}
               <div className="relative z-10 w-full flex items-center justify-between px-3 sm:px-5 pointer-events-none">
                 {Array.from({ length: totalQuestions }).map((_, idx) => {
-                  const isPassed = idx < currentNumber - 1;
                   const isCurrent = idx === currentNumber - 1;
                   const pastAnswer = userAnswersHistory[idx];
 
                   return (
                     <div key={idx} className="flex flex-col items-center">
-                      <div 
+                      <div
                         className={cn(
-                          "w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border transition-all duration-300",
-                          pastAnswer?.isCorrect ? "bg-emerald-400 border-white shadow-[0_0_8px_rgba(52,211,153,0.9)]" :
-                          pastAnswer && !pastAnswer.isCorrect ? "bg-rose-500 border-white shadow-[0_0_8px_rgba(244,63,94,0.9)]" :
-                          isCurrent ? "bg-white border-amber-300 scale-125 shadow-[0_0_10px_rgba(255,255,255,0.9)] animate-pulse" :
-                          "bg-emerald-950/90 border-emerald-600/60"
+                          'w-2.5 h-2.5 rounded-full border transition-all duration-300',
+                          pastAnswer?.isCorrect
+                            ? 'bg-emerald-400 border-white'
+                            : pastAnswer && !pastAnswer.isCorrect
+                              ? 'bg-rose-500 border-white'
+                              : isCurrent
+                                ? 'bg-white border-amber-300 scale-125'
+                                : 'bg-emerald-950/80 border-emerald-500/50'
                         )}
                       />
                     </div>
@@ -268,210 +268,220 @@ export function QuizQuestionCard({
                 })}
               </div>
 
-              {/* Animated Gliding Football Indicator */}
-              <div 
+              {/* Ball marker */}
+              <div
                 className="absolute top-1/2 -translate-y-1/2 z-20 transition-all duration-500 ease-out pointer-events-none flex items-center justify-center"
-                style={{ left: `calc(${Math.min(95, Math.max(3, progressPercent))}% - 12px)` }}
+                style={{
+                  left: `calc(${Math.min(95, Math.max(3, progressPercent))}% - 11px)`,
+                }}
               >
-                <div className="relative">
-                  <span className="text-base sm:text-lg drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)] filter">
-                    ⚽
-                  </span>
-                  <span className="absolute -inset-1 rounded-full bg-emerald-400/40 blur-xs -z-10 animate-ping"></span>
-                </div>
+                <span className="text-base drop-shadow">⚽</span>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* 2. QUESTION CARD: Deep Navy Typography & Clean Light Card */}
-      <div className="bg-white/85 backdrop-blur-xl rounded-3xl sm:rounded-[32px] p-4 sm:p-6 md:p-10 shadow-[0_8px_32px_rgba(15,23,42,0.04)] border border-white/90 relative overflow-hidden">
-        {/* Subtle decorative football geometry watermark */}
-        <div className="absolute -right-10 -bottom-10 opacity-[0.03] text-slate-950 pointer-events-none">
-          <svg width="240" height="240" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none" />
-            <polygon points="12,7 16,10 14.5,15 9.5,15 8,10" fill="currentColor" opacity="0.4" />
-          </svg>
-        </div>
+        {/* 2. QUESTION CARD */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 md:p-9 shadow-sm border border-slate-200/90 relative overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 mb-4 sm:mb-5">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-800 border border-slate-200 tabular-nums">
+                Question {currentNumber}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black bg-rose-50 text-rose-700 border border-rose-200">
+                <Sparkles className="w-3 h-3 text-rose-600" />
+                +10 Pts
+              </span>
+            </div>
 
-        {/* Meta tags atop question */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 mb-4 sm:mb-5">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-800 border border-slate-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
-              Question {currentNumber}
-            </span>
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] sm:text-xs font-black bg-amber-50 text-amber-800 border border-amber-200">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              10 Pts
-            </span>
+            {question.hint && !selectedAnswer && (
+              <button
+                type="button"
+                onClick={() => setShowHint(!showHint)}
+                className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-rose-600 font-bold transition-colors bg-slate-50 hover:bg-rose-50 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-rose-200 cursor-pointer"
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-rose-600" />
+                {showHint ? 'Hide Tactical Hint' : 'Need a Hint?'}
+              </button>
+            )}
           </div>
 
-          {question.hint && !selectedAnswer && (
-            <button 
-              onClick={() => setShowHint(!showHint)}
-              className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-rose-600 font-bold transition-colors bg-white hover:bg-rose-50 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full border border-slate-200 shadow-2xs cursor-pointer"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-rose-500" />
-              {showHint ? "Hide Tactical Hint" : "Need a Hint?"}
-            </button>
+          {question.image && !imageError && (
+            <div className="w-full max-h-56 sm:max-h-72 rounded-2xl overflow-hidden mb-5 bg-slate-100 relative border border-slate-200/80">
+              <img
+                src={question.image}
+                alt="Question Visual"
+                onError={() => setImageError(true)}
+                className="w-full h-full object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-2.5 left-3 text-xs font-bold text-white flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-amber-300" /> Visual Clue
+              </div>
+            </div>
+          )}
+
+          <h2 className="text-lg sm:text-2xl md:text-[28px] font-black text-slate-950 leading-[1.32] tracking-tight">
+            {question.question}
+          </h2>
+
+          {showHint && question.hint && (
+            <div className="mt-4 p-3.5 sm:p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs sm:text-sm font-medium flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0">
+                <HelpCircle className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="font-black uppercase tracking-wider text-[10px] block mb-0.5 text-amber-800">
+                  Tactical Coach Hint
+                </span>
+                <p className="text-amber-900 leading-relaxed">{question.hint}</p>
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Optional Question Football Image with fallback */}
-        {question.image && !imageError && (
-          <div className="w-full max-h-56 sm:max-h-72 md:max-h-80 rounded-2xl overflow-hidden mb-4 sm:mb-6 bg-slate-100 relative shadow-inner border border-slate-200/80 group">
-            <img 
-              src={question.image} 
-              alt="Question Visual" 
-              onError={() => setImageError(true)}
-              className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" 
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent pointer-events-none"></div>
-            <div className="absolute bottom-2.5 left-3 text-xs font-bold text-white/90 drop-shadow-md flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-amber-300" /> Visual Clue
-            </div>
-          </div>
-        )}
+        {/* 3. ANSWER OPTIONS (2x2 GRID) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
+          {shuffledOptions.map((option, index) => {
+            const isSelected = selectedAnswer === option;
+            const isCorrectOption = option === question.correctAnswer;
 
-        {/* Question Text - Deep Navy / Indigo */}
-        <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black text-slate-950 leading-[1.3] tracking-tight relative z-10 mb-2">
-          {question.question}
-        </h2>
+            let btnClass =
+              'w-full text-left p-3.5 sm:p-4 md:p-5 rounded-2xl border-2 transition-all duration-200 text-sm sm:text-base font-bold flex items-center gap-3.5 relative overflow-hidden outline-none cursor-pointer min-h-[56px] ';
+            let labelBadgeClass =
+              'flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-xs sm:text-sm shrink-0 font-black transition-all ';
 
-        {/* Tactical Hint Dropdown */}
-        {showHint && question.hint && (
-          <div className="mt-4 sm:mt-5 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-950 text-xs sm:text-sm font-medium flex items-start gap-2.5 sm:gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
-            <div>
-              <span className="font-extrabold uppercase tracking-wider text-[10px] sm:text-xs block mb-0.5 text-amber-800">Tactical Coach Hint</span>
-              <p className="text-amber-900 leading-relaxed">{question.hint}</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 3. ANSWER OPTIONS: Instant Visual Feedback (Emerald Glow / Soft Crimson Vibration Shake) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5 md:gap-4">
-        {shuffledOptions.map((option, index) => {
-          const isSelected = selectedAnswer === option;
-          const isCorrectOption = option === question.correctAnswer;
-          
-          let btnClass = "w-full text-left p-3.5 sm:p-4 md:p-5 rounded-2xl border-2 transition-all duration-200 text-sm sm:text-base md:text-lg font-bold flex items-center gap-3 sm:gap-4 relative overflow-hidden outline-none cursor-pointer min-h-[52px] ";
-          let labelBadgeClass = "flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl text-xs sm:text-sm shrink-0 font-black transition-all ";
-
-          if (!selectedAnswer) {
-            // Idle state before answer
-            btnClass += "bg-white/90 border-slate-200/90 hover:border-emerald-400 hover:bg-emerald-50/30 text-slate-800 shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0";
-            labelBadgeClass += "bg-slate-100 text-slate-700 border border-slate-200";
-          } else {
-            // Evaluated states after answer
-            if (isCorrectOption && isSelected) {
-              // User picked correct: Emerald glow with celebratory check
-              btnClass += "border-emerald-500 bg-emerald-50/95 text-emerald-950 shadow-[0_0_30px_rgba(16,185,129,0.55)] scale-[1.01] ring-4 ring-emerald-400/50";
-              labelBadgeClass += "bg-emerald-600 text-white shadow-md shadow-emerald-600/30";
-            } else if (isSelected && !isCorrectOption) {
-              // User picked incorrect: Soft crimson vibration shake effect
-              btnClass += "crimson-vibrate shake border-rose-500 bg-rose-50/95 text-rose-950 shadow-[0_0_25px_rgba(244,63,94,0.35)] ring-4 ring-rose-400/40";
-              labelBadgeClass += "bg-rose-600 text-white shadow-md shadow-rose-600/30";
-            } else if (!isSelected && isCorrectOption) {
-              // Correct choice revealed
-              btnClass += "border-emerald-500 bg-emerald-50/90 text-emerald-950 shadow-[0_0_25px_rgba(16,185,129,0.45)] ring-2 ring-emerald-400/60";
-              labelBadgeClass += "bg-emerald-600 text-white shadow-sm";
+            if (!selectedAnswer) {
+              btnClass +=
+                'bg-white border-slate-200 hover:border-rose-400 hover:bg-rose-50/35 text-slate-900 shadow-2xs hover:shadow-sm hover:-translate-y-0.5 active:translate-y-0';
+              labelBadgeClass +=
+                'bg-slate-100 text-slate-700 border border-slate-200';
             } else {
-              btnClass += "border-slate-100 bg-slate-50/40 opacity-40 text-slate-400 cursor-not-allowed";
-              labelBadgeClass += "bg-slate-100 text-slate-400";
+              if (isCorrectOption && isSelected) {
+                btnClass +=
+                  'border-emerald-500 bg-emerald-50 text-emerald-950 shadow-sm ring-2 ring-emerald-500/20';
+                labelBadgeClass += 'bg-emerald-600 text-white';
+              } else if (isSelected && !isCorrectOption) {
+                btnClass +=
+                  'crimson-vibrate shake border-rose-500 bg-rose-50 text-rose-950 shadow-sm ring-2 ring-rose-500/20';
+                labelBadgeClass += 'bg-rose-600 text-white';
+              } else if (!isSelected && isCorrectOption) {
+                btnClass +=
+                  'border-emerald-500 bg-emerald-50/80 text-emerald-950 ring-2 ring-emerald-500/15';
+                labelBadgeClass += 'bg-emerald-600 text-white';
+              } else {
+                btnClass +=
+                  'border-slate-200/60 bg-slate-50/60 opacity-45 text-slate-400 cursor-not-allowed';
+                labelBadgeClass += 'bg-slate-100 text-slate-400';
+              }
             }
-          }
 
-          return (
-            <button
-              key={index}
-              disabled={selectedAnswer !== null}
-              onClick={() => handleOptionClick(option)}
-              className={btnClass}
-              type="button"
-            >
-              {/* Option Key Letter (A, B, C, D) */}
-              <div className={labelBadgeClass}>
-                {OPTION_LABELS[index] || String.fromCharCode(65 + index)}
-              </div>
+            return (
+              <button
+                key={index}
+                disabled={selectedAnswer !== null}
+                onClick={() => handleOptionClick(option)}
+                className={btnClass}
+                type="button"
+              >
+                <div className={labelBadgeClass}>
+                  {OPTION_LABELS[index] || String.fromCharCode(65 + index)}
+                </div>
 
-              {/* Option Text */}
-              <span className="flex-1 leading-snug break-words pr-7 sm:pr-8">
-                {option}
-              </span>
-              
-              {/* Instant Visual Feedback Icons */}
-              {selectedAnswer && isCorrectOption && isSelected && (
-                <div className="absolute right-3 sm:right-4 flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-600 text-white font-black text-xs shadow-md animate-bounce">
-                  <CheckCircle2 className="w-4 h-4 text-white" />
-                  <span className="uppercase tracking-wider text-[11px] hidden sm:inline">Goal! Correct</span>
-                </div>
-              )}
-              {selectedAnswer && isSelected && !isCorrectOption && (
-                <div className="absolute right-3 sm:right-4 flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-600 text-white font-black text-xs shadow-md">
-                  <XCircle className="w-4 h-4 text-white" />
-                  <span className="uppercase tracking-wider text-[11px] hidden sm:inline">Missed</span>
-                </div>
-              )}
-              {selectedAnswer && !isSelected && isCorrectOption && (
-                <div className="absolute right-3 sm:right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-900 font-black text-xs border border-emerald-300 animate-pulse">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span className="uppercase tracking-wider text-[10px] hidden sm:inline">Correct Choice</span>
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
+                <span className="flex-1 leading-snug break-words pr-6">
+                  {option}
+                </span>
 
-      {/* 4. EXPLANATION & ACTION CARD */}
-      {selectedAnswer && (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 bg-white/90 backdrop-blur-xl p-4 sm:p-6 md:p-8 rounded-3xl sm:rounded-[28px] border border-white/90 shadow-[0_8px_32px_rgba(15,23,42,0.06)] flex flex-col md:flex-row gap-4 sm:gap-6 items-stretch md:items-center justify-between">
-          <div className="flex-1 flex items-start gap-3 sm:gap-4">
-            <div className={cn(
-              "w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs",
-              isAnswerCorrect ? "bg-emerald-100 text-emerald-700 shadow-md shadow-emerald-500/20" : "bg-rose-100 text-rose-600 shadow-md shadow-rose-500/20"
-            )}>
-              {isAnswerCorrect ? <CheckCircle2 className="w-5 h-5 sm:w-7 sm:h-7" /> : <XCircle className="w-5 h-5 sm:w-7 sm:h-7" />}
-            </div>
-            
-            <div className="space-y-1 text-left min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className={cn("font-black text-base sm:text-xl md:text-2xl", isAnswerCorrect ? "text-emerald-800" : "text-rose-700")}>
-                  {isAnswerCorrect ? 'Goal! Correct Answer' : (selectedAnswer === '__TIMEOUT__' ? 'Full Time! Out of Time' : 'Missed Chance! Incorrect Choice')}
-                </h3>
-                {isAnswerCorrect && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black bg-emerald-100 text-emerald-900 border border-emerald-300 shrink-0">
-                    +10 Pts
-                  </span>
+                {selectedAnswer && isCorrectOption && isSelected && (
+                  <div className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-black text-[11px]">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Correct</span>
+                  </div>
+                )}
+                {selectedAnswer && isSelected && !isCorrectOption && (
+                  <div className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600 text-white font-black text-[11px]">
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Missed</span>
+                  </div>
+                )}
+                {selectedAnswer && !isSelected && isCorrectOption && (
+                  <div className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-black text-[10px] border border-emerald-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="hidden sm:inline">Answer</span>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 4. EXPLANATION & NEXT QUESTION STRIP */}
+        {selectedAnswer && (
+          <div className="animate-in fade-in slide-in-from-bottom-3 duration-300 bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-sm flex flex-col md:flex-row gap-4 sm:gap-6 items-stretch md:items-center justify-between">
+            <div className="flex-1 flex items-start gap-3.5">
+              <div
+                className={cn(
+                  'w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0',
+                  isAnswerCorrect
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-rose-100 text-rose-600'
+                )}
+              >
+                {isAnswerCorrect ? (
+                  <CheckCircle2 className="w-6 h-6" />
+                ) : (
+                  <XCircle className="w-6 h-6" />
                 )}
               </div>
-              {question.explanation ? (
-                <p className="text-xs sm:text-sm font-medium text-slate-600 leading-relaxed max-w-2xl">
-                  {question.explanation}
-                </p>
-              ) : (
-                <p className="text-xs sm:text-sm text-slate-500">
-                  {isAnswerCorrect ? 'World class football knowledge!' : `The correct answer is: ${question.correctAnswer}`}
-                </p>
-              )}
+
+              <div className="space-y-1 text-left min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3
+                    className={cn(
+                      'font-black text-base sm:text-lg',
+                      isAnswerCorrect ? 'text-emerald-800' : 'text-rose-700'
+                    )}
+                  >
+                    {isAnswerCorrect
+                      ? 'Goal! Correct Answer'
+                      : selectedAnswer === '__TIMEOUT__'
+                        ? 'Full Time! Out of Time'
+                        : 'Missed Chance! Incorrect Choice'}
+                  </h3>
+                  {isAnswerCorrect && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      +10 Pts
+                    </span>
+                  )}
+                </div>
+                {question.explanation ? (
+                  <p className="text-xs sm:text-sm font-medium text-slate-600 leading-relaxed max-w-2xl">
+                    {question.explanation}
+                  </p>
+                ) : (
+                  <p className="text-xs sm:text-sm text-slate-500">
+                    {isAnswerCorrect
+                      ? 'World class football knowledge!'
+                      : `The correct answer is: ${question.correctAnswer}`}
+                  </p>
+                )}
+              </div>
             </div>
+
+            <button
+              type="button"
+              onClick={handleNext}
+              className="w-full md:w-auto shrink-0 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white px-6 sm:px-7 py-3.5 rounded-xl font-black text-sm sm:text-base shadow-md shadow-rose-600/25 active:scale-[0.98] transition-all cursor-pointer group"
+            >
+              <span>
+                {currentNumber === totalQuestions
+                  ? 'Final Whistle (Results)'
+                  : 'Next Question'}
+              </span>
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-0.5 transition-transform" />
+            </button>
           </div>
-          
-          <button
-            onClick={handleNext}
-            className="w-full md:w-auto shrink-0 flex items-center justify-center gap-2.5 bg-gradient-to-r from-rose-600 via-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-black text-sm sm:text-base shadow-md shadow-rose-600/30 active:scale-[0.98] transition-all cursor-pointer group"
-          >
-            <span>{currentNumber === totalQuestions ? 'Final Whistle (Results)' : 'Next Question'}</span>
-            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </div>
-      )}
+        )}
       </div>
     </div>
   );

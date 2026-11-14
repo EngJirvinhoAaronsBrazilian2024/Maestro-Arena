@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { cn } from '../../lib/utils';
 
 interface UserAvatarProps {
@@ -25,6 +25,10 @@ export function UserAvatar({
   size = 'md'
 }: UserAvatarProps) {
   const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [avatarUrl, name, email]);
 
   const sizeClasses = {
     xs: 'h-6 w-6 text-[10px]',

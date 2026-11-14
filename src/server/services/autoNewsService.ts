@@ -86,19 +86,119 @@ const ESPN_NEWS_ENDPOINTS = [
   },
 ];
 
-function decodeHtmlEntities(str: string): string {
-  if (!str) return '';
-  return str
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
-    .replace(/<[^>]+>/g, '')
+const NAMED_HTML_ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+  rsquo: "'",
+  lsquo: "'",
+  ldquo: '"',
+  rdquo: '"',
+  sbquo: "'",
+  bdquo: '"',
+  mdash: ' - ',
+  ndash: '-',
+  hellip: '...',
+  bull: ' ',
+  middot: ' ',
+  pound: '£',
+  euro: '€',
+  yen: '¥',
+  copy: '',
+  reg: '',
+  trade: '',
+  deg: ' degrees',
+  times: 'x',
+  divide: '/',
+  frac12: '1/2',
+  frac14: '1/4',
+  frac34: '3/4',
+  eacute: 'e',
+  egrave: 'e',
+  ecirc: 'e',
+  aacute: 'a',
+  agrave: 'a',
+  acirc: 'a',
+  iacute: 'i',
+  oacute: 'o',
+  uacute: 'u',
+  uuml: 'u',
+  ccedil: 'c',
+  ntilde: 'n',
+};
+
+function decodeEntityPass(input: string): string {
+  return input
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+      const code = parseInt(hex, 16);
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
+    })
+    .replace(/&#(\d+);/g, (_, dec) => {
+      const code = parseInt(dec, 10);
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
+    })
+    .replace(/&([a-z0-9]+);/gi, (_, name) => {
+      const lower = name.toLowerCase();
+      return Object.prototype.hasOwnProperty.call(NAMED_HTML_ENTITIES, lower)
+        ? NAMED_HTML_ENTITIES[lower]
+        : ' ';
+    });
+}
+
+export function cleanPlainEnglishText(raw: string | undefined | null, preserveParagraphs = false): string {
+  if (!raw || typeof raw !== 'string') return '';
+
+  let text = raw
+    .replace(/<(script|style|noscript|svg|template|iframe)[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\u200B-\u200D\uFEFF\uFFFD]/g, '');
+
+  // Decode entities twice so double-encoded tags/entities (&amp;#x27; or &amp;lt;p&amp;gt;) unwrap before tag stripping
+  text = decodeEntityPass(text);
+  text = decodeEntityPass(text);
+
+  text = text
+    .replace(/<\/(p|div|li|h[1-6]|blockquote|tr|section|article|figcaption)>/gi, '\n\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<(?:[^<>"']|"[^"]*"|'[^']*')*>/g, ' ')
+    .replace(/<[^>]*>/g, ' ');
+
+  text = text
+    .replace(/[^.\n]{0,160}"\},\s*"articleCount"[\s\S]*?\}">/gi, ' ')
+    .replace(/\{"[a-zA-Z0-9_]+":[\s\S]{0,600}?\}(?:"\}>|\}>|">|>)?/g, ' ')
+    .replace(/[a-zA-Z0-9_]+":(?:"[^"]*"|\d+|true|false|null|\[[^\]]*\]|\{[^}]*\})[,}\]]*">?/g, ' ')
+    .replace(/Image source,\s*[^\n]*?(?=Image caption,|Media caption,|Published\s*\d|\n|$)/gi, '')
+    .replace(/(?:Image|Media)\s+caption,\s*/gi, '')
+    .replace(/Published\s*\d+\s*(?:second|minute|hour|day|week)s?\s*ago\s*/gi, '')
+    .replace(/\n*Full reporting and coverage from .*?Maestro Arena\./gi, '')
+    .replace(/\n*Follow live tactical reactions, line-ups, and post-match quotes on Maestro Arena\./gi, '');
+
+  text = text
+    .replace(/&[a-z0-9#]+;/gi, ' ')
+    .replace(/[<>]/g, ' ')
+    .replace(/\s*&\s*/g, ' and ')
+    .replace(/#(\d+)\b/g, 'number $1')
+    .replace(/#/g, '');
+
+  if (preserveParagraphs) {
+    return text
+      .split(/\n{2,}/)
+      .map((p) => p.replace(/[ \t\n]+/g, ' ').replace(/\s+([,.;:!?])/g, '$1').trim())
+      .filter((p) => p.length > 0)
+      .join('\n\n');
+  }
+
+  return text
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
     .trim();
+}
+
+function decodeHtmlEntities(str: string): string {
+  return cleanPlainEnglishText(str, false);
 }
 
 export function normalizeNewsHeadline(title: string): string {
@@ -262,25 +362,10 @@ function extractBestImage(raw: string): string | undefined {
 }
 
 function stripHtmlTagsKeepParagraphs(html: string): string {
-  if (!html) return '';
-  return html
-    .replace(/<\/(p|div|li|h[1-6]|blockquote)>/gi, '\n\n')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)))
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return cleanPlainEnglishText(html, true);
 }
 
-const BOILERPLATE_PARA_REGEX = /\b(cookie|cookies|consent|subscribe|subscription|newsletter|sign up|sign in|create a free account|privacy policy|terms of service|terms and conditions|all rights reserved|enable javascript|download the app|stream sky sports|watch live on|follow us on|more on this story|related topics|got a story|get involved|advertisement|promoted content|this content cannot be played|browser is not supported)\b/i;
+const BOILERPLATE_PARA_REGEX = /\b(cookie|cookies|consent|subscribe|subscription|newsletter|sign up|sign in|create a free account|privacy policy|terms of service|terms and conditions|all rights reserved|enable javascript|download the app|stream sky sports|watch live on|follow us on|more on this story|related topics|got a story|get involved|advertisement|promoted content|this content cannot be played|browser is not supported|image source,|image caption,)\b/i;
 
 function extractCleanParagraphsFromHtml(html: string): string {
   if (!html) return '';
@@ -291,11 +376,16 @@ function extractCleanParagraphsFromHtml(html: string): string {
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
     .replace(/<svg[\s\S]*?<\/svg>/gi, ' ')
+    .replace(/<template[\s\S]*?<\/template>/gi, ' ')
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, ' ')
     .replace(/<header[\s\S]*?<\/header>/gi, ' ')
     .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
     .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
     .replace(/<aside[\s\S]*?<\/aside>/gi, ' ')
-    .replace(/<form[\s\S]*?<\/form>/gi, ' ');
+    .replace(/<form[\s\S]*?<\/form>/gi, ' ')
+    .replace(/<figure[\s\S]*?<\/figure>/gi, ' ')
+    .replace(/<figcaption[\s\S]*?<\/figcaption>/gi, ' ')
+    .replace(/<button[\s\S]*?<\/button>/gi, ' ');
 
   // Narrow down to <article> or <main> container when substantial
   const articleMatch = cleaned.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
@@ -306,8 +396,8 @@ function extractCleanParagraphsFromHtml(html: string): string {
     cleaned = mainMatch[1];
   }
 
-  const rawParagraphs = [...cleaned.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map((m) =>
-    decodeHtmlEntities(m[1]).replace(/\s+/g, ' ').trim()
+  const rawParagraphs = [...cleaned.matchAll(/<p(?:\s+(?:"[^"]*"|'[^']*'|[^>"'])*)?>([\s\S]*?)<\/p>/gi)].map((m) =>
+    cleanPlainEnglishText(m[1], false)
   );
 
   const seen = new Set<string>();
@@ -383,8 +473,8 @@ function parseFeedXml(xml: string, source: string, defaultCat: string): RawNewsI
     const rawTitle = titleMatch ? titleMatch[1] : '';
     const rawDesc = descMatch ? descMatch[1] : '';
     const rawContentEncoded = contentEncodedMatch ? stripHtmlTagsKeepParagraphs(contentEncodedMatch[1]) : '';
-    const title = decodeHtmlEntities(rawTitle);
-    const plainDesc = decodeHtmlEntities(rawDesc);
+    const title = cleanPlainEnglishText(rawTitle, false);
+    const plainDesc = cleanPlainEnglishText(rawDesc, true);
     const description = rawContentEncoded.length > plainDesc.length + 60 ? rawContentEncoded : plainDesc;
     const link = linkMatch ? linkMatch[1].replace(/&amp;/g, '&').trim() : '';
     const rawPubDate = pubDateMatch ? pubDateMatch[1].trim() : '';
@@ -651,16 +741,18 @@ export async function autoIngestFootballNews(options: { force?: boolean; maxItem
       const batch = pendingInsertRaw.slice(i, i + BATCH_SIZE);
       const batchRows = await Promise.all(
         batch.map(async ({ item }) => {
-          const cleanDesc = item.description || item.title;
+          const cleanTitle = cleanPlainEnglishText(item.title, false);
+          const cleanDesc = cleanPlainEnglishText(item.description || cleanTitle, true);
           let fullContent = cleanDesc;
           if (cleanDesc.length < 700 && item.link) {
-            fullContent = await extractFullStoryFromUrl(item.link, cleanDesc);
+            fullContent = cleanPlainEnglishText(await extractFullStoryFromUrl(item.link, cleanDesc), true);
           }
+          const summaryPlain = cleanPlainEnglishText(cleanDesc, false);
           return {
             id: crypto.randomUUID(),
-            title: item.title,
+            title: cleanTitle,
             content: fullContent,
-            summary: cleanDesc.length > 200 ? cleanDesc.slice(0, 197) + '...' : cleanDesc,
+            summary: summaryPlain.length > 200 ? summaryPlain.slice(0, 197).trimEnd() + '...' : summaryPlain,
             image_url: item.image || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=1024&auto=format&fit=crop&q=80',
             author_name: item.source,
             author_id: authorId,
@@ -753,14 +845,22 @@ export async function resolveAndEnrichArticleContent(articleRow: {
   summary?: string;
   author_name?: string;
 }): Promise<string> {
-  const currentContent = String(articleRow.content || '').trim();
-  if (!isShortOrPlaceholderContent(currentContent)) {
-    return currentContent;
+  const rawCurrent = String(articleRow.content || '').trim();
+  const cleanedCurrent = cleanPlainEnglishText(rawCurrent, true);
+  if (!isShortOrPlaceholderContent(cleanedCurrent)) {
+    if (cleanedCurrent !== rawCurrent) {
+      try {
+        const admin = getInsforgeAdmin();
+        await admin.database.from('articles').update({ content: cleanedCurrent }).eq('id', articleRow.id);
+      } catch {
+        // Non-blocking DB cleanup
+      }
+    }
+    return cleanedCurrent;
   }
 
-  const baseClean = currentContent
-    .replace(/\n*Full reporting and coverage from .*?Maestro Arena\./is, '')
-    .trim() || String(articleRow.summary || articleRow.title || '').trim();
+  const baseClean =
+    cleanedCurrent || cleanPlainEnglishText(String(articleRow.summary || articleRow.title || ''), true);
 
   const normTitle = normalizeNewsHeadline(articleRow.title || '');
   let entry = normTitle ? headlineLinkCache.get(normTitle) : undefined;
@@ -770,7 +870,7 @@ export async function resolveAndEnrichArticleContent(articleRow: {
   }
 
   if (entry?.link) {
-    const fullText = await extractFullStoryFromUrl(entry.link, baseClean);
+    const fullText = cleanPlainEnglishText(await extractFullStoryFromUrl(entry.link, baseClean), true);
     if (fullText && fullText.length > baseClean.length + 120) {
       try {
         const admin = getInsforgeAdmin();

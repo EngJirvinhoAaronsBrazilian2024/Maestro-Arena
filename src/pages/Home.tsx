@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Trophy, Star, AlertCircle, ArrowRight, X, Check, ChevronDown, ChevronUp, Search, Activity } from 'lucide-react';
+import { Trophy, Star, ArrowRight, Check, Activity } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useFavorites } from '../hooks/useFavorites';
 import { useArticles } from '../services/news/hooks';
 import { insforge } from '../lib/insforge';
 import { toast } from 'sonner';
@@ -30,175 +29,8 @@ import imgCel3 from '../assets/images/player_celebration_3_1788811026045.jpg';
 import imgTrophy3 from '../assets/images/team_lifting_trophy_3_1788811040761.jpg';
 import imgCel4 from '../assets/images/player_celebration_4_1788811055901.jpg';
 
-const getLeaguePriority = (competition: any) => {
-  const name = (competition.name || '').toLowerCase();
-  const country = (competition.country || '').toLowerCase();
-  if (name.includes('premier league') && country === 'england') return 1;
-  if (name.includes('la liga') || name.includes('primera division')) return 2;
-  if (name.includes('champions league')) return 3;
-  if (name.includes('serie a') && country === 'italy') return 4;
-  if (name.includes('bundesliga') && country === 'germany') return 5;
-  if (name.includes('ligue 1') && country === 'france') return 6;
-  return 100;
-};
-
 export function Home() {
-  const { user, userData } = useAuth() as any;
-  const { favorites, toggleFavorite, isFavorite } = useFavorites();
-  const [showTeamBrowser, setShowTeamBrowser] = useState(false);
-  const [expandedLeague, setExpandedLeague] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const topLeagues = [
-    {
-      name: 'National Teams',
-      teams: [
-        { id: 'team_nat_arg', type: 'team' as const, name: 'Argentina' },
-        { id: 'team_nat_bra', type: 'team' as const, name: 'Brazil' },
-        { id: 'team_nat_eng', type: 'team' as const, name: 'England' },
-        { id: 'team_nat_fra', type: 'team' as const, name: 'France' },
-        { id: 'team_nat_ger', type: 'team' as const, name: 'Germany' },
-        { id: 'team_nat_mar', type: 'team' as const, name: 'Morocco' },
-        { id: 'team_nat_nga', type: 'team' as const, name: 'Nigeria' },
-        { id: 'team_nat_por', type: 'team' as const, name: 'Portugal' },
-        { id: 'team_nat_sen', type: 'team' as const, name: 'Senegal' },
-        { id: 'team_nat_esp', type: 'team' as const, name: 'Spain' },
-        { id: 'team_nat_uga', type: 'team' as const, name: 'Uganda' },
-        { id: 'team_nat_usa', type: 'team' as const, name: 'USA' },
-      ]
-    },
-    {
-      name: 'Premier League',
-      teams: [
-        { id: 'team_42', type: 'team' as const, name: 'Arsenal' },
-        { id: 'team_58', type: 'team' as const, name: 'Aston Villa' },
-        { id: 'team_35', type: 'team' as const, name: 'Bournemouth' },
-        { id: 'team_55', type: 'team' as const, name: 'Brentford' },
-        { id: 'team_51', type: 'team' as const, name: 'Brighton' },
-        { id: 'team_49', type: 'team' as const, name: 'Chelsea' },
-        { id: 'team_52', type: 'team' as const, name: 'Crystal Palace' },
-        { id: 'team_45', type: 'team' as const, name: 'Everton' },
-        { id: 'team_36', type: 'team' as const, name: 'Fulham' },
-        { id: 'team_40', type: 'team' as const, name: 'Liverpool' },
-        { id: 'team_62', type: 'team' as const, name: 'Luton Town' },
-        { id: 'team_50', type: 'team' as const, name: 'Manchester City' },
-        { id: 'team_33', type: 'team' as const, name: 'Manchester United' },
-        { id: 'team_34', type: 'team' as const, name: 'Newcastle' },
-        { id: 'team_65', type: 'team' as const, name: 'Nottingham Forest' },
-        { id: 'team_61', type: 'team' as const, name: 'Sheffield United' },
-        { id: 'team_47', type: 'team' as const, name: 'Tottenham' },
-        { id: 'team_48', type: 'team' as const, name: 'West Ham' },
-        { id: 'team_39', type: 'team' as const, name: 'Wolves' },
-        { id: 'team_44', type: 'team' as const, name: 'Burnley' },
-      ].sort((a, b) => a.name.localeCompare(b.name))
-    },
-    {
-      name: 'La Liga',
-      teams: [
-        { id: 'team_77', type: 'team' as const, name: 'Athletic Club' },
-        { id: 'team_78', type: 'team' as const, name: 'Atletico Madrid' },
-        { id: 'team_81', type: 'team' as const, name: 'Barcelona' },
-        { id: 'team_86', type: 'team' as const, name: 'Real Madrid' },
-        { id: 'team_90', type: 'team' as const, name: 'Real Betis' },
-        { id: 'team_92', type: 'team' as const, name: 'Real Sociedad' },
-        { id: 'team_80', type: 'team' as const, name: 'Sevilla' },
-        { id: 'team_94', type: 'team' as const, name: 'Villarreal' },
-        { id: 'team_95', type: 'team' as const, name: 'Valencia' },
-        { id: 'team_83', type: 'team' as const, name: 'Granada' },
-        { id: 'team_82', type: 'team' as const, name: 'Getafe' },
-        { id: 'team_79', type: 'team' as const, name: 'Osasuna' },
-        { id: 'team_88', type: 'team' as const, name: 'Levante' },
-        { id: 'team_89', type: 'team' as const, name: 'Mallorca' },
-        { id: 'team_87', type: 'team' as const, name: 'Rayo Vallecano' },
-        { id: 'team_91', type: 'team' as const, name: 'Celta Vigo' },
-        { id: 'team_93', type: 'team' as const, name: 'Almeria' },
-        { id: 'team_84', type: 'team' as const, name: 'Girona' },
-        { id: 'team_97', type: 'team' as const, name: 'Las Palmas' },
-        { id: 'team_98', type: 'team' as const, name: 'Alaves' },
-      ].sort((a, b) => a.name.localeCompare(b.name))
-    },
-    {
-      name: 'Serie A',
-      teams: [
-        { id: 'team_109', type: 'team' as const, name: 'Juventus' },
-        { id: 'team_113', type: 'team' as const, name: 'AC Milan' },
-        { id: 'team_108', type: 'team' as const, name: 'Inter Milan' },
-        { id: 'team_111', type: 'team' as const, name: 'Roma' },
-        { id: 'team_110', type: 'team' as const, name: 'Lazio' },
-        { id: 'team_114', type: 'team' as const, name: 'Napoli' },
-        { id: 'team_102', type: 'team' as const, name: 'Atalanta' },
-        { id: 'team_103', type: 'team' as const, name: 'Bologna' },
-        { id: 'team_104', type: 'team' as const, name: 'Cagliari' },
-        { id: 'team_105', type: 'team' as const, name: 'Empoli' },
-        { id: 'team_106', type: 'team' as const, name: 'Fiorentina' },
-        { id: 'team_107', type: 'team' as const, name: 'Frosinone' },
-        { id: 'team_112', type: 'team' as const, name: 'Genoa' },
-        { id: 'team_115', type: 'team' as const, name: 'Lecce' },
-        { id: 'team_116', type: 'team' as const, name: 'Monza' },
-        { id: 'team_117', type: 'team' as const, name: 'Salernitana' },
-        { id: 'team_118', type: 'team' as const, name: 'Sassuolo' },
-        { id: 'team_119', type: 'team' as const, name: 'Torino' },
-        { id: 'team_120', type: 'team' as const, name: 'Udinese' },
-        { id: 'team_121', type: 'team' as const, name: 'Verona' },
-      ].sort((a, b) => a.name.localeCompare(b.name))
-    },
-    {
-      name: 'Bundesliga',
-      teams: [
-        { id: 'team_5', type: 'team' as const, name: 'Bayern Munich' },
-        { id: 'team_4', type: 'team' as const, name: 'Borussia Dortmund' },
-        { id: 'team_11', type: 'team' as const, name: 'Bayer Leverkusen' },
-        { id: 'team_1', type: 'team' as const, name: 'RB Leipzig' },
-        { id: 'team_3', type: 'team' as const, name: 'Eintracht Frankfurt' },
-        { id: 'team_9', type: 'team' as const, name: 'Wolfsburg' },
-        { id: 'team_6', type: 'team' as const, name: 'B. Monchengladbach' },
-        { id: 'team_12', type: 'team' as const, name: 'Werder Bremen' },
-        { id: 'team_7', type: 'team' as const, name: 'Stuttgart' },
-        { id: 'team_8', type: 'team' as const, name: 'Freiburg' },
-        { id: 'team_10', type: 'team' as const, name: 'Hoffenheim' },
-        { id: 'team_2', type: 'team' as const, name: 'Union Berlin' },
-        { id: 'team_13', type: 'team' as const, name: 'Mainz 05' },
-        { id: 'team_14', type: 'team' as const, name: 'Augsburg' },
-        { id: 'team_15', type: 'team' as const, name: 'Bochum' },
-        { id: 'team_16', type: 'team' as const, name: 'FC Koln' },
-        { id: 'team_17', type: 'team' as const, name: 'Darmstadt' },
-        { id: 'team_18', type: 'team' as const, name: 'Heidenheim' },
-      ].sort((a, b) => a.name.localeCompare(b.name))
-    },
-    {
-      name: 'Ligue 1',
-      teams: [
-        { id: 'team_85', type: 'team' as const, name: 'PSG' },
-        { id: 'team_71', type: 'team' as const, name: 'Marseille' },
-        { id: 'team_72', type: 'team' as const, name: 'Monaco' },
-        { id: 'team_66', type: 'team' as const, name: 'Lyon' },
-        { id: 'team_70', type: 'team' as const, name: 'Lille' },
-        { id: 'team_68', type: 'team' as const, name: 'Rennes' },
-        { id: 'team_67', type: 'team' as const, name: 'Nice' },
-        { id: 'team_69', type: 'team' as const, name: 'Lens' },
-        { id: 'team_73', type: 'team' as const, name: 'Montpellier' },
-        { id: 'team_74', type: 'team' as const, name: 'Nantes' },
-        { id: 'team_75', type: 'team' as const, name: 'Strasbourg' },
-        { id: 'team_76', type: 'team' as const, name: 'Reims' },
-        { id: 'team_60', type: 'team' as const, name: 'Toulouse' },
-        { id: 'team_61_fr', type: 'team' as const, name: 'Brest' },
-        { id: 'team_62_fr', type: 'team' as const, name: 'Lorient' },
-        { id: 'team_63', type: 'team' as const, name: 'Clermont' },
-        { id: 'team_64', type: 'team' as const, name: 'Metz' },
-        { id: 'team_65_fr', type: 'team' as const, name: 'Le Havre' },
-      ].sort((a, b) => a.name.localeCompare(b.name))
-    }
-  ];
-
-  const filteredLeagues = useMemo(() => {
-    if (!searchQuery) return topLeagues;
-    const lowerQ = searchQuery.toLowerCase();
-    
-    return topLeagues.map(league => {
-      const filteredTeams = league.teams.filter(t => t.name.toLowerCase().includes(lowerQ));
-      return { ...league, teams: filteredTeams };
-    }).filter(league => league.teams.length > 0);
-  }, [searchQuery]);
+  const { user } = useAuth() as any;
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [polls, setPolls] = useState<any[]>([]);
@@ -444,7 +276,7 @@ export function Home() {
       </div>
 
       {/* Personalized Favorite Teams & Competitions Quick-Filter Bar */}
-      <FavoriteTeamsBar showMyFeedLink={true} />
+      <FavoriteTeamsBar showMyFeedLink={true} showInlineFeed={true} />
 
       {/* Live Football Scores & Real-Time Matches */}
       <LiveScoresSection />
@@ -497,118 +329,9 @@ export function Home() {
         </div>
       )}
 
-      {/* Main Home Sections: Team Browser, Standings, News */}
+      {/* Main Home Sections: Latest Stories */}
       <div className="flex flex-col gap-6 w-full max-w-4xl mx-auto">
         <div className="space-y-6">
-          {/* Favorites Widget / Team Browser */}
-          <Card className="relative overflow-hidden bg-white/75 backdrop-blur-xl border border-white/80 shadow-[0_8px_32px_rgba(15,23,42,0.04)]">
-            <CardHeader className="bg-slate-50/70 border-b border-slate-100">
-              <div className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-900">
-                  <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                  Your Teams
-                </CardTitle>
-                <button 
-                  onClick={() => setShowTeamBrowser(!showTeamBrowser)}
-                  className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-2xs transition-all hover:border-rose-200 hover:bg-rose-50/50 cursor-pointer"
-                >
-                  {showTeamBrowser ? 'Done' : 'Edit Teams'}
-                </button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-4">
-              {showTeamBrowser ? (
-                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="relative mb-4">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Search teams..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
-                    {filteredLeagues.length > 0 ? filteredLeagues.map(league => (
-                      <div key={league.name} className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-                        <button 
-                          onClick={() => setExpandedLeague(expandedLeague === league.name ? null : league.name)}
-                          className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
-                        >
-                          <span className="font-bold text-slate-900 text-sm">{league.name}</span>
-                          {expandedLeague === league.name || searchQuery ? (
-                            <ChevronUp className="h-4 w-4 text-slate-500" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-slate-500" />
-                          )}
-                        </button>
-                        
-                        {(expandedLeague === league.name || searchQuery) && (
-                          <div className="p-2 grid grid-cols-1 gap-1.5 bg-white border-t border-slate-100 animate-in fade-in">
-                            {league.teams.map(team => {
-                              const isSelected = isFavorite(team.id);
-                              return (
-                                <button
-                                  key={team.id}
-                                  onClick={() => toggleFavorite(team)}
-                                  className={`flex items-center justify-between p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
-                                    isSelected 
-                                      ? 'border-rose-400 bg-rose-50/70 shadow-2xs' 
-                                      : 'border-transparent hover:bg-slate-50'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <img src={`https://media.api-sports.io/football/teams/${team.id.replace('team_', '').replace('_fr', '')}.png`} alt={team.name} className="w-6 h-6 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                                    <span className={`text-sm font-bold ${isSelected ? 'text-rose-900' : 'text-slate-800'}`}>
-                                      {team.name}
-                                    </span>
-                                  </div>
-                                  {isSelected && <Check className="h-4 w-4 text-rose-600" />}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )) : (
-                      <div className="text-center py-4 text-sm text-slate-500">No teams found matching "{searchQuery}"</div>
-                    )}
-                  </div>
-                </div>
-              ) : favorites.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {favorites.map(team => (
-                    <div key={team.id} className="group flex items-center gap-2 bg-white hover:bg-rose-50/40 border border-slate-200/90 pl-2 pr-1.5 py-1.5 rounded-full shadow-2xs transition-all">
-                      {team.logo ? <img src={team.logo} alt={team.name} className="w-5 h-5 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} /> : <img src={`https://media.api-sports.io/football/teams/${team.id.replace('team_', '').replace('_fr', '')}.png`} alt={team.name} className="w-5 h-5 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />}
-                      <span className="text-xs font-bold text-slate-900">{team.name}</span>
-                      <button 
-                        onClick={() => toggleFavorite(team)}
-                        className="p-1 rounded-full hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors ml-1 cursor-pointer"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
-                  <div className="flex flex-col items-center gap-2 text-slate-500">
-                    <Star className="h-6 w-6 text-amber-400 mb-1" />
-                    <p className="font-bold text-slate-800 text-sm">No teams added</p>
-                    <button 
-                      onClick={() => setShowTeamBrowser(true)}
-                      className="mt-2 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/70 border border-rose-200/70 px-4 py-2 rounded-full transition-colors cursor-pointer"
-                    >
-                      Browse Teams
-                    </button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Top News Widget */}
           <Card className="border border-white/80 bg-white/75 backdrop-blur-xl shadow-[0_8px_32px_rgba(15,23,42,0.04)]">
             <CardHeader className="flex flex-row items-center justify-between pb-2 bg-slate-50/70 border-b border-slate-100">

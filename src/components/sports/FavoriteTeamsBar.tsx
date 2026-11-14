@@ -115,10 +115,15 @@ export const PINNABLE_GROUPS: Array<{
 
 interface FavoriteTeamsBarProps {
   showMyFeedLink?: boolean;
+  showInlineFeed?: boolean;
   onFilterChange?: (selectedFav: FavoriteItem | null) => void;
 }
 
-export function FavoriteTeamsBar({ showMyFeedLink = true, onFilterChange }: FavoriteTeamsBarProps) {
+export function FavoriteTeamsBar({
+  showMyFeedLink = true,
+  showInlineFeed = true,
+  onFilterChange,
+}: FavoriteTeamsBarProps) {
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { matches } = useFootballMatches();
   const { articles } = useArticles('published');
@@ -126,6 +131,7 @@ export function FavoriteTeamsBar({ showMyFeedLink = true, onFilterChange }: Favo
 
   const [selectedFavId, setSelectedFavId] = useState<string>('ALL');
   const [showPicker, setShowPicker] = useState(false);
+  const [isFeedExpanded, setIsFeedExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedGroup, setExpandedGroup] = useState<string>('Top Competitions');
 
@@ -136,6 +142,9 @@ export function FavoriteTeamsBar({ showMyFeedLink = true, onFilterChange }: Favo
 
   const handleSelectChip = (id: string) => {
     setSelectedFavId(id);
+    if (showInlineFeed && id !== 'ALL') {
+      setIsFeedExpanded(true);
+    }
     if (onFilterChange) {
       onFilterChange(id === 'ALL' ? null : favorites.find((f) => f.id === id) || null);
     }
@@ -159,7 +168,6 @@ export function FavoriteTeamsBar({ showMyFeedLink = true, onFilterChange }: Favo
       )
     );
 
-    // Prioritize LIVE first, then UPCOMING (soonest first), then most recent FINISHED
     return matched.sort((a, b) => {
       const rank = (m: NormalizedMatch) => (m.isLive ? 0 : m.status === 'UPCOMING' ? 1 : 2);
       const rDiff = rank(a) - rank(b);
@@ -198,196 +206,155 @@ export function FavoriteTeamsBar({ showMyFeedLink = true, onFilterChange }: Favo
     })).filter((g) => g.items.length > 0);
   }, [searchQuery]);
 
-  return (
-    <section className="w-full rounded-[24px] bg-white/85 backdrop-blur-xl border border-slate-200/90 p-4 sm:p-5 shadow-sm space-y-4">
-      {/* Header Row */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-500 shrink-0">
-            <Star className="w-4 h-4 fill-amber-400" />
-          </div>
-          <div>
-            <h2 className="text-sm sm:text-base font-black text-slate-900 leading-tight">
-              Your Pinned Clubs, Nations & Leagues
-            </h2>
-            <p className="text-[11px] text-slate-500 font-medium">
-              Quick-filter live scores, next fixtures & team news
-            </p>
-          </div>
-        </div>
+  const quickSuggestions = [
+    PINNABLE_GROUPS[2].items[0], // Arsenal
+    PINNABLE_GROUPS[3].items[1], // Real Madrid
+    PINNABLE_GROUPS[3].items[0], // Barcelona
+    PINNABLE_GROUPS[1].items[3], // France
+    PINNABLE_GROUPS[0].items[0], // Champions League
+  ];
 
-        <div className="flex items-center gap-2">
+  const livePinnedCount = useMemo(
+    () => personalizedMatches.filter((m) => m.isLive).length,
+    [personalizedMatches]
+  );
+
+  return (
+    <>
+      {/* Single-Row Slim Bar */}
+      <section className="w-full rounded-2xl bg-white/90 backdrop-blur-xl border border-slate-200/90 px-3 py-2.5 sm:px-4 shadow-xs space-y-2.5">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+          {/* Status / Count Pill */}
           <button
             type="button"
-            onClick={() => setShowPicker(!showPicker)}
+            onClick={() => handleSelectChip('ALL')}
             className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer',
-              showPicker
-                ? 'bg-slate-900 text-white border-slate-900'
-                : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+              'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black border transition-all whitespace-nowrap shrink-0 cursor-pointer',
+              favorites.length > 0 && selectedFavId === 'ALL'
+                ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100/70'
             )}
           >
-            {showPicker ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-            <span>{showPicker ? 'Done Pinning' : 'Pin Teams / Leagues'}</span>
+            <Star className={cn('w-3.5 h-3.5', selectedFavId === 'ALL' && favorites.length > 0 ? 'fill-amber-400 text-amber-400' : 'fill-amber-400 text-amber-500')} />
+            <span>Pinned ({favorites.length})</span>
           </button>
 
-          {showMyFeedLink && (
-            <Link
-              to="/my-feed"
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold transition-colors"
-            >
-              <span>My Feed</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* Expandable Pinning Drawer / Selector */}
-      {showPicker && (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search clubs, national teams or competitions..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
-            />
-          </div>
-
-          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-            {filteredGroups.map((group) => {
-              const isOpen = expandedGroup === group.group || searchQuery.trim().length > 0;
-              return (
-                <div key={group.group} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedGroup(isOpen ? '' : group.group)}
-                    className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 hover:bg-slate-100 text-xs font-black text-slate-800 cursor-pointer"
+          {/* Pinned Pills OR Quick-Pin Pills when empty */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none flex-1 min-w-0">
+            {favorites.length > 0 ? (
+              favorites.map((fav) => {
+                const isSelected = selectedFavId === fav.id;
+                return (
+                  <div
+                    key={fav.id}
+                    className={cn(
+                      'inline-flex items-center gap-1 pl-2 pr-1 py-1 rounded-xl border text-xs font-bold transition-all shrink-0',
+                      isSelected
+                        ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
+                        : 'bg-slate-50 text-slate-800 border-slate-200 hover:border-rose-300'
+                    )}
                   >
-                    <span className="flex items-center gap-1.5">
-                      {group.kind === 'competition' ? (
-                        <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                      ) : group.kind === 'national' ? (
-                        <Globe className="w-3.5 h-3.5 text-emerald-600" />
-                      ) : (
-                        <Shield className="w-3.5 h-3.5 text-rose-600" />
+                    <button
+                      type="button"
+                      onClick={() => handleSelectChip(isSelected ? 'ALL' : fav.id)}
+                      className="inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                    >
+                      {fav.logo && (
+                        <img
+                          src={fav.logo}
+                          alt=""
+                          className="w-3.5 h-3.5 object-contain bg-white rounded-full p-0.5"
+                          onError={(e) => (e.currentTarget.style.display = 'none')}
+                        />
                       )}
-                      {group.group}
-                    </span>
-                    {isOpen ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
-                  </button>
-
-                  {isOpen && (
-                    <div className="p-2 flex flex-wrap gap-1.5">
-                      {group.items.map((item) => {
-                        const pinned = isFavorite(item.id, item.name, item.type);
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => toggleFavorite(item)}
-                            className={cn(
-                              'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer',
-                              pinned
-                                ? 'bg-rose-50 border-rose-300 text-rose-800 shadow-2xs'
-                                : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                            )}
-                          >
-                            {item.logo && (
-                              <img
-                                src={item.logo}
-                                alt=""
-                                className="w-4 h-4 object-contain"
-                                onError={(e) => (e.currentTarget.style.display = 'none')}
-                              />
-                            )}
-                            <span>{item.name}</span>
-                            {pinned ? (
-                              <Check className="w-3 h-3 text-rose-600" />
-                            ) : (
-                              <Plus className="w-3 h-3 text-slate-400" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                      <span>{fav.name}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) handleSelectChip('ALL');
+                        toggleFavorite(fav);
+                      }}
+                      className={cn(
+                        'p-0.5 rounded-md transition-colors cursor-pointer',
+                        isSelected ? 'hover:bg-white/20 text-white/90' : 'hover:bg-rose-100 text-slate-400 hover:text-rose-600'
+                      )}
+                      title={`Unpin ${fav.name}`}
+                      aria-label={`Unpin ${fav.name}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })
+            ) : (
+              quickSuggestions.map((quick) => (
+                <button
+                  key={quick.id}
+                  type="button"
+                  onClick={() => toggleFavorite(quick)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-rose-50 border border-dashed border-slate-300 hover:border-rose-300 text-xs font-bold text-slate-700 hover:text-rose-700 transition-all cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  <Plus className="w-3 h-3 text-rose-600" />
+                  <span>{quick.name}</span>
+                </button>
+              ))
+            )}
           </div>
-        </div>
-      )}
 
-      {/* Quick-Filter Pills Bar */}
-      {favorites.length > 0 ? (
-        <>
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          {/* Compact Right Controls: + Pin, Collapsible Toggle, Open My Feed -> */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
-              onClick={() => handleSelectChip('ALL')}
-              className={cn(
-                'px-3 py-1.5 rounded-xl text-xs font-bold border transition-all whitespace-nowrap cursor-pointer shrink-0',
-                selectedFavId === 'ALL'
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-              )}
+              onClick={() => setShowPicker(true)}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
+              title="Pin teams or leagues"
             >
-              All Pinned ({favorites.length})
+              <Plus className="w-3.5 h-3.5" />
+              <span>Pin</span>
             </button>
 
-            {favorites.map((fav) => {
-              const isSelected = selectedFavId === fav.id;
-              return (
-                <div
-                  key={fav.id}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-xl border text-xs font-bold transition-all shrink-0',
-                    isSelected
-                      ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
-                      : 'bg-slate-50 text-slate-800 border-slate-200 hover:border-rose-300'
-                  )}
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleSelectChip(isSelected ? 'ALL' : fav.id)}
-                    className="inline-flex items-center gap-1.5 cursor-pointer"
-                  >
-                    {fav.logo && (
-                      <img
-                        src={fav.logo}
-                        alt=""
-                        className="w-4 h-4 object-contain bg-white rounded-full p-0.5"
-                        onError={(e) => (e.currentTarget.style.display = 'none')}
-                      />
-                    )}
-                    <span>{fav.name}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isSelected) handleSelectChip('ALL');
-                      toggleFavorite(fav);
-                    }}
-                    className={cn(
-                      'p-0.5 rounded-md transition-colors cursor-pointer',
-                      isSelected ? 'hover:bg-white/20 text-white/90' : 'hover:bg-rose-100 text-slate-400 hover:text-rose-600'
-                    )}
-                    title={`Unpin ${fav.name}`}
-                    aria-label={`Unpin ${fav.name}`}
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+            {showInlineFeed && favorites.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsFeedExpanded((prev) => !prev)}
+                className={cn(
+                  'inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer whitespace-nowrap',
+                  isFeedExpanded
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                )}
+                title={isFeedExpanded ? 'Hide pinned matches & news' : 'Show pinned matches & news'}
+              >
+                {livePinnedCount > 0 && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                )}
+                <span className="hidden sm:inline">
+                  {isFeedExpanded ? 'Hide Feed' : `Show Pinned Matches & News (${personalizedMatches.length + personalizedArticles.length})`}
+                </span>
+                <span className="sm:hidden">
+                  {isFeedExpanded ? 'Hide' : `Feed (${personalizedMatches.length + personalizedArticles.length})`}
+                </span>
+                {isFeedExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            )}
 
-          {/* Personalized Strip: Live Score / Next Fixture + Team-Specific News */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 pt-1">
+            {showMyFeedLink && (
+              <Link
+                to="/my-feed"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-rose-600 text-xs font-bold transition-colors whitespace-nowrap"
+              >
+                <span className="hidden sm:inline">Open My Feed</span>
+                <span className="sm:hidden">My Feed</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* Collapsible Pinned Matches & News Strip (hidden by default on Home to save space) */}
+        {showInlineFeed && favorites.length > 0 && isFeedExpanded && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 pt-2.5 border-t border-slate-100 animate-in fade-in slide-in-from-top-1 duration-200">
             {/* Fixtures & Live Score Strip (2 cols on lg) */}
             <div className="lg:col-span-2 space-y-2">
               <p className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
@@ -500,34 +467,122 @@ export function FavoriteTeamsBar({ showMyFeedLink = true, onFilterChange }: Favo
               )}
             </div>
           </div>
-        </>
-      ) : (
-        /* Quick Prompt Strip when empty */
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-amber-300/80 bg-amber-50/50 px-4 py-3">
-          <div className="text-xs text-slate-700 font-medium">
-            Pin your favorite <strong className="text-slate-900">clubs, national teams, or competitions</strong> for instant matchday scores, goal alerts & tailored news right here.
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {[
-              PINNABLE_GROUPS[2].items[0], // Arsenal
-              PINNABLE_GROUPS[3].items[1], // Real Madrid
-              PINNABLE_GROUPS[3].items[0], // Barcelona
-              PINNABLE_GROUPS[1].items[3], // France
-              PINNABLE_GROUPS[0].items[0], // Champions League
-            ].map((quick) => (
+        )}
+      </section>
+
+      {/* Clean Modal Overlay Team / League Picker (never shifts page layout) */}
+      {showPicker && (
+        <div className="fixed inset-0 z-[75] flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-slate-900/45 backdrop-blur-2xs"
+            onClick={() => setShowPicker(false)}
+          />
+          <div className="relative z-10 w-full max-w-lg rounded-3xl bg-white border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[82vh] animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-500">
+                  <Star className="w-4 h-4 fill-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900">Pin Teams, Nations & Leagues</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">{favorites.length} pinned right now</p>
+                </div>
+              </div>
               <button
-                key={quick.id}
                 type="button"
-                onClick={() => toggleFavorite(quick)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-[11px] font-bold text-slate-700 hover:text-rose-700 transition-all cursor-pointer shadow-2xs"
+                onClick={() => setShowPicker(false)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 cursor-pointer"
               >
-                <Plus className="w-3 h-3 text-rose-600" />
-                <span>{quick.name}</span>
+                <Check className="w-3.5 h-3.5" />
+                <span>Done</span>
               </button>
-            ))}
+            </div>
+
+            <div className="p-4 border-b border-slate-100">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search clubs, national teams or competitions..."
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 space-y-2.5 overflow-y-auto flex-1">
+              {filteredGroups.length > 0 ? (
+                filteredGroups.map((group) => {
+                  const isOpen = expandedGroup === group.group || searchQuery.trim().length > 0;
+                  return (
+                    <div key={group.group} className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedGroup(isOpen ? '' : group.group)}
+                        className="w-full flex items-center justify-between px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100 text-xs font-black text-slate-800 cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          {group.kind === 'competition' ? (
+                            <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                          ) : group.kind === 'national' ? (
+                            <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <Shield className="w-3.5 h-3.5 text-rose-600" />
+                          )}
+                          {group.group}
+                        </span>
+                        {isOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                      </button>
+
+                      {isOpen && (
+                        <div className="p-2.5 flex flex-wrap gap-1.5 border-t border-slate-100">
+                          {group.items.map((item) => {
+                            const pinned = isFavorite(item.id, item.name, item.type);
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => toggleFavorite(item)}
+                                className={cn(
+                                  'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer',
+                                  pinned
+                                    ? 'bg-rose-50 border-rose-300 text-rose-800 shadow-2xs'
+                                    : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                                )}
+                              >
+                                {item.logo && (
+                                  <img
+                                    src={item.logo}
+                                    alt=""
+                                    className="w-4 h-4 object-contain"
+                                    onError={(e) => (e.currentTarget.style.display = 'none')}
+                                  />
+                                )}
+                                <span>{item.name}</span>
+                                {pinned ? (
+                                  <Check className="w-3 h-3 text-rose-600" />
+                                ) : (
+                                  <Plus className="w-3 h-3 text-slate-400" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-center py-8 text-xs text-slate-500">
+                  No clubs, national teams, or competitions match "{searchQuery}".
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
-    </section>
+    </>
   );
 }

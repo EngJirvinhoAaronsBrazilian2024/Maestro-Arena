@@ -14,7 +14,10 @@ export default defineConfig(() => {
       react(), 
       tailwindcss(),
       VitePWA({
-        registerType: 'prompt',
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
+        registerType: 'autoUpdate',
         injectRegister: 'auto',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-icon.svg', 'logo.svg'],
         manifest: {
@@ -56,72 +59,12 @@ export default defineConfig(() => {
             }
           ]
         },
-        workbox: {
-          navigateFallback: '/index.html',
-          navigateFallbackDenylist: [/^\/api/],
-          // Keep precache small so installation finishes immediately on mobile networks
+        injectManifest: {
           globPatterns: ['**/*.{js,css,html}'],
           maximumFileSizeToCacheInBytes: 3000000,
-          cleanupOutdatedCaches: true,
-          runtimeCaching: [
-            {
-              urlPattern: /^\/api\/(matches|articles|sports\/transfers)/i,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'api-live-data-cache',
-                networkTimeoutSeconds: 4,
-                expiration: {
-                  maxEntries: 30,
-                  maxAgeSeconds: 24 * 60 * 60
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
-            },
-            {
-              urlPattern: /^https:\/\/media\.api-sports\.io\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'api-sports-images',
-                expiration: {
-                  maxEntries: 100,
-                  maxAgeSeconds: 30 * 24 * 60 * 60
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
-            },
-            {
-              urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,
-              handler: 'StaleWhileRevalidate',
-              options: {
-                cacheName: 'unsplash-images',
-                expiration: {
-                  maxEntries: 60,
-                  maxAgeSeconds: 14 * 24 * 60 * 60
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
-            },
-            {
-              urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
-              handler: 'StaleWhileRevalidate',
-              options: {
-                cacheName: 'app-media-assets',
-                expiration: {
-                  maxEntries: 60,
-                  maxAgeSeconds: 7 * 24 * 60 * 60
-                }
-              }
-            }
-          ]
         },
         devOptions: {
-          enabled: false,
+          enabled: true,
           type: 'module'
         }
       })
